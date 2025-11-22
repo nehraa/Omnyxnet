@@ -31,7 +31,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Check if Go binary exists
-if [ ! -f "$PROJECT_ROOT/go/go-node" ]; then
+if [ ! -f "$PROJECT_ROOT/go/go-node" ] && [ ! -f "$PROJECT_ROOT/go/bin/go-node" ]; then
     echo -e "${YELLOW}Go node binary not found. Building...${NC}"
     cd "$PROJECT_ROOT/go"
     go build -o go-node .
@@ -40,6 +40,9 @@ if [ ! -f "$PROJECT_ROOT/go/go-node" ]; then
         exit 1
     fi
     echo -e "${GREEN}Go node built successfully${NC}"
+elif [ ! -f "$PROJECT_ROOT/go/go-node" ] && [ -f "$PROJECT_ROOT/go/bin/go-node" ]; then
+    echo -e "${GREEN}Using existing Go binary from bin/go-node${NC}"
+    cp "$PROJECT_ROOT/go/bin/go-node" "$PROJECT_ROOT/go/go-node"
 fi
 
 # Check if Rust library exists

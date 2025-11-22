@@ -54,14 +54,25 @@ echo "  3. Test RPC calls"
 echo "  4. Test peer connections"
 echo ""
 
-# Test 1: Build Go node
+# Test 1: Build Go node (or use existing)
 echo -e "${BLUE}1. Building Go node...${NC}"
 cd "$GO_DIR"
-if ! go build -o bin/go-node-test . 2>/dev/null; then
-    echo -e "${RED}❌ Go build failed${NC}"
+
+# Use existing binary if available, otherwise try to build
+if [ -f "bin/go-node" ]; then
+    echo -e "${GREEN}✅ Using existing Go node binary${NC}"
+    # Copy to test binary name
+    cp bin/go-node bin/go-node-test
+elif [ -f "go-node" ]; then
+    echo -e "${GREEN}✅ Using existing Go node binary${NC}"
+    mkdir -p bin
+    cp go-node bin/go-node-test
+elif ! go build -o bin/go-node-test . 2>/dev/null; then
+    echo -e "${RED}❌ Go build failed and no existing binary found${NC}"
     exit 1
+else
+    echo -e "${GREEN}✅ Go node built${NC}"
 fi
-echo -e "${GREEN}✅ Go node built${NC}"
 
 # Test 2: Check if port is available
 echo -e "\n${BLUE}2. Checking port availability...${NC}"
@@ -74,7 +85,8 @@ echo -e "${GREEN}✅ Port $GO_NODE_PORT is available${NC}"
 # Test 3: Start Go node in background
 echo -e "\n${BLUE}3. Starting Go node...${NC}"
 cd "$PROJECT_ROOT"
-export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:${LD_LIBRARY_PATH:-}"
+export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:${DYLD_LIBRARY_PATH:-}"
 "$GO_DIR/bin/go-node-test" -node-id=$GO_NODE_ID -capnp-addr=:$GO_NODE_PORT -p2p-addr=:$P2P_PORT > /tmp/go-node.log 2>&1 &
 GO_NODE_PID=$!
 echo "   Go node PID: $GO_NODE_PID"
@@ -103,7 +115,8 @@ from pathlib import Path
 # Add python directory to path
 PROJECT_ROOT = Path("$PROJECT_ROOT")
 PYTHON_DIR = PROJECT_ROOT / "python"
-SCHEMA_PATH = PROJECT_ROOT / "go" / "schema" / "schema.capnp"
+# Use Python schema instead of Go schema to avoid pycapnp import issues
+SCHEMA_PATH = PROJECT_ROOT / "python" / "schema.capnp"
 
 sys.path.insert(0, str(PYTHON_DIR))
 
