@@ -1,9 +1,5 @@
 @0x8513e0c6129c1f4c;
 
-using Go = import "/go.capnp";
-$Go.package("main");
-$Go.import("main");
-
 # Cap'n Proto schema for Pangea Net
 
 struct Node {
