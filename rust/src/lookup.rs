@@ -279,6 +279,7 @@ mod tests {
     use super::*;
     use crate::cache::FileManifest;
     use tempfile::tempdir;
+    use chrono::Utc;
 
     #[tokio::test]
     async fn test_lookup_cached_file() {
@@ -294,7 +295,7 @@ mod tests {
             file_size: 1000,
             shard_count: 3,
             shard_locations: vec![(0, 1), (1, 2), (2, 3)],
-            timestamp: chrono::Utc::now().timestamp(),
+            timestamp: Utc::now().timestamp(),
             ttl: 3600,
         };
         
@@ -321,7 +322,7 @@ mod tests {
                 file_size: 1000,
                 shard_count: 3,
                 shard_locations: vec![(0, 1), (1, 2), (2, 3)],
-                timestamp: chrono::Utc::now().timestamp(),
+                timestamp: Utc::now().timestamp(),
                 ttl: 3600,
             };
             cache.put_manifest(manifest).await.unwrap();
