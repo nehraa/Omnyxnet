@@ -31,7 +31,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Check if Go binary exists
-if [ ! -f "$PROJECT_ROOT/go/go-node" ]; then
+if [ ! -f "$PROJECT_ROOT/go/go-node" ] && [ ! -f "$PROJECT_ROOT/go/bin/go-node" ]; then
     echo -e "${YELLOW}Go node binary not found. Building...${NC}"
     cd "$PROJECT_ROOT/go"
     go build -o go-node .
@@ -40,6 +40,9 @@ if [ ! -f "$PROJECT_ROOT/go/go-node" ]; then
         exit 1
     fi
     echo -e "${GREEN}Go node built successfully${NC}"
+elif [ ! -f "$PROJECT_ROOT/go/go-node" ] && [ -f "$PROJECT_ROOT/go/bin/go-node" ]; then
+    echo -e "${GREEN}Using existing Go binary from bin/go-node${NC}"
+    cp "$PROJECT_ROOT/go/bin/go-node" "$PROJECT_ROOT/go/go-node"
 fi
 
 # Check if Rust library exists
@@ -55,6 +58,10 @@ if [ ! -f "$PROJECT_ROOT/rust/target/release/libpangea_ces.so" ] && \
     fi
     echo -e "${GREEN}Rust library built successfully${NC}"
 fi
+
+# Set library path for Rust FFI
+export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:${LD_LIBRARY_PATH:-}"
+export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:${DYLD_LIBRARY_PATH:-}"
 
 # Start Go node in background
 echo "Starting Go node..."
@@ -75,10 +82,20 @@ fi
 echo -e "${GREEN}Go node started (PID: $GO_NODE_PID)${NC}"
 echo ""
 
-# Run Python test
+# Run Python test with venv
 echo "Running CES wiring test..."
 cd "$PROJECT_ROOT"
-python3 tests/test_ces_wiring.py
+
+# Use venv Python if available
+if [ -f "$PROJECT_ROOT/python/.venv/bin/python" ]; then
+    PYTHON_BIN="$PROJECT_ROOT/python/.venv/bin/python"
+    echo "Using venv Python: $PYTHON_BIN"
+else
+    PYTHON_BIN="python3"
+    echo "Using system Python: $PYTHON_BIN"
+fi
+
+$PYTHON_BIN tests/test_ces_wiring.py
 
 TEST_RESULT=$?
 

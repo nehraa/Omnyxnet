@@ -32,8 +32,8 @@ trap cleanup EXIT
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-# Set schema path
-SCHEMA_PATH="$PROJECT_ROOT/go/schema/schema.capnp"
+# Set schema path - use Python schema to avoid pycapnp import issues
+SCHEMA_PATH="$PROJECT_ROOT/python/schema.capnp"
 
 # Detect Python binary (prefer venv)
 PYTHON_BIN="python3"
@@ -42,14 +42,21 @@ if [ -f "$PROJECT_ROOT/python/.venv/bin/python" ]; then
     echo "Using venv Python: $PYTHON_BIN"
 fi
 
-# Build Go node
+# Build Go node (or use existing)
 echo "1. Building Go node..."
 cd go
-go build -o bin/go-node . > /dev/null 2>&1
-if [ $? -eq 0 ]; then
+
+# Use existing binary if available
+if [ -f "bin/go-node" ]; then
+    echo -e "${GREEN}✅ Using existing Go node binary${NC}"
+elif [ -f "go-node" ]; then
+    echo -e "${GREEN}✅ Using existing Go node binary${NC}"
+    mkdir -p bin
+    cp go-node bin/go-node
+elif go build -o bin/go-node . > /dev/null 2>&1; then
     echo -e "${GREEN}✅ Go node built${NC}"
 else
-    echo -e "${RED}❌ Go build failed${NC}"
+    echo -e "${RED}❌ Go build failed and no existing binary found${NC}"
     exit 1
 fi
 cd ..
