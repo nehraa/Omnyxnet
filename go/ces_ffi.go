@@ -1,7 +1,7 @@
 package main
 
 /*
-#cgo LDFLAGS: -L${PANGEA_RUST_LIB_PATH} -lpangea_ces
+#cgo LDFLAGS: -L../rust/target/release -lpangea_ces
 #include <stdlib.h>
 #include <stdint.h>
 

@@ -3,7 +3,6 @@ use std::path::Path;
 use std::sync::Arc;
 use tracing::{info, debug};
 use sha2::{Sha256, Digest};
-use chrono::Utc;
 
 use crate::ces::CesPipeline;
 use crate::go_client::GoClient;
@@ -80,6 +79,7 @@ impl UploadProtocol {
             file_name,
             file_size,
             shard_count: shards.len(),
+            parity_count: self.ces.parity_count(),
             shard_locations: shard_locations.clone(),
             timestamp: chrono::Utc::now().timestamp(),
             ttl: 0, // 0 = permanent

@@ -1,9 +1,8 @@
 /// FFI layer for Go ↔ Rust interop
 /// Exposes CES pipeline functions as C-compatible API
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::os::raw::{c_char, c_int, c_uchar};
 use std::slice;
-use std::sync::Arc;
 
 use crate::ces::CesPipeline;
 use crate::types::CesConfig;
