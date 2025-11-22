@@ -45,6 +45,10 @@ sysinfo = "0.29"
 cfg-if = "1.0"
 libc = "0.2"
 
+# Time and caching
+chrono = "0.4"
+lru = "0.12"
+
 # Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

@@ -5,16 +5,31 @@ use tracing::{info, debug};
 
 use crate::ces::CesPipeline;
 use crate::go_client::GoClient;
+use crate::cache::Cache;
 
 /// Download protocol - handles file downloads with CES reconstruction
 pub struct DownloadProtocol {
     ces: Arc<CesPipeline>,
     go_client: Arc<GoClient>,
+    cache: Option<Arc<Cache>>,
 }
 
 impl DownloadProtocol {
     pub fn new(ces: Arc<CesPipeline>, go_client: Arc<GoClient>) -> Self {
-        Self { ces, go_client }
+        Self { 
+            ces, 
+            go_client,
+            cache: None,
+        }
+    }
+
+    /// Create with caching support
+    pub fn with_cache(ces: Arc<CesPipeline>, go_client: Arc<GoClient>, cache: Arc<Cache>) -> Self {
+        Self {
+            ces,
+            go_client,
+            cache: Some(cache),
+        }
     }
 
     /// Download and reconstruct a file from shards
@@ -23,17 +38,42 @@ impl DownloadProtocol {
         output_path: &Path,
         shard_locations: Vec<(usize, u32)>,
     ) -> Result<usize> {
+        self.download_file_with_hash(output_path, shard_locations, None).await
+    }
+
+    /// Download with optional file hash for cache lookup
+    pub async fn download_file_with_hash(
+        &self,
+        output_path: &Path,
+        shard_locations: Vec<(usize, u32)>,
+        file_hash: Option<&str>,
+    ) -> Result<usize> {
         info!("Starting download to: {:?}", output_path);
 
-        // 1. Fetch shards from peers via Go transport
+        // 1. Fetch shards from cache or peers
         let mut shards = vec![None; shard_locations.len()];
         for (shard_index, peer_id) in shard_locations {
+            // First, try to get from cache if file_hash is provided
+            if let (Some(hash), Some(cache)) = (file_hash, &self.cache) {
+                if let Some(cached_shard) = cache.get_shard(hash, shard_index).await {
+                    debug!("Cache hit for shard {} of {}", shard_index, hash);
+                    shards[shard_index] = Some(cached_shard);
+                    continue;
+                }
+            }
+            
+            // If not in cache, fetch from peer
             debug!("Fetching shard {} from peer {}", shard_index, peer_id);
             
             match self.go_client.receive_data(peer_id).await {
                 Ok(data) => {
                     if !data.is_empty() {
-                        shards[shard_index] = Some(data);
+                        shards[shard_index] = Some(data.clone());
+                        
+                        // Cache the shard for future downloads
+                        if let (Some(hash), Some(cache)) = (file_hash, &self.cache) {
+                            let _ = cache.put_shard(hash, shard_index, data).await;
+                        }
                     }
                 }
                 Err(e) => {
