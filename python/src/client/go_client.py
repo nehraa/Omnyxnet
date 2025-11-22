@@ -299,4 +299,224 @@ class GoNodeClient:
         except Exception as e:
             logger.error(f"Error sending message to peer {peer_id}: {e}")
             return False
+    
+    def get_network_metrics(self) -> Optional[Dict]:
+        """Get network metrics for shard optimization."""
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_get_metrics():
+            result = await self.service.getNetworkMetrics()
+            metrics = result.metrics
+            return {
+                'avgRttMs': metrics.avgRttMs,
+                'packetLoss': metrics.packetLoss,
+                'bandwidthMbps': metrics.bandwidthMbps,
+                'peerCount': metrics.peerCount,
+                'cpuUsage': metrics.cpuUsage,
+                'ioCapacity': metrics.ioCapacity
+            }
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_get_metrics(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error getting network metrics: {e}")
+            return None
+    
+    # CES Pipeline operations
+    
+    def ces_process(self, data: bytes, compression_level: int = 3) -> Optional[List[bytes]]:
+        """
+        Process data through CES pipeline (Compress, Encrypt, Shard).
+        
+        Args:
+            data: Raw data to process
+            compression_level: Compression level (0-22, default 3)
+            
+        Returns:
+            List of shard data bytes, or None on error
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_ces_process():
+            request = self.schema.CesProcessRequest.new_message()
+            request.data = data
+            request.compressionLevel = compression_level
+            result = await self.service.cesProcess(request)
+            
+            if not result.response.success:
+                error_msg = result.response.errorMsg
+                logger.error(f"CES process failed: {error_msg}")
+                return None
+            
+            # Extract shard data
+            shards = []
+            for shard in result.response.shards:
+                shards.append(bytes(shard.data))
+            
+            return shards
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_ces_process(), self._loop)
+            return future.result(timeout=10.0)
+        except Exception as e:
+            logger.error(f"Error in CES process: {e}")
+            return None
+    
+    def ces_reconstruct(self, shards: List[bytes], shard_present: List[bool], compression_level: int = 3) -> Optional[bytes]:
+        """
+        Reconstruct data from shards (reverse CES pipeline).
+        
+        Args:
+            shards: List of shard data (can include None/empty for missing shards)
+            shard_present: Boolean list indicating which shards are present
+            compression_level: Compression level used (must match original)
+            
+        Returns:
+            Reconstructed data bytes, or None on error
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        if len(shards) != len(shard_present):
+            raise ValueError("shards and shard_present must have same length")
+        
+        async def _async_ces_reconstruct():
+            request = self.schema.CesReconstructRequest.new_message()
+            request.compressionLevel = compression_level
+            
+            # Build shards list
+            shard_list = request.init('shards', len(shards))
+            for i, shard_data in enumerate(shards):
+                shard_msg = shard_list[i]
+                shard_msg.index = i
+                if shard_data:
+                    shard_msg.data = shard_data
+                else:
+                    shard_msg.data = b''
+            
+            # Build present list
+            present_list = request.init('shardPresent', len(shard_present))
+            for i, present in enumerate(shard_present):
+                present_list[i] = present
+            
+            result = await self.service.cesReconstruct(request)
+            
+            if not result.response.success:
+                error_msg = result.response.errorMsg
+                logger.error(f"CES reconstruct failed: {error_msg}")
+                return None
+            
+            return bytes(result.response.data)
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_ces_reconstruct(), self._loop)
+            return future.result(timeout=10.0)
+        except Exception as e:
+            logger.error(f"Error in CES reconstruct: {e}")
+            return None
+    
+    def upload(self, data: bytes, target_peers: List[int]) -> Optional[Dict]:
+        """
+        High-level upload: CES process + distribute to peers.
+        
+        Args:
+            data: Raw data to upload
+            target_peers: List of peer IDs to distribute shards to
+            
+        Returns:
+            File manifest dictionary with shard locations, or None on error
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        if not target_peers or len(target_peers) == 0:
+            raise ValueError("target_peers cannot be empty or None")
+        
+        async def _async_upload():
+            request = self.schema.UploadRequest.new_message()
+            request.data = data
+            
+            # Build target peers list
+            peers_list = request.init('targetPeers', len(target_peers))
+            for i, peer_id in enumerate(target_peers):
+                peers_list[i] = peer_id
+            
+            result = await self.service.upload(request)
+            
+            if not result.response.success:
+                error_msg = result.response.errorMsg
+                logger.error(f"Upload failed: {error_msg}")
+                return None
+            
+            # Extract manifest
+            manifest = result.response.manifest
+            shard_locations = []
+            for loc in manifest.shardLocations:
+                shard_locations.append({
+                    'shardIndex': loc.shardIndex,
+                    'peerId': loc.peerId
+                })
+            
+            return {
+                'fileHash': manifest.fileHash,
+                'fileName': manifest.fileName,
+                'fileSize': manifest.fileSize,
+                'shardCount': manifest.shardCount,
+                'parityCount': manifest.parityCount,
+                'shardLocations': shard_locations,
+                'timestamp': manifest.timestamp,
+                'ttl': manifest.ttl
+            }
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_upload(), self._loop)
+            return future.result(timeout=30.0)
+        except Exception as e:
+            logger.error(f"Error in upload: {e}")
+            return None
+    
+    def download(self, shard_locations: List[Dict], file_hash: str = "") -> Optional[Tuple[bytes, int]]:
+        """
+        High-level download: fetch shards + CES reconstruct.
+        
+        Args:
+            shard_locations: List of dicts with 'shardIndex' and 'peerId' keys
+            file_hash: Optional file hash for cache lookup
+            
+        Returns:
+            Tuple of (data: bytes, bytes_downloaded: int), or None on error
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_download():
+            request = self.schema.DownloadRequest.new_message()
+            request.fileHash = file_hash
+            
+            # Build shard locations list
+            locs_list = request.init('shardLocations', len(shard_locations))
+            for i, loc in enumerate(shard_locations):
+                if 'shardIndex' not in loc or 'peerId' not in loc:
+                    raise ValueError(f"shard_locations[{i}] missing required keys 'shardIndex' or 'peerId'")
+                loc_msg = locs_list[i]
+                loc_msg.shardIndex = loc['shardIndex']
+                loc_msg.peerId = loc['peerId']
+            result = await self.service.download(request)
+            
+            if not result.response.success:
+                error_msg = result.response.errorMsg
+                logger.error(f"Download failed: {error_msg}")
+                return None
+            
+            return bytes(result.response.data), result.response.bytesDownloaded
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_download(), self._loop)
+            return future.result(timeout=30.0)
+        except Exception as e:
+            logger.error(f"Error in download: {e}")
+            return None
 
