@@ -1,5 +1,11 @@
 # Pangea Net - Go Node
 
+**Version:** 0.3.0-alpha  
+**Status:** Alpha - Local Testing  
+**Last Updated:** 2025-11-22
+
+> ⚠️ **Development Status:** Working for local P2P networking and testing. Not ready for production deployment.
+
 Go component that handles P2P networking with Noise Protocol encryption.
 
 ## Features
