@@ -40,6 +40,8 @@ fi
 
 # Test 3: Run with help (should not crash)
 echo -e "\n3. Testing help command..."
+# Set library path for Rust shared library
+export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
 if ./bin/go-node-test -h 2>&1 | grep -q "node-id"; then
     echo -e "${GREEN}✅ Help command works${NC}"
 else

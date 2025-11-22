@@ -7,6 +7,8 @@ echo "===================================="
 case "${1:-help}" in
     "go")
         echo "Starting Go node..."
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        export LD_LIBRARY_PATH="$SCRIPT_DIR/rust/target/release:$LD_LIBRARY_PATH"
         cd go && go build -o bin/go-node . && ./bin/go-node "${@:2}"
         ;;
     "python")

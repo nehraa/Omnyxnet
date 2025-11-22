@@ -135,9 +135,12 @@ export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
 CMD="./go/bin/go-node -node-id=$NODE_ID -capnp-addr=:$CAPNP_PORT -libp2p=true"
 
 if [ -n "$BOOTSTRAP" ]; then
+    # Joining an existing network - connect to bootstrap peer
     CMD="$CMD -peers=$BOOTSTRAP"
 else
-    CMD="$CMD -local=true"
+    # First node - listen on all interfaces for cross-device connections
+    # Note: Remove -local flag to allow external connections
+    echo -e "${YELLOW}ℹ${NC}  Starting as bootstrap node (listening on all interfaces)"
 fi
 
 # Start in background with nohup for persistence
@@ -191,12 +194,37 @@ echo -e "${BLUE}═════════════════════�
 echo -e "${BLUE}📋 Connection Info${NC}"
 echo -e "${BLUE}═══════════════════════════════════════${NC}"
 echo ""
-echo -e "${CYAN}For other devices to join this network:${NC}"
-echo -e "${YELLOW}  ./scripts/easy_test.sh <NODE_ID> /ip4/${IP_ADDR}/tcp/${DHT_PORT}${NC}"
-echo ""
-echo -e "Example:"
-echo -e "  ${YELLOW}./scripts/easy_test.sh 2 /ip4/${IP_ADDR}/tcp/${DHT_PORT}${NC}"
-echo ""
+
+# Extract Peer ID from logs (wait a bit for it to appear)
+sleep 1
+PEER_ID=$(grep "Node ID:" "$LOG_FILE" | grep -oE '12D3Koo[a-zA-Z0-9]{44}' | head -1)
+
+if [ -z "$PEER_ID" ]; then
+    echo -e "${YELLOW}⏳ Waiting for peer ID...${NC}"
+    for i in {1..10}; do
+        sleep 1
+        PEER_ID=$(grep "Node ID:" "$LOG_FILE" | grep -oE '12D3Koo[a-zA-Z0-9]{44}' | head -1)
+        [ -n "$PEER_ID" ] && break
+    done
+fi
+
+if [ -n "$PEER_ID" ]; then
+    echo -e "${GREEN}✓ Peer ID: ${PEER_ID}${NC}"
+    echo ""
+    echo -e "${CYAN}For other devices to join this network:${NC}"
+    echo -e "${YELLOW}  ./scripts/easy_test.sh <NODE_ID> /ip4/${IP_ADDR}/tcp/${DHT_PORT}/p2p/${PEER_ID}${NC}"
+    echo ""
+    echo -e "Example:"
+    echo -e "  ${YELLOW}./scripts/easy_test.sh 2 /ip4/${IP_ADDR}/tcp/${DHT_PORT}/p2p/${PEER_ID}${NC}"
+    echo ""
+    
+    # Save connection info
+    echo "/ip4/${IP_ADDR}/tcp/${DHT_PORT}/p2p/${PEER_ID}" > "$DATA_DIR/multiaddr.txt"
+else
+    echo -e "${RED}⚠ Could not extract Peer ID from logs${NC}"
+    echo -e "Check logs: tail -f $LOG_FILE"
+    echo ""
+fi
 
 # Create helper script for file operations
 cat > "$DATA_DIR/commands.sh" << 'EOF'
@@ -364,6 +392,37 @@ echo -e "${GREEN}💡 Pro tip:${NC} Add this alias to your shell:"
 echo -e "    ${YELLOW}source $DATA_DIR/alias.sh${NC}"
 echo -e "    Then you can just type: ${YELLOW}pangea status${NC}"
 echo ""
+
+# Show firewall instructions for the bootstrap node
+if [ -z "$BOOTSTRAP" ]; then
+    echo -e "${BLUE}═══════════════════════════════════════${NC}"
+    echo -e "${BLUE}🔥 Firewall Configuration (IMPORTANT!)${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════${NC}"
+    echo ""
+    echo -e "${YELLOW}⚠ To allow external connections, open these ports:${NC}"
+    echo ""
+    echo -e "${CYAN}For Ubuntu/Debian (ufw):${NC}"
+    echo -e "  ${YELLOW}sudo ufw allow ${CAPNP_PORT}/tcp${NC}  # Cap'n Proto"
+    echo -e "  ${YELLOW}sudo ufw allow ${P2P_PORT}/tcp${NC}   # P2P"
+    echo -e "  ${YELLOW}sudo ufw allow ${DHT_PORT}/tcp${NC}   # DHT/libp2p"
+    echo -e "  ${YELLOW}sudo ufw allow ${DHT_PORT}/udp${NC}   # QUIC"
+    echo ""
+    echo -e "${CYAN}For RHEL/CentOS (firewalld):${NC}"
+    echo -e "  ${YELLOW}sudo firewall-cmd --add-port=${CAPNP_PORT}/tcp --permanent${NC}"
+    echo -e "  ${YELLOW}sudo firewall-cmd --add-port=${P2P_PORT}/tcp --permanent${NC}"
+    echo -e "  ${YELLOW}sudo firewall-cmd --add-port=${DHT_PORT}/tcp --permanent${NC}"
+    echo -e "  ${YELLOW}sudo firewall-cmd --add-port=${DHT_PORT}/udp --permanent${NC}"
+    echo -e "  ${YELLOW}sudo firewall-cmd --reload${NC}"
+    echo ""
+    echo -e "${CYAN}For iptables:${NC}"
+    echo -e "  ${YELLOW}sudo iptables -A INPUT -p tcp --dport ${CAPNP_PORT} -j ACCEPT${NC}"
+    echo -e "  ${YELLOW}sudo iptables -A INPUT -p tcp --dport ${P2P_PORT} -j ACCEPT${NC}"
+    echo -e "  ${YELLOW}sudo iptables -A INPUT -p tcp --dport ${DHT_PORT} -j ACCEPT${NC}"
+    echo -e "  ${YELLOW}sudo iptables -A INPUT -p udp --dport ${DHT_PORT} -j ACCEPT${NC}"
+    echo ""
+    echo -e "${RED}💡 Also check your router/cloud firewall settings!${NC}"
+    echo ""
+fi
 
 echo -e "${BLUE}═══════════════════════════════════════${NC}"
 echo -e "${BLUE}📊 Node Information${NC}"
