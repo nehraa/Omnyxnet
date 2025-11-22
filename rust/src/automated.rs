@@ -22,6 +22,9 @@ use crate::store::NodeStore;
 use crate::upload::UploadProtocol;
 use crate::download::DownloadProtocol;
 
+/// Reserved node ID for the local node (not included in peer discovery)
+const LOCAL_NODE_ID: u32 = 0;
+
 /// High-level automated uploader
 /// Just provide a file path and it handles everything
 pub struct AutomatedUploader {
@@ -124,7 +127,8 @@ impl AutomatedUploader {
         // Get all active nodes from store
         let nodes = self.store.get_all_nodes().await;
         for node in nodes {
-            if node.status == crate::types::NodeStatus::Active && node.id != 0 {
+            // Skip local node (reserved ID) and only include active peers
+            if node.status == crate::types::NodeStatus::Active && node.id != LOCAL_NODE_ID {
                 peers.push(node.id);
             }
         }

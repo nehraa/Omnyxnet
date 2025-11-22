@@ -345,6 +345,39 @@ async fn handle_download(file: &str, shards: Vec<String>, args: &Args) -> anyhow
     Ok(())
 }
 
+/// Get default cache directory
+fn get_cache_dir() -> String {
+    std::env::var("PANGEA_CACHE_DIR")
+        .unwrap_or_else(|_| format!("{}/.pangea/cache", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())))
+}
+
+/// Initialize DHT with bootstrap peers
+async fn init_dht(args: &Args) -> Option<Arc<tokio::sync::RwLock<dht::DhtNode>>> {
+    let dht_port = args.dht_addr.split(':').nth(1)
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(9091);
+    
+    let bootstrap_peers: Vec<libp2p::Multiaddr> = args.bootstrap
+        .iter()
+        .filter_map(|s| s.parse().ok())
+        .collect();
+    
+    match dht::DhtNode::new(dht_port, bootstrap_peers).await {
+        Ok(mut dht_node) => {
+            let dht_listen = dht::local_multiaddr(dht_port);
+            if let Err(e) = dht_node.listen_on(dht_listen) {
+                warn!("DHT listen failed: {}", e);
+                return None;
+            }
+            Some(Arc::new(tokio::sync::RwLock::new(dht_node)))
+        }
+        Err(e) => {
+            warn!("DHT initialization failed: {}, continuing without DHT", e);
+            None
+        }
+    }
+}
+
 /// Handle automated upload command
 async fn handle_automated_upload(file: &str, args: &Args) -> anyhow::Result<()> {
     use std::path::Path;
@@ -366,34 +399,14 @@ async fn handle_automated_upload(file: &str, args: &Args) -> anyhow::Result<()> 
     let ces = Arc::new(ces::CesPipeline::new(ces_config));
 
     // Create cache (use default location)
-    let cache_dir = std::env::var("PANGEA_CACHE_DIR")
-        .unwrap_or_else(|_| format!("{}/.pangea/cache", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())));
+    let cache_dir = get_cache_dir();
     let cache = Arc::new(Cache::new(&cache_dir, 1000, 100 * 1024 * 1024)?); // 1000 entries, 100MB
 
     // Create node store
     let store = Arc::new(store::NodeStore::new());
 
     // Initialize DHT (optional)
-    let dht_port = args.dht_addr.split(':').nth(1)
-        .and_then(|p| p.parse::<u16>().ok())
-        .unwrap_or(9091);
-    
-    let bootstrap_peers: Vec<libp2p::Multiaddr> = args.bootstrap
-        .iter()
-        .filter_map(|s| s.parse().ok())
-        .collect();
-    
-    let dht = match dht::DhtNode::new(dht_port, bootstrap_peers).await {
-        Ok(mut dht_node) => {
-            let dht_listen = dht::local_multiaddr(dht_port);
-            dht_node.listen_on(dht_listen)?;
-            Some(Arc::new(tokio::sync::RwLock::new(dht_node)))
-        }
-        Err(e) => {
-            warn!("DHT initialization failed: {}, continuing without DHT", e);
-            None
-        }
-    };
+    let dht = init_dht(args).await;
 
     // Create automated uploader
     let uploader = AutomatedUploader::new(ces, go_client, cache, store, dht);
@@ -431,34 +444,14 @@ async fn handle_automated_download(hash: &str, output: Option<&str>, args: &Args
     let ces = Arc::new(ces::CesPipeline::new(ces_config));
 
     // Create cache
-    let cache_dir = std::env::var("PANGEA_CACHE_DIR")
-        .unwrap_or_else(|_| format!("{}/.pangea/cache", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())));
+    let cache_dir = get_cache_dir();
     let cache = Arc::new(Cache::new(&cache_dir, 1000, 100 * 1024 * 1024)?);
 
     // Create node store
     let store = Arc::new(store::NodeStore::new());
 
     // Initialize DHT (optional)
-    let dht_port = args.dht_addr.split(':').nth(1)
-        .and_then(|p| p.parse::<u16>().ok())
-        .unwrap_or(9091);
-    
-    let bootstrap_peers: Vec<libp2p::Multiaddr> = args.bootstrap
-        .iter()
-        .filter_map(|s| s.parse().ok())
-        .collect();
-    
-    let dht = match dht::DhtNode::new(dht_port, bootstrap_peers).await {
-        Ok(mut dht_node) => {
-            let dht_listen = dht::local_multiaddr(dht_port);
-            dht_node.listen_on(dht_listen)?;
-            Some(Arc::new(tokio::sync::RwLock::new(dht_node)))
-        }
-        Err(e) => {
-            warn!("DHT initialization failed: {}, continuing without DHT", e);
-            None
-        }
-    };
+    let dht = init_dht(args).await;
 
     // Create automated downloader
     let downloader = AutomatedDownloader::new(ces, go_client, cache, store, dht);
@@ -502,8 +495,7 @@ async fn handle_list(args: &Args) -> anyhow::Result<()> {
     let ces_config = types::CesConfig::adaptive(&caps, 1024 * 1024, 1.0);
     let ces = Arc::new(ces::CesPipeline::new(ces_config));
 
-    let cache_dir = std::env::var("PANGEA_CACHE_DIR")
-        .unwrap_or_else(|_| format!("{}/.pangea/cache", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())));
+    let cache_dir = get_cache_dir();
     let cache = Arc::new(Cache::new(&cache_dir, 1000, 100 * 1024 * 1024)?);
     
     let store = Arc::new(store::NodeStore::new());
@@ -558,8 +550,7 @@ async fn handle_search(pattern: &str, args: &Args) -> anyhow::Result<()> {
     let ces_config = types::CesConfig::adaptive(&caps, 1024 * 1024, 1.0);
     let ces = Arc::new(ces::CesPipeline::new(ces_config));
 
-    let cache_dir = std::env::var("PANGEA_CACHE_DIR")
-        .unwrap_or_else(|_| format!("{}/.pangea/cache", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())));
+    let cache_dir = get_cache_dir();
     let cache = Arc::new(Cache::new(&cache_dir, 1000, 100 * 1024 * 1024)?);
     
     let store = Arc::new(store::NodeStore::new());
@@ -614,8 +605,7 @@ async fn handle_info(hash: &str, args: &Args) -> anyhow::Result<()> {
     let ces_config = types::CesConfig::adaptive(&caps, 1024 * 1024, 1.0);
     let ces = Arc::new(ces::CesPipeline::new(ces_config));
 
-    let cache_dir = std::env::var("PANGEA_CACHE_DIR")
-        .unwrap_or_else(|_| format!("{}/.pangea/cache", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())));
+    let cache_dir = get_cache_dir();
     let cache = Arc::new(Cache::new(&cache_dir, 1000, 100 * 1024 * 1024)?);
     
     let store = Arc::new(store::NodeStore::new());
