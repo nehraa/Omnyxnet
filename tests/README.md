@@ -1,6 +1,11 @@
 # Test Scripts
 
-Test scripts for Go and Python components.
+**Version:** 0.3.0-alpha  
+**Last Updated:** 2025-11-22
+
+> 📋 These test scripts validate local functionality. For comprehensive test status, see [../VERSION.md](../VERSION.md).
+
+Test scripts for Go, Rust, and Python components.
 
 ## Running Tests
 

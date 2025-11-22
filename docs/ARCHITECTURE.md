@@ -1,5 +1,10 @@
 # Pangea Net Go Node - Architecture
 
+**Version:** 0.3.0-alpha  
+**Last Updated:** 2025-11-22
+
+> 📋 This document describes the implemented architecture. For version status and deployment readiness, see [../VERSION.md](../VERSION.md).
+
 ## Overview
 
 This document explains the code organization and architecture of the Go node implementation.
