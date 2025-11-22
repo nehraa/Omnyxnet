@@ -82,15 +82,15 @@ echo "🔟  Testing Multi-Node Startup"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
-# Kill any existing nodes
+# Kill any existing nodes (limited to current user's processes)
 pkill -u "$USER" -f "go-node" 2>/dev/null || true
 pkill -u "$USER" -f "pangea-rust-node" 2>/dev/null || true
 sleep 1
 
 # Start Go node
 echo "   Starting Go node..."
-export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
-export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:${LD_LIBRARY_PATH:-}"
+export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:${DYLD_LIBRARY_PATH:-}"
 
 # Try both possible locations for go-node
 if [ -f "./go/bin/go-node" ]; then

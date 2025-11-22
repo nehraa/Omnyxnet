@@ -57,8 +57,8 @@ if [ ! -f "$PROJECT_ROOT/rust/target/release/libpangea_ces.so" ] && \
 fi
 
 # Set library path for Rust FFI
-export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
-export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:${LD_LIBRARY_PATH:-}"
+export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:${DYLD_LIBRARY_PATH:-}"
 
 # Start Go node in background
 echo "Starting Go node..."

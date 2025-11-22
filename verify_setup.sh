@@ -100,7 +100,7 @@ echo ""
 
 # Environment variables
 echo -e "${BLUE}Environment:${NC}"
-if echo "$LD_LIBRARY_PATH" | grep -q "rust/target/release"; then
+if echo "${LD_LIBRARY_PATH:-}" | grep -q "rust/target/release"; then
     echo -e "${GREEN}✅${NC} LD_LIBRARY_PATH configured"
     CHECKS_PASSED=$((CHECKS_PASSED + 1))
 else
@@ -108,7 +108,7 @@ else
     CHECKS_WARNING=$((CHECKS_WARNING + 1))
 fi
 
-if command -v go > /dev/null && echo "$PATH" | grep -q "go/bin"; then
+if command -v go > /dev/null && echo "${PATH:-}" | grep -q "go/bin"; then
     echo -e "${GREEN}✅${NC} Go in PATH"
     CHECKS_PASSED=$((CHECKS_PASSED + 1))
 elif command -v go > /dev/null; then
@@ -125,7 +125,7 @@ echo -e "${BLUE}Quick Functionality Test:${NC}"
 
 # Try to run Go node --help
 if [ -f go/bin/go-node ]; then
-    export LD_LIBRARY_PATH="$(pwd)/rust/target/release:$LD_LIBRARY_PATH"
+    export LD_LIBRARY_PATH="$(pwd)/rust/target/release:${LD_LIBRARY_PATH:-}"
     if timeout 2 ./go/bin/go-node --help > /dev/null 2>&1; then
         echo -e "${GREEN}✅${NC} Go node executable works"
         CHECKS_PASSED=$((CHECKS_PASSED + 1))
