@@ -464,7 +464,7 @@ async fn handle_automated_download(hash: &str, output: Option<&str>, args: &Args
         if let Some(info) = downloader.get_info(hash).await? {
             PathBuf::from(format!("./{}", info.file_name))
         } else {
-            PathBuf::from(format!("./{}.bin", &hash[..8]))
+            PathBuf::from(format!("./{}.bin", hash.chars().take(8).collect::<String>()))
         }
     };
 
