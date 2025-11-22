@@ -356,6 +356,9 @@ func (s *nodeServiceServer) GetNetworkMetrics(ctx context.Context, call NodeServ
 	metrics.SetCpuUsage(0.3)
 	metrics.SetIoCapacity(0.8)
 
+	// Add warning to response and log
+	metrics.SetWarning("WARNING: All metrics except PeerCount are mock values. See server logs and documentation.")
+	log.Println("WARNING: GetNetworkMetrics returned mock values for all fields except PeerCount. This should be replaced with real metrics gathering.")
 	return nil
 }
 
