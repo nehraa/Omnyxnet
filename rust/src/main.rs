@@ -1,4 +1,4 @@
-use pangea_rust_node::*;
+use pangea_ces::*;
 use std::sync::Arc;
 use tracing::{info, error};
 use tracing_subscriber;
@@ -218,8 +218,8 @@ async fn main() -> anyhow::Result<()> {
 /// Handle upload command
 async fn handle_upload(file: &str, peers: Vec<u32>, args: &Args) -> anyhow::Result<()> {
     use std::path::Path;
-    use pangea_rust_node::upload::UploadProtocol;
-    use pangea_rust_node::go_client::GoClient;
+    use pangea_ces::upload::UploadProtocol;
+    use pangea_ces::go_client::GoClient;
 
     info!("Upload mode: {} -> peers {:?}", file, peers);
     info!("Using Go transport at: {}", args.go_addr);
@@ -250,8 +250,8 @@ async fn handle_upload(file: &str, peers: Vec<u32>, args: &Args) -> anyhow::Resu
 /// Handle download command
 async fn handle_download(file: &str, shards: Vec<String>, args: &Args) -> anyhow::Result<()> {
     use std::path::Path;
-    use pangea_rust_node::download::DownloadProtocol;
-    use pangea_rust_node::go_client::GoClient;
+    use pangea_ces::download::DownloadProtocol;
+    use pangea_ces::go_client::GoClient;
 
     info!("Download mode: {} <- {} shards", file, shards.len());
     info!("Using Go transport at: {}", args.go_addr);
