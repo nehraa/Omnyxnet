@@ -18,8 +18,10 @@ For the fastest setup experience:
 - **Go**: 1.20 or later
 - **Rust**: Latest stable (1.70+)
 - **Python**: 3.8 or later
-- **Cap'n Proto**: 0.9 or later
+- **Cap'n Proto**: 0.9 or later (**Required for building from scratch**, not needed if using pre-built binaries)
 - **Disk Space**: ~1GB for minimal install, ~5GB for full install with AI features
+
+> **Note:** The Cap'n Proto compiler (`capnp`) is only required when building schema bindings from scratch. If you're using pre-built binaries or not modifying schema files, you can skip installing capnp.
 
 ## Installation Steps
 
@@ -68,21 +70,23 @@ The setup script handles the correct build order automatically:
 
 ### 4. Python Dependencies
 
-Two options:
+During setup, you'll be prompted to choose between two installation types:
 
-**Option A: Minimal (Recommended for testing, ~200MB)**
+**Option 1: Minimal (For testing, ~200MB)**
 ```bash
 cd python
 source .venv/bin/activate
 pip install -r requirements-minimal.txt
 ```
 
-**Option B: Full with AI features (~5GB)**
+**Option 2: Full with AI features (~5GB) - Default**
 ```bash
 cd python
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+The setup script will prompt you to choose. Option 2 (full) is the default.
 
 ## Testing
 
@@ -272,12 +276,14 @@ Current test results (7/10 passing):
 6. Compilation Verification
 7. Multi-node Startup
 
-⚠️ **Known Issues (pre-existing):**
-8. Integration Tests - Cap'n Proto schema import issue
-9. Stream Updates - Cap'n Proto schema import issue
-10. CES Wiring - Cap'n Proto schema import issue
+⚠️ **Fixed Schema Issues (now should pass with existing binaries):**
+8. Integration Tests - Now uses Python schema (compatible with pycapnp)
+9. Stream Updates - Now uses Python schema
+10. CES Wiring - Uses Python schema
 
-The failing tests have a common root cause (Cap'n Proto schema import) that predates this setup automation work.
+**Note:** These tests now use `python/schema.capnp` instead of `go/schema/schema.capnp` to avoid pycapnp import resolution issues with Go-specific annotations. Tests should pass when using existing pre-built binaries.
+
+**Rebuilding from scratch:** Requires `capnp` compiler to be installed (`sudo apt-get install capnproto`) to regenerate schema bindings.
 
 ## Support
 
