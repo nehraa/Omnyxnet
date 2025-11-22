@@ -315,6 +315,41 @@ impl Cache {
         
         Ok(removed)
     }
+
+    /// Check if a shard exists in cache
+    pub async fn has_shard(&self, file_hash: &str, shard_index: usize) -> bool {
+        let key = format!("{}:{}", file_hash, shard_index);
+        let cache = self.shard_cache.read().await;
+        cache.contains(&key)
+    }
+
+    /// Get all manifests (for auto-healing)
+    pub async fn get_all_manifests(&self) -> Result<Vec<FileManifest>> {
+        let cache = self.manifest_cache.read().await;
+        Ok(cache.values().cloned().collect())
+    }
+
+    /// Refresh TTL for a manifest (called on download)
+    pub async fn refresh_ttl(&self, file_hash: &str, new_ttl: u64) -> Result<bool> {
+        let mut cache = self.manifest_cache.write().await;
+        
+        if let Some(manifest) = cache.get_mut(file_hash) {
+            manifest.ttl = new_ttl;
+            manifest.timestamp = chrono::Utc::now().timestamp();
+            
+            // Persist the updated manifest
+            drop(cache); // Release lock before async operation
+            let updated_manifest = self.manifest_cache.read().await.get(file_hash).cloned();
+            if let Some(manifest) = updated_manifest {
+                self.persist_manifest(&manifest).await?;
+            }
+            
+            info!("Refreshed TTL for {}: {} seconds", file_hash, new_ttl);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
 }
 
 #[cfg(test)]

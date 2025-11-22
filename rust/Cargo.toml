@@ -10,6 +10,10 @@ license = "MIT"
 name = "pangea-rust-node"
 path = "src/main.rs"
 
+[lib]
+name = "pangea_ces"
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 # Async runtime
 tokio = { version = "1.36", features = ["full", "rt-multi-thread", "macros", "sync"] }
