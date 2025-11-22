@@ -569,6 +569,124 @@ Adaptive security layer:
 - IP allowlist management
 - Real-time updates
 
+### `cache.rs`
+High-performance caching layer:
+- **Shard Cache**: LRU cache for recently accessed shards
+- **Manifest Store**: Persistent storage for file metadata
+- **Cache Statistics**: Track hits, misses, and usage
+- **Smart Eviction**: Size-based LRU eviction policy
+- **Persistence**: Automatic manifest persistence to disk
+
+### `lookup.rs`
+File discovery and availability checking:
+- **Multi-Source Lookup**: Cache, DHT, and peer queries
+- **Availability Checking**: Verify shard availability
+- **File Search**: Search by name pattern
+- **DHT Integration**: Register and discover files network-wide
+- **Metadata Management**: Query file information
+
+---
+
+## Upload/Download with Caching
+
+### Upload Protocol
+
+The upload protocol automatically caches shards and creates manifests:
+
+```rust
+use pangea_rust_node::*;
+use std::sync::Arc;
+
+// Create with caching
+let upload = UploadProtocol::with_cache(ces, go_client, cache);
+
+// Upload file - automatically caches shards and manifest
+let manifest_json = upload.upload_file(
+    Path::new("file.txt"),
+    vec![1, 2, 3]  // target peers
+).await?;
+```
+
+**Features**:
+- SHA256 hash calculation
+- Automatic shard caching
+- Manifest creation and storage
+- DHT registration (via LookupService)
+
+### Download Protocol
+
+The download protocol checks cache before fetching from network:
+
+```rust
+// Create with caching
+let download = DownloadProtocol::with_cache(ces, go_client, cache);
+
+// Download with cache lookups
+let bytes = download.download_file_with_hash(
+    Path::new("output.txt"),
+    shard_locations,
+    Some("file_hash")  // enables cache lookups
+).await?;
+```
+
+**Features**:
+- Cache-first strategy
+- Automatic cache population
+- Reed-Solomon reconstruction
+- Network fallback for cache misses
+
+### Caching Layer
+
+```rust
+// Create cache
+let cache = Cache::new(
+    "/var/cache/pangea",
+    1000,              // max entries
+    100 * 1024 * 1024  // 100 MB max size
+)?;
+
+// Cache shards
+cache.put_shard("file_hash", 0, shard_data).await?;
+let data = cache.get_shard("file_hash", 0).await;
+
+// Cache manifests
+cache.put_manifest(manifest).await?;
+let manifest = cache.get_manifest("file_hash").await;
+
+// Get statistics
+let stats = cache.get_stats().await;
+println!("Hit rate: {:.2}%", 
+    stats.shard_hits as f64 / (stats.shard_hits + stats.shard_misses) as f64 * 100.0
+);
+```
+
+### Lookup Service
+
+```rust
+// Create lookup service
+let lookup = LookupService::new(cache, dht, store);
+
+// Lookup file
+if let Some(result) = lookup.lookup_file("file_hash").await? {
+    println!("File: {}", result.manifest.file_name);
+    println!("Available: {}/{} shards", 
+        result.available_shards, 
+        result.manifest.shard_count
+    );
+}
+
+// Search files
+let results = lookup.search_files("document").await?;
+
+// Discover all files
+let discovered = lookup.discover_files().await?;
+
+// Register file in DHT
+lookup.register_file(&manifest).await?;
+```
+
+**See [CACHING.md](CACHING.md) for complete documentation and examples.**
+
 ---
 
 ## Performance Characteristics
