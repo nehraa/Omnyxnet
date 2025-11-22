@@ -509,9 +509,11 @@ async fn handle_list(args: &Args) -> anyhow::Result<()> {
         return Ok(());
     }
 
+    // Table column widths: 10, 30, 15, 10, 10; 4 spaces between columns
+    const TABLE_SEPARATOR_LEN: usize = 10 + 30 + 15 + 10 + 10 + 4;
     println!("\n📁 Available Files ({} total):\n", files.len());
     println!("{:<10} {:<30} {:<15} {:<10} {:<10}", "Hash", "Name", "Size", "Shards", "Status");
-    println!("{}", "-".repeat(85));
+    println!("{}", "-".repeat(TABLE_SEPARATOR_LEN));
     
     for file in files {
         let status = if file.is_available { "✅ Ready" } else { "⚠️  Partial" };
