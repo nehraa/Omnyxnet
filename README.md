@@ -6,6 +6,26 @@
 
 > ⚠️ **Development Status:** This project is in active development (alpha stage). Core features work for local testing, and **cross-device P2P communication has been successfully tested**. Not yet ready for production deployment. See [VERSION.md](VERSION.md) for detailed status information.
 
+## 🚀 Quick Start
+
+For complete setup from scratch:
+
+```bash
+# Automated setup with menu
+./setup.sh
+# Select option 1: Full Installation
+# Then select option 7: Run All Localhost Tests
+
+# Or verify existing setup
+./verify_setup.sh
+```
+
+For detailed setup instructions, see [SETUP_GUIDE.md](SETUP_GUIDE.md).
+
+For testing guides:
+- [TESTING_QUICK_START.md](TESTING_QUICK_START.md) - Localhost testing
+- [CROSS_DEVICE_TESTING.md](CROSS_DEVICE_TESTING.md) - WAN/multi-device testing
+
 ## 🏗️ Project Structure
 
 ```text
