@@ -37,7 +37,8 @@ BASE_DHT_PORT=9180
 # Cleanup function
 cleanup() {
     echo -e "\n${BLUE}Cleaning up test processes...${NC}"
-    killall go-node pangea-rust-node 2>/dev/null || true
+    pkill -u "$USER" -f "go-node" 2>/dev/null || true
+    pkill -u "$USER" -f "pangea-rust-node" 2>/dev/null || true
     sleep 2
     rm -rf "$TEST_DIR"
     echo -e "${GREEN}✅ Cleanup complete${NC}"
