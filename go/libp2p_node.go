@@ -178,16 +178,10 @@ func NewLibP2PPangeaNodeWithOptions(nodeID uint32, store *NodeStore, localMode, 
 	pingService := ping.NewPingService(host)
 
 	// Create mDNS discovery for local network - works in both modes
-	var mdnsService mdns.Service
+	// mDNS enables automatic peer discovery on the local network (same subnet)
 	notifee := &discoveryNotifee{testMode: testMode}
-	mdnsService = mdns.NewMdnsService(host, PangeaDiscoveryTopic, notifee)
-	if mdnsService == nil {
-		if testMode {
-			log.Printf("⚠️  mDNS service unavailable in this environment")
-		}
-	} else if testMode {
-		log.Printf("📡 mDNS service initialized for local discovery")
-	}
+	mdnsService := mdns.NewMdnsService(host, PangeaDiscoveryTopic, notifee)
+	log.Printf("📡 mDNS service initialized - local peers will auto-connect")
 
 	node := &LibP2PPangeaNode{
 		nodeID:       nodeID,
@@ -205,9 +199,8 @@ func NewLibP2PPangeaNodeWithOptions(nodeID uint32, store *NodeStore, localMode, 
 		natType:      NATTypeUnknown,
 	}
 
-	if notifee != nil {
-		notifee.node = node
-	}
+	// Link notifee to node for auto-connect
+	notifee.node = node
 
 	// Set stream handler for Pangea RPC protocol
 	host.SetStreamHandler(protocol.ID(PangeaRPCProtocol), node.handlePangeaRPC)
@@ -600,13 +593,22 @@ func (n *discoveryNotifee) HandlePeerFound(pi peer.AddrInfo) {
 		return
 	}
 
-	if n.testMode {
-		log.Printf("🔍 mDNS discovered local peer: %s", shortPeerID(pi.ID))
+	// Always log mDNS discoveries (it's important info)
+	log.Printf("📡 mDNS discovered local peer: %s", shortPeerID(pi.ID))
+
+	// Check if already connected
+	if n.node.host.Network().Connectedness(pi.ID) == network.Connected {
+		log.Printf("✓ Already connected to %s", shortPeerID(pi.ID))
+		return
 	}
 
+	// Auto-connect to discovered local peers (this is the whole point of mDNS!)
 	go func() {
-		if _, err := n.node.connectPeerInfo(pi); err != nil && n.testMode {
-			log.Printf("❌ Failed to connect to mDNS peer %s: %v", shortPeerID(pi.ID), err)
+		log.Printf("🔗 Auto-connecting to mDNS peer %s...", shortPeerID(pi.ID))
+		if _, err := n.node.connectPeerInfo(pi); err != nil {
+			log.Printf("❌ Failed to auto-connect to mDNS peer %s: %v", shortPeerID(pi.ID), err)
+		} else {
+			log.Printf("✅ Successfully connected to mDNS peer %s", shortPeerID(pi.ID))
 		}
 	}()
 }

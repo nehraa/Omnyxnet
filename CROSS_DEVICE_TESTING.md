@@ -20,7 +20,8 @@ When you run cross-device tests, you're testing the complete "Golden Triangle" a
 
 ### Features in Action
 
-- ✅ **Discovery**: Nodes find each other automatically via mDNS (local) or DHT (WAN)
+- ✅ **mDNS Auto-Discovery**: Nodes on the same local network automatically find and connect to each other (no configuration needed!)
+- ✅ **DHT Discovery**: Nodes across WAN find each other via distributed hash table
 - ✅ **Upload**: Files are compressed, encrypted, sharded, and distributed
 - ✅ **Download**: Shards are fetched, reconstructed, decrypted, decompressed
 - ✅ **Cache**: Shards and manifests are cached locally for speed
@@ -28,6 +29,25 @@ When you run cross-device tests, you're testing the complete "Golden Triangle" a
 - ✅ **AI Optimization**: ML model predicts optimal shard parameters
 - ✅ **Security**: Token auth, rate limiting, whitelisting
 - ✅ **Shared Memory**: Go-Python data streaming for real-time metrics
+
+### 📡 mDNS Auto-Discovery (NEW!)
+
+**What is mDNS?**
+- mDNS (Multicast DNS) allows nodes on the same local network to discover each other automatically
+- No need to manually enter IP addresses or peer IDs for local testing!
+- Works like "network neighborhood" - nodes announce themselves and listen for others
+
+**How it works:**
+1. Start any node on your local network
+2. Start another node (even without specifying a bootstrap peer)
+3. Within seconds, they'll discover and connect to each other automatically!
+4. Perfect for testing with multiple devices on the same WiFi/Ethernet network
+
+**Test it yourself:**
+```bash
+# Run this script to see mDNS in action with 3 local nodes
+./scripts/test_mdns.sh
+```
 
 ---
 
