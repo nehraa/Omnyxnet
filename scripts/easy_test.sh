@@ -256,7 +256,7 @@ status() {
     echo "Directories:"
     echo "  Cache:     $(du -sh $DATA_DIR/cache 2>/dev/null | cut -f1)"
     echo "  Uploads:   $(ls $DATA_DIR/uploads 2>/dev/null | wc -l) files"
-    echo "  Downloads: $(ls $DATA_DIR/downloads 2>/dev/null | wc -l) files"
+    echo "  Downloads: $([ -d "$DATA_DIR/downloads" ] && ls "$DATA_DIR/downloads" 2>/dev/null | wc -l || echo "N/A") files"
 }
 
 logs() {
