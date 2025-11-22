@@ -262,7 +262,7 @@ impl AutoHealer {
         let mut shards = vec![None; manifest.shard_count];
         let mut collected = 0;
 
-        for (shard_idx, peer_id) in &manifest.shard_locations {
+        for (shard_idx, _peer_id) in &manifest.shard_locations {
             // Try to get from cache first
             if let Some(data) = self.cache.get_shard(&manifest.file_hash, *shard_idx).await {
                 shards[*shard_idx] = Some(data);
@@ -276,7 +276,13 @@ impl AutoHealer {
         }
 
         // 2. Check if we have enough shards to reconstruct
-        let required = manifest.shard_count - (manifest.shard_count / 3); // 2/3 threshold
+        // For Reed-Solomon, we need k (data shards) = total - parity
+        let required = if manifest.parity_count > 0 {
+            manifest.shard_count - manifest.parity_count
+        } else {
+            // Fallback for old manifests without parity_count: assume 2/3 threshold
+            manifest.shard_count - (manifest.shard_count / 3)
+        };
         if collected < required {
             return Err(anyhow::anyhow!(
                 "Not enough shards to reconstruct: {} < {}",
