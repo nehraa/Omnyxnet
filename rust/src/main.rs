@@ -4,6 +4,14 @@ use tracing::{info, error, warn};
 use tracing_subscriber;
 use clap::Parser;
 
+// Constants for cache configuration
+const DEFAULT_CACHE_MAX_ENTRIES: usize = 1000;
+const DEFAULT_CACHE_SIZE_BYTES: usize = 100 * 1024 * 1024; // 100MB
+
+// Constants for display formatting
+const BYTES_PER_MB: f64 = 1_048_576.0;
+const TABLE_SEPARATOR_LEN: usize = 10 + 30 + 15 + 10 + 10 + 4; // Column widths + spacing
+
 #[derive(Parser, Debug)]
 #[clap(name = "pangea-rust-node")]
 #[clap(about = "Rust upload/download protocols for Pangea Net (calls Go transport layer)", long_about = None)]
@@ -378,6 +386,47 @@ async fn init_dht(args: &Args) -> Option<Arc<tokio::sync::RwLock<dht::DhtNode>>>
     }
 }
 
+/// Create a downloader for read-only cache operations (list, search, info)
+/// This is optimized to not create unnecessary network components
+async fn create_cache_downloader(_args: &Args) -> anyhow::Result<AutomatedDownloader> {
+    use pangea_ces::{AutomatedDownloader, Cache};
+    
+    // For cache-only operations, we still need minimal setup
+    // but we don't need to connect to the Go node
+    let go_addr: std::net::SocketAddr = _args.go_addr.parse()?;
+    let go_client = Arc::new(go_client::GoClient::new(go_addr));
+    
+    let caps = capabilities::HardwareCaps::probe();
+    let ces_config = types::CesConfig::adaptive(&caps, 1024 * 1024, 1.0);
+    let ces = Arc::new(ces::CesPipeline::new(ces_config));
+
+    let cache_dir = get_cache_dir();
+    let cache = Arc::new(Cache::new(&cache_dir, DEFAULT_CACHE_MAX_ENTRIES, DEFAULT_CACHE_SIZE_BYTES)?);
+    
+    let store = Arc::new(store::NodeStore::new());
+
+    Ok(AutomatedDownloader::new(ces, go_client, cache, store, None))
+}
+
+/// Format file information for display (UTF-8 safe)
+fn format_file_display(file: &FileInfo) -> (String, String, String) {
+    let hash_short = if file.file_hash.chars().count() > 10 {
+        file.file_hash.chars().take(10).collect::<String>()
+    } else {
+        file.file_hash.clone()
+    };
+    
+    let name_display = if file.file_name.chars().count() > 30 {
+        format!("{}...", file.file_name.chars().take(27).collect::<String>())
+    } else {
+        file.file_name.clone()
+    };
+    
+    let status = if file.is_available { "✅ Ready" } else { "⚠️  Partial" };
+    
+    (hash_short, name_display, status.to_string())
+}
+
 /// Handle automated upload command
 async fn handle_automated_upload(file: &str, args: &Args) -> anyhow::Result<()> {
     use std::path::Path;
@@ -400,7 +449,7 @@ async fn handle_automated_upload(file: &str, args: &Args) -> anyhow::Result<()> 
 
     // Create cache (use default location)
     let cache_dir = get_cache_dir();
-    let cache = Arc::new(Cache::new(&cache_dir, 1000, 100 * 1024 * 1024)?); // 1000 entries, 100MB
+    let cache = Arc::new(Cache::new(&cache_dir, DEFAULT_CACHE_MAX_ENTRIES, DEFAULT_CACHE_SIZE_BYTES)?);
 
     // Create node store
     let store = Arc::new(store::NodeStore::new());
@@ -445,7 +494,7 @@ async fn handle_automated_download(hash: &str, output: Option<&str>, args: &Args
 
     // Create cache
     let cache_dir = get_cache_dir();
-    let cache = Arc::new(Cache::new(&cache_dir, 1000, 100 * 1024 * 1024)?);
+    let cache = Arc::new(Cache::new(&cache_dir, DEFAULT_CACHE_MAX_ENTRIES, DEFAULT_CACHE_SIZE_BYTES)?);
 
     // Create node store
     let store = Arc::new(store::NodeStore::new());
@@ -464,7 +513,9 @@ async fn handle_automated_download(hash: &str, output: Option<&str>, args: &Args
         if let Some(info) = downloader.get_info(hash).await? {
             PathBuf::from(format!("./{}", info.file_name))
         } else {
-            PathBuf::from(format!("./{}.bin", hash.chars().take(8).collect::<String>()))
+            // Use UTF-8 safe truncation for hash
+            let hash_short: String = hash.chars().take(8).collect();
+            PathBuf::from(format!("./{}.bin", hash_short))
         }
     };
 
@@ -483,25 +534,9 @@ async fn handle_automated_download(hash: &str, output: Option<&str>, args: &Args
 
 /// Handle list command
 async fn handle_list(args: &Args) -> anyhow::Result<()> {
-    use pangea_ces::{AutomatedDownloader, Cache};
-
     info!("📋 Listing files");
 
-    // Create minimal setup for list operation
-    let go_addr: std::net::SocketAddr = args.go_addr.parse()?;
-    let go_client = Arc::new(go_client::GoClient::new(go_addr));
-    
-    let caps = capabilities::HardwareCaps::probe();
-    let ces_config = types::CesConfig::adaptive(&caps, 1024 * 1024, 1.0);
-    let ces = Arc::new(ces::CesPipeline::new(ces_config));
-
-    let cache_dir = get_cache_dir();
-    let cache = Arc::new(Cache::new(&cache_dir, 1000, 100 * 1024 * 1024)?);
-    
-    let store = Arc::new(store::NodeStore::new());
-
-    let downloader = AutomatedDownloader::new(ces, go_client, cache, store, None);
-    
+    let downloader = create_cache_downloader(args).await?;
     let files = downloader.list_files().await?;
 
     if files.is_empty() {
@@ -509,24 +544,12 @@ async fn handle_list(args: &Args) -> anyhow::Result<()> {
         return Ok(());
     }
 
-    // Table column widths: 10, 30, 15, 10, 10; 4 spaces between columns
-    const TABLE_SEPARATOR_LEN: usize = 10 + 30 + 15 + 10 + 10 + 4;
     println!("\n📁 Available Files ({} total):\n", files.len());
     println!("{:<10} {:<30} {:<15} {:<10} {:<10}", "Hash", "Name", "Size", "Shards", "Status");
     println!("{}", "-".repeat(TABLE_SEPARATOR_LEN));
     
     for file in files {
-        let status = if file.is_available { "✅ Ready" } else { "⚠️  Partial" };
-        let hash_short = if file.file_hash.chars().count() > 10 {
-            file.file_hash.chars().take(10).collect::<String>()
-        } else {
-            file.file_hash.clone()
-        };
-        let name_display = if file.file_name.len() > 30 { 
-            format!("{}...", &file.file_name[..27])
-        } else { 
-            file.file_name.clone()
-        };
+        let (hash_short, name_display, status) = format_file_display(&file);
         println!("{:<10} {:<30} {:<15} {:<10} {:<10}", 
                  hash_short,
                  name_display,
@@ -541,24 +564,9 @@ async fn handle_list(args: &Args) -> anyhow::Result<()> {
 
 /// Handle search command
 async fn handle_search(pattern: &str, args: &Args) -> anyhow::Result<()> {
-    use pangea_ces::{AutomatedDownloader, Cache};
-
     info!("🔍 Searching for: {}", pattern);
 
-    let go_addr: std::net::SocketAddr = args.go_addr.parse()?;
-    let go_client = Arc::new(go_client::GoClient::new(go_addr));
-    
-    let caps = capabilities::HardwareCaps::probe();
-    let ces_config = types::CesConfig::adaptive(&caps, 1024 * 1024, 1.0);
-    let ces = Arc::new(ces::CesPipeline::new(ces_config));
-
-    let cache_dir = get_cache_dir();
-    let cache = Arc::new(Cache::new(&cache_dir, 1000, 100 * 1024 * 1024)?);
-    
-    let store = Arc::new(store::NodeStore::new());
-
-    let downloader = AutomatedDownloader::new(ces, go_client, cache, store, None);
-    
+    let downloader = create_cache_downloader(args).await?;
     let files = downloader.search(pattern).await?;
 
     if files.is_empty() {
@@ -568,20 +576,10 @@ async fn handle_search(pattern: &str, args: &Args) -> anyhow::Result<()> {
 
     println!("\n🔍 Search Results for '{}' ({} found):\n", pattern, files.len());
     println!("{:<10} {:<30} {:<15} {:<10} {:<10}", "Hash", "Name", "Size", "Shards", "Status");
-    println!("{}", "-".repeat(85));
+    println!("{}", "-".repeat(TABLE_SEPARATOR_LEN));
     
     for file in files {
-        let status = if file.is_available { "✅ Ready" } else { "⚠️  Partial" };
-        let hash_short = if file.file_hash.chars().count() > 10 {
-            file.file_hash.chars().take(10).collect::<String>()
-        } else {
-            file.file_hash.clone()
-        };
-        let name_display = if file.file_name.len() > 30 { 
-            format!("{}...", &file.file_name[..27])
-        } else { 
-            file.file_name.clone()
-        };
+        let (hash_short, name_display, status) = format_file_display(&file);
         println!("{:<10} {:<30} {:<15} {:<10} {:<10}", 
                  hash_short,
                  name_display,
@@ -596,23 +594,9 @@ async fn handle_search(pattern: &str, args: &Args) -> anyhow::Result<()> {
 
 /// Handle info command
 async fn handle_info(hash: &str, args: &Args) -> anyhow::Result<()> {
-    use pangea_ces::{AutomatedDownloader, Cache};
-
     info!("ℹ️  Getting info for: {}", hash);
 
-    let go_addr: std::net::SocketAddr = args.go_addr.parse()?;
-    let go_client = Arc::new(go_client::GoClient::new(go_addr));
-    
-    let caps = capabilities::HardwareCaps::probe();
-    let ces_config = types::CesConfig::adaptive(&caps, 1024 * 1024, 1.0);
-    let ces = Arc::new(ces::CesPipeline::new(ces_config));
-
-    let cache_dir = get_cache_dir();
-    let cache = Arc::new(Cache::new(&cache_dir, 1000, 100 * 1024 * 1024)?);
-    
-    let store = Arc::new(store::NodeStore::new());
-
-    let downloader = AutomatedDownloader::new(ces, go_client, cache, store, None);
+    let downloader = create_cache_downloader(args).await?;
     
     if let Some(info) = downloader.get_info(hash).await? {
         use chrono::{DateTime, Utc};
@@ -623,7 +607,7 @@ async fn handle_info(hash: &str, args: &Args) -> anyhow::Result<()> {
         println!("\n📄 File Information:");
         println!("  Name: {}", info.file_name);
         println!("  Hash: {}", info.file_hash);
-        println!("  Size: {} bytes ({:.2} MB)", info.file_size, info.file_size as f64 / 1_048_576.0);
+        println!("  Size: {} bytes ({:.2} MB)", info.file_size, info.file_size as f64 / BYTES_PER_MB);
         println!("  Shards: {}", info.shard_count);
         println!("  Status: {}", if info.is_available { "✅ Available" } else { "⚠️  Partially available" });
         println!("  Timestamp: {}", timestamp_str);

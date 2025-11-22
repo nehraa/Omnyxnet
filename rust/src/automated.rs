@@ -25,6 +25,9 @@ use crate::download::DownloadProtocol;
 /// Reserved node ID for the local node (not included in peer discovery)
 const LOCAL_NODE_ID: u32 = 0;
 
+/// Constant for bytes to MB conversion
+const BYTES_PER_MB: f64 = 1_048_576.0;
+
 /// High-level automated uploader
 /// Just provide a file path and it handles everything
 pub struct AutomatedUploader {
@@ -80,7 +83,7 @@ impl AutomatedUploader {
         
         let metadata = tokio::fs::metadata(file_path).await?;
         let file_size = metadata.len();
-        info!("📁 File size: {} bytes ({:.2} MB)", file_size, file_size as f64 / 1_048_576.0);
+        info!("📁 File size: {} bytes ({:.2} MB)", file_size, file_size as f64 / BYTES_PER_MB);
         
         // 2. Discover available peers
         info!("🔍 Discovering available peers...");
@@ -133,11 +136,12 @@ impl AutomatedUploader {
             }
         }
         
-        // If DHT is available, also query for additional peers
-        if let Some(dht) = &self.dht {
-            debug!("Querying DHT for additional peers...");
-            // DHT peer discovery would happen here
-            // For now, we rely on the node store
+        // DHT peer discovery: Currently we rely on the NodeStore for peer tracking.
+        // The DHT is used for file registration and lookup (see lookup.rs) but not
+        // for discovering arbitrary peers. Peers are discovered through the node store
+        // which is populated via the Go network layer's peer tracking mechanisms.
+        if self.dht.is_some() {
+            debug!("DHT available for file operations");
         }
         
         Ok(peers)
