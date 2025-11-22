@@ -662,7 +662,16 @@ func (s *nodeServiceServer) Upload(ctx context.Context, call NodeService_upload)
 		return err
 	}
 	manifest.SetFileHash(fileHash)
-	manifest.SetFileName("uploaded_file")
+	// Use filename from request, fallback to "uploaded_file" if not provided
+	fileName := ""
+	req, err := call.Args().Request()
+	if err == nil {
+		fileName, _ = req.FileName()
+	}
+	if fileName == "" {
+		fileName = "uploaded_file"
+	}
+	manifest.SetFileName(fileName)
 	manifest.SetFileSize(uint64(len(data)))
 	manifest.SetShardCount(uint32(len(shards)))
 	manifest.SetParityCount(4) // From CES config
