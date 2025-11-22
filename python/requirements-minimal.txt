@@ -1,0 +1,5 @@
+# Minimal requirements for testing (without torch which is huge)
+pycapnp>=1.0.0
+numpy>=1.24.0
+click>=8.1.0
+pyyaml>=6.0
