@@ -17,14 +17,12 @@ fn main() {
         return;
     }
 
-    // Compile the schema from go/schema/schema.capnp
-    let schema_dir = PathBuf::from("../go/schema");
-    let schema_path = schema_dir.join("schema.capnp");
+    // Compile the schema from rust/schema.capnp (Rust-compatible version)
+    let schema_path = PathBuf::from("schema.capnp");
     
     if schema_path.exists() {
         match capnpc::CompilerCommand::new()
             .file(&schema_path)
-            .src_prefix(&schema_dir)
             .run()
         {
             Ok(_) => println!("cargo:warning=Cap'n Proto schema compiled successfully"),
@@ -37,5 +35,5 @@ fn main() {
         println!("cargo:warning=Schema file not found at {:?}, skipping Cap'n Proto compilation", schema_path);
     }
     
-    println!("cargo:rerun-if-changed=../go/schema/schema.capnp");
+    println!("cargo:rerun-if-changed=schema.capnp");
 }
