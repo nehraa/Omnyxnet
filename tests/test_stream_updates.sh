@@ -29,7 +29,18 @@ cleanup() {
 
 trap cleanup EXIT
 
-cd "$(dirname "$0")/.."
+PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT_ROOT"
+
+# Set schema path
+SCHEMA_PATH="$PROJECT_ROOT/go/schema/schema.capnp"
+
+# Detect Python binary (prefer venv)
+PYTHON_BIN="python3"
+if [ -f "$PROJECT_ROOT/python/.venv/bin/python" ]; then
+    PYTHON_BIN="$PROJECT_ROOT/python/.venv/bin/python"
+    echo "Using venv Python: $PYTHON_BIN"
+fi
 
 # Build Go node
 echo "1. Building Go node..."
@@ -82,7 +93,7 @@ import time
 
 # Load schema
 capnp.remove_import_hook()
-schema = capnp.load('/home/abhinav/Desktop/WGT/go/schema/schema.capnp')
+schema = capnp.load('SCHEMA_PATH_PLACEHOLDER')
 
 async def test_stream_updates():
     """Test StreamUpdates RPC call and shared memory"""
@@ -121,12 +132,9 @@ async def test_stream_updates():
         # Test shared memory write/read
         print("\n   Testing shared memory write/read...")
         import os
+        import platform
         
-        # Note: The schema doesn't have writeToSharedMemory/readFromSharedMemory yet
-        # But we can check if the Go nodes created any shared memory regions
-        shm_files_before = set([f for f in os.listdir('/dev/shm') if f.startswith('pangea_')])
-        
-        # Trigger multiple node updates to potentially create shared memory
+        # Trigger multiple node updates
         for i in range(3):
             update = schema.NodeUpdate.new_message()
             update.nodeId = 1
@@ -134,16 +142,18 @@ async def test_stream_updates():
             update.threatScore = 0.5 + i * 0.1
             await node1.updateNode(update)
         
-        shm_files_after = set([f for f in os.listdir('/dev/shm') if f.startswith('pangea_')])
-        new_shm_files = shm_files_after - shm_files_before
-        
-        if new_shm_files:
-            print(f"   ✅ Created {len(new_shm_files)} shared memory buffer(s):")
-            for f in new_shm_files:
-                size = os.path.getsize(f'/dev/shm/{f}')
-                print(f"      - {f} ({size} bytes)")
+        # Check shared memory (Linux only)
+        if platform.system() == 'Linux' and os.path.exists('/dev/shm'):
+            shm_files = [f for f in os.listdir('/dev/shm') if f.startswith('pangea_')]
+            if shm_files:
+                print(f"   ✅ Found {len(shm_files)} shared memory buffer(s):")
+                for f in shm_files:
+                    size = os.path.getsize(f'/dev/shm/{f}')
+                    print(f"      - {f} ({size} bytes)")
+            else:
+                print("   ℹ️  Shared memory: WriteToSharedMemory not called by current RPC methods")
         else:
-            print("   ℹ️  Shared memory: WriteToSharedMemory not called by current RPC methods")
+            print(f"   ℹ️  Shared memory test skipped (platform: {platform.system()})")
             print("   ℹ️  (Infrastructure ready, waiting for data transfer use case)")
         
         # Try to call streamUpdates (note: this is server streaming, so it's async)
@@ -182,10 +192,14 @@ if __name__ == "__main__":
         sys.exit(1)
 PYTEST
 
+# Replace placeholder with actual schema path
+sed -i.bak "s|SCHEMA_PATH_PLACEHOLDER|$SCHEMA_PATH|g" /tmp/test_stream_updates.py
+rm -f /tmp/test_stream_updates.py.bak
+
 # Run the test
 echo -e "\n4. Running StreamUpdates test..."
 cd python
-python /tmp/test_stream_updates.py
+$PYTHON_BIN /tmp/test_stream_updates.py
 TEST_RESULT=$?
 
 if [ $TEST_RESULT -eq 0 ]; then

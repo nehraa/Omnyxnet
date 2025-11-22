@@ -1,4 +1,4 @@
-use pangea_rust_node::*;
+use pangea_ces::*;
 
 #[cfg(test)]
 mod integration_tests {

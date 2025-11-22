@@ -252,6 +252,12 @@ main() {
                 ;;
             2)
                 log_info "User selected: Run Go Tests"
+                # Build Rust library first (required for Go)
+                log_info "Building Rust library (required for Go)..."
+                cd rust
+                cargo build --release --lib >> "$LOG_FILE" 2>&1
+                cd ..
+                log_success "Rust library built"
                 run_test "Go Tests" "tests/test_go.sh"
                 echo ""
                 read -p "Press Enter to continue..."
@@ -283,6 +289,12 @@ main() {
             7)
                 log_info "User selected: Run All Tests"
                 echo "Running complete test suite..."
+                # Build Rust library first (required for Go tests)
+                log_info "Building Rust library (required for Go)..."
+                cd rust
+                cargo build --release --lib >> "$LOG_FILE" 2>&1
+                cd ..
+                log_success "Rust library built"
                 run_test "Go Tests" "tests/test_go.sh"
                 run_test "Python Tests" "tests/test_python.sh"
                 run_test "Rust Tests" "tests/test_rust.sh"

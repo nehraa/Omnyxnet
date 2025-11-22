@@ -241,7 +241,15 @@ echo -e "${GREEN}✅ Python test script created${NC}"
 # Test 5: Run Python connectivity tests
 echo -e "\n${BLUE}5. Running Python connectivity tests...${NC}"
 cd "$PROJECT_ROOT"
-if python3 "$PYTHON_TEST_SCRIPT"; then
+
+# Use venv Python if available, otherwise fall back to system python3
+PYTHON_BIN="python3"
+if [ -f "$PYTHON_DIR/.venv/bin/python" ]; then
+    PYTHON_BIN="$PYTHON_DIR/.venv/bin/python"
+    echo "   Using venv Python: $PYTHON_BIN"
+fi
+
+if $PYTHON_BIN "$PYTHON_TEST_SCRIPT"; then
     echo -e "${GREEN}✅ Python connectivity tests passed${NC}"
 else
     echo -e "${RED}❌ Python connectivity tests failed${NC}"
