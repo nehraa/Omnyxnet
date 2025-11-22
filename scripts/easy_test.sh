@@ -158,8 +158,16 @@ fi
 echo -e "${GREEN}✅ Node is running!${NC}"
 echo ""
 
-# Get IP address for other devices
-IP_ADDR=$(hostname -I | awk '{print $1}')
+# Get IP address for other devices (try multiple methods for portability)
+if command -v hostname &> /dev/null; then
+    IP_ADDR=$(hostname -I 2>/dev/null | awk '{print $1}')
+fi
+if [ -z "$IP_ADDR" ] && command -v ip &> /dev/null; then
+    IP_ADDR=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'src \K\S+' || true)
+fi
+if [ -z "$IP_ADDR" ]; then
+    IP_ADDR="<your-ip-address>"
+fi
 
 echo -e "${BLUE}═══════════════════════════════════════${NC}"
 echo -e "${BLUE}📋 Connection Info${NC}"
@@ -322,8 +330,10 @@ echo -e "  ${YELLOW}Stop node:${NC}"
 echo -e "    $DATA_DIR/commands.sh $NODE_ID '$PROJECT_ROOT' '$DATA_DIR' stop"
 echo ""
 
-# Create easy alias
-echo "alias pangea=\"$DATA_DIR/commands.sh $NODE_ID '$PROJECT_ROOT' '$DATA_DIR'\"" > "$DATA_DIR/alias.sh"
+# Create easy alias with properly quoted variables
+cat > "$DATA_DIR/alias.sh" << EOF
+alias pangea="$DATA_DIR/commands.sh $NODE_ID '$PROJECT_ROOT' '$DATA_DIR'"
+EOF
 echo ""
 echo -e "${GREEN}💡 Pro tip:${NC} Add this alias to your shell:"
 echo -e "    ${YELLOW}source $DATA_DIR/alias.sh${NC}"
