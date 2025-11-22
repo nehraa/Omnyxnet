@@ -12,7 +12,7 @@ type NetworkMetricsCollector struct {
 	network NetworkAdapter
 }
 
-// NewNetricsCollector creates a new metrics collector
+// NewMetricsCollector creates a new metrics collector
 func NewMetricsCollector(store *NodeStore, network NetworkAdapter) *NetworkMetricsCollector {
 	return &NetworkMetricsCollector{
 		store:   store,

@@ -199,7 +199,11 @@ pub extern "C" fn ces_free_shards(shards: FFIShards) {
 fn create_error_string(msg: &str) -> *mut c_char {
     match CString::new(msg) {
         Ok(s) => s.into_raw(),
-        Err(_) => std::ptr::null_mut(),
+        Err(e) => {
+            eprintln!("FFI Error: Failed to create error string: {}", e);
+            // Return a generic error string
+            CString::new("FFI error occurred").unwrap().into_raw()
+        }
     }
 }
 
