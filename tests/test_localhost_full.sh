@@ -91,12 +91,8 @@ for i in $(seq 1 $NUM_NODES); do
     DHT_PORT=$((BASE_DHT_PORT + i - 1))
     LOG_FILE="$TEST_DIR/node-$i.log"
     
-    # Build peer list (connect to previous nodes)
-    PEERS=""
-    if [ $i -gt 1 ]; then
-        # Connect to first node
-        PEERS="/ip4/127.0.0.1/tcp/$BASE_DHT_PORT/p2p/12D3KooWDummy"
-    fi
+    # Peer list is not needed - we rely on mDNS for local discovery
+    # For WAN deployment, users would specify actual bootstrap peers
     
     echo "Starting Node $i:"
     echo "  - Node ID: $NODE_ID"
@@ -172,7 +168,7 @@ echo "File size: $(wc -c < "$TEST_FILE") bytes"
 # Test if Rust CLI exists
 if [ -f "rust/target/release/pangea-rust-node" ]; then
     echo "Attempting upload via Rust node..."
-    ./rust/target/release/pangea-rust-node upload "$TEST_FILE" 1,2,3 > "$TEST_DIR/upload-manifest.json" 2>&1 && {
+    ./rust/target/release/pangea-rust-node upload "$TEST_FILE" 1,2,3 > "$TEST_DIR/upload-manifest.json" 2> "$TEST_DIR/upload-error.log" && {
         echo -e "${GREEN}✅ File uploaded successfully${NC}"
         echo "Manifest saved to: $TEST_DIR/upload-manifest.json"
         cat "$TEST_DIR/upload-manifest.json"
@@ -265,7 +261,6 @@ except Exception as e:
     sys.exit(3)
 PYTHON_EOF
 
-    chmod +x "$TEST_DIR/test_rpc.py"
     if python3 "$TEST_DIR/test_rpc.py" 2>&1; then
         echo -e "${GREEN}✅ Python RPC connection successful${NC}"
     else
