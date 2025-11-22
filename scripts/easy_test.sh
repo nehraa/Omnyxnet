@@ -54,12 +54,14 @@ if [ -z "$NODE_ID" ]; then
     elif [ "$choice" == "2" ]; then
         read -p "Enter node ID (e.g., 2, 3, 4...): " NODE_ID
         echo ""
-        echo -e "${YELLOW}ℹ${NC}  From Device 1 logs, copy just the peer ID (12D3Koo...)"
+        echo -e "${YELLOW}ℹ${NC}  From Device 1 logs, copy the connection info:"
+        echo -e "${YELLOW}ℹ${NC}  Look for 'Listening addresses:' and copy the public IP line"
         read -p "Bootstrap IP: " BOOTSTRAP_IP
+        read -p "Bootstrap Port: " BOOTSTRAP_PORT
         read -p "Bootstrap Peer ID: " PEER_ID
-        BOOTSTRAP="/ip4/${BOOTSTRAP_IP}/tcp/9180/p2p/${PEER_ID}"
+        BOOTSTRAP="/ip4/${BOOTSTRAP_IP}/tcp/${BOOTSTRAP_PORT}/p2p/${PEER_ID}"
         echo ""
-        echo -e "${GREEN}✓${NC} Device #${NODE_ID} → /ip4/${BOOTSTRAP_IP}/tcp/9180/p2p/${PEER_ID}"
+        echo -e "${GREEN}✓${NC} Device #${NODE_ID} → /ip4/${BOOTSTRAP_IP}/tcp/${BOOTSTRAP_PORT}/p2p/${PEER_ID}"
     else
         echo -e "${RED}Invalid choice${NC}"
         exit 1
