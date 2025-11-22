@@ -1,7 +1,19 @@
+# libp2p Dependencies
+
+**Version:** 0.3.0-alpha  
+**Last Updated:** 2025-11-22  
+**Status:** Implemented - Testing Required
+
+> 📋 This document lists libp2p dependencies used in the Go node. The dependencies are installed but integration testing is still in progress.
+
+## Installation
+
+```bash
 # Add libp2p dependencies to go.mod
 go get github.com/libp2p/go-libp2p@latest
 go get github.com/libp2p/go-libp2p-kad-dht@latest
 go get github.com/multiformats/go-multiaddr@latest
+```
 
 # Core libp2p components
 github.com/libp2p/go-libp2p v0.32.0
