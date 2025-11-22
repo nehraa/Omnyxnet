@@ -112,7 +112,17 @@ setup_python() {
     source .venv/bin/activate
     log_info "Installing Python dependencies..."
     pip install --upgrade pip
-    pip install -r requirements.txt
+    
+    # Install minimal requirements by default (torch is optional and very large)
+    if [ -f "requirements-minimal.txt" ]; then
+        log_info "Installing minimal requirements (for testing)..."
+        pip install -r requirements-minimal.txt
+        log_info "Note: For AI features, install torch separately: pip install torch>=2.0.0"
+    else
+        log_warning "requirements-minimal.txt not found, installing full requirements..."
+        pip install -r requirements.txt
+    fi
+    
     deactivate
     
     cd ..
