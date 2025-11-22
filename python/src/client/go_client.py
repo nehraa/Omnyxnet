@@ -432,8 +432,8 @@ class GoNodeClient:
         if not self._connected:
             raise RuntimeError("Not connected to Go node")
         
-        if not target_peers:
-            raise ValueError("target_peers cannot be empty")
+        if not target_peers or len(target_peers) == 0:
+            raise ValueError("target_peers cannot be empty or None")
         
         async def _async_upload():
             request = self.schema.UploadRequest.new_message()
