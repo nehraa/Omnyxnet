@@ -133,26 +133,36 @@ High-performance upload/download protocols with CES pipeline, caching, and looku
 # Basic usage
 ./rust/target/release/pangea-rust-node [OPTIONS] [COMMAND]
 
-# Commands
-daemon      Run as daemon (default) - RPC server for Python calls
-upload      Upload file using CES pipeline and Go transport
-download    Download file using CES reconstruction and Go transport
+# Commands (New Automated Operations!)
+put <file>              🚀 Automated upload - just provide file path, discovers peers automatically
+get <hash> [-o output]  🚀 Automated download - just provide file hash, handles everything
+list                    📋 List all available files
+search <pattern>        🔍 Search files by name pattern
+info <hash>             ℹ️  Get detailed file information
+
+# Legacy Commands (Manual Mode)
+daemon                  Run as daemon (default) - RPC server for Python calls
+upload                  Upload file using CES pipeline and Go transport (manual)
+download                Download file using CES reconstruction and Go transport (manual)
 
 # Options
--n, --node-id <NODE_ID>      Node ID (for daemon mode) [default: 1]
---rpc-addr <RPC_ADDR>        RPC server address (Cap'n Proto) [default: 127.0.0.1:8080]
---go-addr <GO_ADDR>          Go node RPC address [default: 127.0.0.1:8082]
---p2p-addr <P2P_ADDR>        QUIC P2P listen address [default: 127.0.0.1:9090]
---dht-addr <DHT_ADDR>        DHT listen address (libp2p) [default: 127.0.0.1:9091]
---bootstrap <BOOTSTRAP>      Bootstrap peers for DHT (multiaddr format)
--v, --verbose                Enable verbose logging
+--go-addr <GO_ADDR>     Go node RPC address [default: 127.0.0.1:8082]
+--dht-addr <DHT_ADDR>   DHT listen address (libp2p) [default: 127.0.0.1:9091]
+--bootstrap <BOOTSTRAP> Bootstrap peers for DHT (multiaddr format)
+-v, --verbose           Enable verbose logging
 
-# Examples
-./rust/target/release/pangea-rust-node                           # Run as daemon
-./rust/target/release/pangea-rust-node --node-id 2               # Node 2 daemon
-./rust/target/release/pangea-rust-node upload myfile.txt 1,2,3   # Upload to peers 1,2,3
-./rust/target/release/pangea-rust-node download manifest.json    # Download file
+# Examples (Automated - Recommended!)
+./rust/target/release/pangea-rust-node put myfile.txt            # Auto upload
+./rust/target/release/pangea-rust-node get <hash>                # Auto download
+./rust/target/release/pangea-rust-node list                      # List files
+./rust/target/release/pangea-rust-node search "report"           # Search files
+
+# Legacy Examples (Manual)
+./rust/target/release/pangea-rust-node upload myfile.txt --peers 1,2,3
+./rust/target/release/pangea-rust-node download out.txt --shards 0:1,1:2,2:3
 ```
+
+**New!** See [Automated Operations Guide](docs/AUTOMATED_OPERATIONS.md) for detailed usage.
 
 ### Python CLI (`python3 main.py`)
 

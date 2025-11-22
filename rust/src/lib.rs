@@ -21,6 +21,7 @@ pub mod lookup;
 pub mod ffi;
 pub mod auto_heal;
 pub mod file_detector;
+pub mod automated;
 
 // Re-export commonly used types for ease of use
 pub use capabilities::HardwareCaps;
@@ -33,3 +34,4 @@ pub use store::NodeStore;
 pub use firewall::Firewall;
 pub use cache::{Cache, FileManifest, CacheStats};
 pub use lookup::{LookupService, LookupResult, DiscoveryResult};
+pub use automated::{AutomatedUploader, AutomatedDownloader, UploadResult, DownloadResult, FileInfo};
