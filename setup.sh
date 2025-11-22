@@ -128,6 +128,10 @@ build_go() {
     go mod download
     log_info "Compiling Go node..."
     make build
+    # Also copy to root of go directory for backward compatibility
+    if [ -f "bin/go-node" ]; then
+        cp bin/go-node go-node
+    fi
     cd ..
     
     log_success "Go components built successfully"
@@ -154,11 +158,21 @@ full_install() {
     install_go
     install_rust
     setup_python
-    build_go
-    build_rust
+    
+    # Build in correct order: Rust library first (needed by Go FFI), then Go, then Rust binary
+    log_info "Building components in correct order..."
+    build_rust  # This builds both the library and binary
+    build_go    # This depends on Rust library for FFI
     
     log_success "==========================================="
     log_success "Installation complete!"
+    log_info ""
+    log_info "Components built:"
+    log_info "  ✓ Rust library: rust/target/release/libpangea_ces.so"
+    log_info "  ✓ Rust node: rust/target/release/pangea-rust-node"
+    log_info "  ✓ Go node: go/bin/go-node"
+    log_info "  ✓ Python venv: python/.venv"
+    log_info ""
     log_info "You can now run tests or start nodes using this CLI"
 }
 
@@ -197,10 +211,16 @@ show_menu() {
     echo "4) Run Rust Tests"
     echo "5) Run Integration Tests"
     echo "6) Run 2-Node StreamUpdates Test"
-    echo "7) Run All Tests"
-    echo "8) View Setup Log"
-    echo "9) View Test Log"
-    echo "10) Clean Build Artifacts"
+    echo "7) Run All Localhost Tests"
+    echo "8) Run Comprehensive Localhost Test (Multi-node)"
+    echo "9) Setup Cross-Device/WAN Testing"
+    echo "10) Run Upload/Download Tests (Local)"
+    echo "11) Run Upload/Download Tests (Cross-Device)"
+    echo "12) Run FFI Integration Test"
+    echo "13) Run CES Wiring Test"
+    echo "14) View Setup Log"
+    echo "15) View Test Log"
+    echo "16) Clean Build Artifacts"
     echo "0) Exit"
     echo ""
     echo -n "Select an option: "
@@ -287,7 +307,7 @@ main() {
                 read -p "Press Enter to continue..."
                 ;;
             7)
-                log_info "User selected: Run All Tests"
+                log_info "User selected: Run All Localhost Tests"
                 echo "Running complete test suite..."
                 # Build Rust library first (required for Go tests)
                 log_info "Building Rust library (required for Go)..."
@@ -300,19 +320,97 @@ main() {
                 run_test "Rust Tests" "tests/test_rust.sh"
                 run_test "Integration Tests" "tests/test_integration.sh"
                 run_test "StreamUpdates Test" "tests/test_stream_updates.sh"
-                log_success "All tests completed!"
+                run_test "FFI Integration Test" "tests/test_ffi_integration.sh"
+                run_test "Upload/Download Local Test" "tests/test_upload_download_local.sh"
+                log_success "All localhost tests completed!"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             8)
+                log_info "User selected: Run Comprehensive Localhost Test"
+                run_test "Comprehensive Localhost Test" "tests/test_localhost_full.sh"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            9)
+                log_info "User selected: Setup Cross-Device/WAN Testing"
+                echo ""
+                echo -e "${BLUE}========================================${NC}"
+                echo -e "${BLUE}   Cross-Device / WAN Testing Setup${NC}"
+                echo -e "${BLUE}========================================${NC}"
+                echo ""
+                echo "This will help you set up nodes for cross-device testing."
+                echo ""
+                echo "Options:"
+                echo "  1) Start first device (bootstrap node)"
+                echo "  2) Start additional device (join network)"
+                echo "  3) Run cross-device upload/download test"
+                echo ""
+                read -p "Select option (1-3): " cross_choice
+                case $cross_choice in
+                    1)
+                        echo ""
+                        echo -e "${GREEN}Starting bootstrap node...${NC}"
+                        echo "Use: ./scripts/easy_test.sh 1"
+                        ./scripts/easy_test.sh 1
+                        ;;
+                    2)
+                        echo ""
+                        echo "You will need connection info from the bootstrap node."
+                        read -p "Press Enter when ready to continue..."
+                        ./scripts/easy_test.sh
+                        ;;
+                    3)
+                        run_test "Cross-Device Upload/Download Test" "tests/test_upload_download_cross_device.sh"
+                        ;;
+                    *)
+                        echo -e "${RED}Invalid option${NC}"
+                        ;;
+                esac
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            10)
+                log_info "User selected: Run Upload/Download Tests (Local)"
+                run_test "Upload/Download Local Test" "tests/test_upload_download_local.sh"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            11)
+                log_info "User selected: Run Upload/Download Tests (Cross-Device)"
+                echo ""
+                echo -e "${YELLOW}Note: This requires nodes already running on different devices.${NC}"
+                echo "Have you set up nodes on multiple devices? (y/n)"
+                read -p "> " setup_done
+                if [ "$setup_done" = "y" ]; then
+                    run_test "Cross-Device Upload/Download Test" "tests/test_upload_download_cross_device.sh"
+                else
+                    echo "Please use option 9 to setup cross-device testing first."
+                fi
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            12)
+                log_info "User selected: Run FFI Integration Test"
+                run_test "FFI Integration Test" "tests/test_ffi_integration.sh"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            13)
+                log_info "User selected: Run CES Wiring Test"
+                run_test "CES Wiring Test" "tests/test_ces_simple.sh"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            14)
                 log_info "User selected: View Setup Log"
                 less "$LOG_FILE"
                 ;;
-            9)
+            15)
                 log_info "User selected: View Test Log"
                 less "$TEST_LOG_FILE"
                 ;;
-            10)
+            16)
                 log_info "User selected: Clean Build Artifacts"
                 clean_builds
                 echo ""
