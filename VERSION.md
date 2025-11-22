@@ -25,10 +25,14 @@
 - Proximity-based routing
 - Network metrics collection
 - Local network testing (localhost)
+- **Cross-device P2P communication (tested and working)**
+- **Dynamic port assignment with libp2p**
+- **Peer discovery and NAT traversal**
 
 #### In Progress 🚧
-- libp2p DHT integration (partial - code exists, not fully tested)
-- WAN deployment capabilities (planned)
+- Production hardening and monitoring
+- Key persistence (peer ID currently regenerates on restart)
+- Static port configuration option
 - eBPF firewall (code exists, requires root + Linux)
 - Multi-node production testing
 

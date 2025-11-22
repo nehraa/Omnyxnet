@@ -11,9 +11,9 @@
 **Read First:** [VERSION.md](VERSION.md) - Know what's working and what's not
 
 **Quick Status:**
-- ✅ Works: Local testing, basic features
-- 🚧 In Progress: Integration testing, WAN support
-- ❌ Not Ready: Production deployment
+- ✅ Works: Local testing, basic features, **cross-device P2P communication**
+- 🚧 In Progress: Integration testing, production hardening
+- ❌ Not Ready: Production deployment, key persistence
 
 ### 2. Find Documentation
 **Read Second:** [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md) - Navigate all docs

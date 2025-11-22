@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned
-- Full WAN testing with real infrastructure
+- Key persistence for peer IDs (currently regenerate on restart)
+- Static port configuration option
 - Security audit and hardening
 - Performance optimization and benchmarking
 - Production deployment procedures
@@ -23,6 +24,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clear status indicators (Alpha, Beta, Production) across docs
 - "Last Updated" dates to all documentation
 - Deployment readiness assessment in VERSION.md
+- **Cross-device P2P communication** (tested and verified working)
+- **Dynamic port assignment with libp2p**
+- **Peer discovery and NAT traversal capabilities**
+- Enhanced `easy_test.sh` script with automatic port/peer ID extraction
+- Interactive cross-device setup with proper multiaddr handling
 
 ### Changed
 - Updated README.md to clarify alpha status and limitations
@@ -41,6 +47,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unclear distinction between implemented features and deployment readiness
 - Missing version tracking across documentation
 - Confusion about which documentation is current vs outdated
+- **Peer ID extraction security fix** (now extracts from listening addresses instead of Node ID line)
+- **Incorrect static port display** (now extracts actual dynamic port from logs)
+- Cross-device setup script now prompts for port separately
 
 ### Documentation
 - All documentation now includes version numbers and last updated dates

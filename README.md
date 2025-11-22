@@ -4,7 +4,7 @@
 **Status:** Active Development  
 **Last Updated:** 2025-11-22
 
-> ⚠️ **Development Status:** This project is in active development (alpha stage). Core features work for local testing, but it's not yet ready for production deployment. See [VERSION.md](VERSION.md) for detailed status information.
+> ⚠️ **Development Status:** This project is in active development (alpha stage). Core features work for local testing, and **cross-device P2P communication has been successfully tested**. Not yet ready for production deployment. See [VERSION.md](VERSION.md) for detailed status information.
 
 ## 🏗️ Project Structure
 

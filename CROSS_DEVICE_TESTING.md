@@ -1,11 +1,14 @@
 # Cross-Device Testing Guide
 
 **Version:** 0.3.0-alpha  
-**Last Updated:** 2025-11-22
+**Last Updated:** 2025-11-22  
+**Status:** ✅ Cross-device communication tested and working!
 
 ## 🎯 Quick Start - Test on Multiple Devices
 
-This guide shows you how to test Pangea Net across multiple devices on your local network. All the complex stuff is automated - just run one script on each device!
+This guide shows you how to test Pangea Net across multiple devices on your local network or WAN. All the complex stuff is automated - just run one script on each device!
+
+> ✅ **Verified Working:** Cross-device P2P connections successfully tested across different networks with dynamic port assignment and peer discovery.
 
 ### What Gets Tested
 
@@ -62,17 +65,23 @@ Configuration:
   Your IP: 192.168.1.100
   ...
 
+✓ Peer ID: 12D3KooWNN2GVrfnsD9GuuER97Zzei8VAcHaZr7sMJv1CHedpubb
+✓ P2P Port: 44119
+ℹ  Note: Both Peer ID and port change on each restart
+
 For other devices to join this network:
-  ./scripts/easy_test.sh 2 /ip4/192.168.1.100/tcp/9180
+  ./scripts/easy_test.sh 2 /ip4/192.168.1.100/tcp/44119/p2p/12D3KooWNN2GVrfnsD9GuuER97Zzei8VAcHaZr7sMJv1CHedpubb
 ```
+
+> **Important:** The P2P port (e.g., 44119) and Peer ID change on each restart because libp2p assigns them dynamically. Always copy the exact values shown in the output.
 
 ### On Additional Devices
 
-Copy the connection command from the first device and run it:
+Copy the **complete multiaddr** from the first device (including the dynamic port and peer ID):
 
 ```bash
 cd /path/to/WGT
-./scripts/easy_test.sh 2 /ip4/192.168.1.100/tcp/9180
+./scripts/easy_test.sh 2 /ip4/192.168.1.100/tcp/44119/p2p/12D3KooWNN2GVrfnsD9GuuER97Zzei8VAcHaZr7sMJv1CHedpubb
 ```
 
 Or run interactively:
@@ -81,7 +90,11 @@ Or run interactively:
 # Select "2" for additional device
 # Enter node ID (2, 3, 4, etc.)
 # Enter bootstrap IP (192.168.1.100)
+# Enter bootstrap Port (44119) - from the bootstrap node's output
+# Enter bootstrap Peer ID (12D3Koo...) - from the bootstrap node's output
 ```
+
+> **Note:** The script will prompt you for the IP, port, AND peer ID separately. Make sure to copy all three values from the bootstrap node's output.
 
 ### Quick Commands
 
