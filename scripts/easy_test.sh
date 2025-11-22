@@ -53,10 +53,13 @@ if [ -z "$NODE_ID" ]; then
         echo -e "${GREEN}✓${NC} You selected: First device (bootstrap)"
     elif [ "$choice" == "2" ]; then
         read -p "Enter node ID (e.g., 2, 3, 4...): " NODE_ID
-        read -p "Enter bootstrap node IP (e.g., 192.168.1.100): " BOOTSTRAP_IP
-        BOOTSTRAP="/ip4/${BOOTSTRAP_IP}/tcp/9180"
         echo ""
-        echo -e "${GREEN}✓${NC} You selected: Device #${NODE_ID}, connecting to ${BOOTSTRAP_IP}"
+        echo -e "${YELLOW}ℹ${NC}  From Device 1 logs, copy just the peer ID (12D3Koo...)"
+        read -p "Bootstrap IP: " BOOTSTRAP_IP
+        read -p "Bootstrap Peer ID: " PEER_ID
+        BOOTSTRAP="/ip4/${BOOTSTRAP_IP}/tcp/9180/p2p/${PEER_ID}"
+        echo ""
+        echo -e "${GREEN}✓${NC} Device #${NODE_ID} → /ip4/${BOOTSTRAP_IP}/tcp/9180/p2p/${PEER_ID}"
     else
         echo -e "${RED}Invalid choice${NC}"
         exit 1
