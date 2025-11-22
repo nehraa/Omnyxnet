@@ -41,6 +41,15 @@ struct ConnectionQuality {
     packetLoss @2 :Float32;
 }
 
+struct NetworkMetrics {
+    avgRttMs @0 :Float32;
+    packetLoss @1 :Float32;
+    bandwidthMbps @2 :Float32;
+    peerCount @3 :UInt32;
+    cpuUsage @4 :Float32;
+    ioCapacity @5 :Float32;
+}
+
 interface NodeService {
     # Get a specific node by ID
     getNode @0 (query :NodeQuery) -> (node :Node);
@@ -71,5 +80,8 @@ interface NodeService {
     
     # Get list of connected peers
     getConnectedPeers @9 () -> (peers :List(UInt32));
+    
+    # Get network metrics for shard optimization
+    getNetworkMetrics @10 () -> (metrics :NetworkMetrics);
 }
 
