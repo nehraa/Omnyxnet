@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/libp2p/go-libp2p/core/peer"
 )
 
@@ -14,6 +16,9 @@ type NetworkAdapter interface {
 
 	// SendMessage sends a message to a peer
 	SendMessage(peerID uint32, data []byte) error
+
+	// FetchShard fetches a shard from a peer
+	FetchShard(peerID uint32, shardIndex uint32) ([]byte, error)
 
 	// GetConnectedPeers returns list of connected peer IDs
 	GetConnectedPeers() []uint32
@@ -98,6 +103,47 @@ func (a *LibP2PAdapter) GetConnectionQuality(peerID uint32) (latencyMs, jitterMs
 	return node.LatencyMs, node.JitterMs, node.PacketLoss, nil
 }
 
+func (a *LibP2PAdapter) FetchShard(peerID uint32, shardIndex uint32) ([]byte, error) {
+	// Find peer and request shard through libp2p stream
+	peers := a.node.GetConnectedPeers()
+
+	// TODO: In production, maintain proper peerID <-> libp2p peer.ID mapping
+	// For now, try to fetch from any connected peer
+	for _, p := range peers {
+		if pid, err := peer.Decode(p.ID); err == nil {
+			stream, err := a.node.host.NewStream(a.node.ctx, pid, PangeaRPCProtocol)
+			if err != nil {
+				continue // Try next peer
+			}
+			defer stream.Close()
+
+			// Send shard request: [REQUEST_TYPE=1][SHARD_INDEX]
+			request := make([]byte, 5)
+			request[0] = 1 // Request type: fetch shard
+			request[1] = byte(shardIndex >> 24)
+			request[2] = byte(shardIndex >> 16)
+			request[3] = byte(shardIndex >> 8)
+			request[4] = byte(shardIndex)
+
+			_, err = stream.Write(request)
+			if err != nil {
+				continue
+			}
+
+			// Read response
+			buffer := make([]byte, 1024*1024) // 1MB max shard size
+			n, err := stream.Read(buffer)
+			if err != nil {
+				continue
+			}
+
+			return buffer[:n], nil
+		}
+	}
+
+	return nil, fmt.Errorf("failed to fetch shard %d from peer %d: no route available", shardIndex, peerID)
+}
+
 // LegacyP2PAdapter wraps P2PNode to implement NetworkAdapter
 type LegacyP2PAdapter struct {
 	node  *P2PNode
@@ -175,6 +221,64 @@ func (a *LegacyP2PAdapter) GetConnectionQuality(peerID uint32) (latencyMs, jitte
 	}
 
 	return node.LatencyMs, node.JitterMs, node.PacketLoss, nil
+}
+
+func (a *LegacyP2PAdapter) FetchShard(peerID uint32, shardIndex uint32) ([]byte, error) {
+	a.node.mu.RLock()
+	conn, exists := a.node.connections[peerID]
+	a.node.mu.RUnlock()
+
+	if !exists {
+		return nil, ErrPeerNotConnected
+	}
+
+	conn.mu.Lock()
+	defer conn.mu.Unlock()
+
+	// Send shard request: [REQUEST_TYPE=1][SHARD_INDEX]
+	request := make([]byte, 5)
+	request[0] = 1 // Request type: fetch shard
+	request[1] = byte(shardIndex >> 24)
+	request[2] = byte(shardIndex >> 16)
+	request[3] = byte(shardIndex >> 8)
+	request[4] = byte(shardIndex)
+
+	// Encrypt if we have cipher state
+	var toSend []byte
+	var err error
+	if conn.cipherState != nil {
+		toSend, err = conn.cipherState.Encrypt(nil, nil, request)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		toSend = request
+	}
+
+	_, err = conn.conn.Write(toSend)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read response
+	buffer := make([]byte, 1024*1024) // 1MB max
+	n, err := conn.conn.Read(buffer)
+	if err != nil {
+		return nil, err
+	}
+
+	// Decrypt if needed
+	var response []byte
+	if conn.cipherState != nil {
+		response, err = conn.cipherState.Decrypt(nil, nil, buffer[:n])
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		response = buffer[:n]
+	}
+
+	return response, nil
 }
 
 // Common errors

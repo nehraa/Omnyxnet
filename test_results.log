@@ -1,0 +1,92 @@
+========================================
+🧪 Pangea Net - Full Test Suite
+========================================
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣  Testing Python Component
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[0;32m✅ Python tests PASSED[0m
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2️⃣  Testing Go Node
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[0;31m❌ Go tests FAILED[0m
+   See /tmp/test_go.log for details
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3️⃣  Testing Rust Node
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[0;32m✅ Rust tests PASSED[0m
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4️⃣  Testing Multi-Node Startup
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Starting Go node...
+2025/11/22 15:00:57 🚀 Starting Pangea Net Go Node (ID: 1)
+2025/11/22 15:00:57 ✅ Created node 1 with status: 0
+2025/11/22 15:00:57 📡 mDNS service initialized - local peers will auto-connect
+2025/11/22 15:00:57 🚀 Starting libp2p Pangea node
+2025/11/22 15:00:57 📍 Node ID: 12D3KooWLsQGLJ7deYzKdNqcMhegjyeTDYkqPSJtY1YF5iVjtewV
+2025/11/22 15:00:57 🌐 Listening addresses:
+2025/11/22 15:00:57    /ip4/127.0.0.1/tcp/32829/p2p/12D3KooWLsQGLJ7deYzKdNqcMhegjyeTDYkqPSJtY1YF5iVjtewV
+2025/11/22 15:00:57    /ip4/149.151.32.240/tcp/32829/p2p/12D3KooWLsQGLJ7deYzKdNqcMhegjyeTDYkqPSJtY1YF5iVjtewV
+2025/11/22 15:00:57 🌐 Node running. Press Ctrl+C to stop.
+2025/11/22 15:00:57 🔌 Starting Cap'n Proto server on :8080
+2025/11/22 15:00:57 Cap'n Proto server listening on :8080
+2025/11/22 15:00:57 ❌ Failed to advertise on DHT: failed to find any peer in table
+   [0;32m✓[0m Go node started (PID: 6130)
+   Starting Rust node...
+[2m2025-11-22T20:00:59.592320Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m 🚀 Pangea Rust Node v0.1.0 (Upload/Download Protocol Layer)
+[2m2025-11-22T20:00:59.592332Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m Node ID: 2
+[2m2025-11-22T20:00:59.592334Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m Calls Go transport layer at: 127.0.0.1:8082
+[2m2025-11-22T20:00:59.670146Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m Hardware capabilities:
+[2m2025-11-22T20:00:59.670161Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m   AVX2: false
+[2m2025-11-22T20:00:59.670163Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m   NEON: false
+[2m2025-11-22T20:00:59.670165Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m   io_uring: true
+[2m2025-11-22T20:00:59.670167Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m   eBPF/XDP: false
+[2m2025-11-22T20:00:59.670168Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m   RAM: 7 GB
+[2m2025-11-22T20:00:59.670170Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m   CPU cores: 12
+[2m2025-11-22T20:00:59.670171Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m Initializing components...
+[2m2025-11-22T20:00:59.670184Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m ✓ Node store initialized
+[2m2025-11-22T20:00:59.670186Z[0m [32m INFO[0m [2mpangea_ces::firewall[0m[2m:[0m eBPF not available, using user-space firewall
+[2m2025-11-22T20:00:59.670192Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m ✓ Firewall initialized (mode: UserSpace)
+[2m2025-11-22T20:00:59.670196Z[0m [32m INFO[0m [2mpangea_ces::firewall[0m[2m:[0m Added 127.0.0.1 to firewall allowlist
+[2m2025-11-22T20:00:59.670788Z[0m [32m INFO[0m [2mpangea_ces::network[0m[2m:[0m QUIC node 2 listening on 127.0.0.1:9091
+[2m2025-11-22T20:00:59.670815Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m ✓ QUIC network initialized on 127.0.0.1:9091
+[2m2025-11-22T20:00:59.670893Z[0m [32m INFO[0m [2mpangea_ces::dht[0m[2m:[0m DHT node initialized with PeerId: 12D3KooWQsdUcexvC8nrzMCFxVjMSvEWDVqsGagP1ZjYJBdSFctN
+[2m2025-11-22T20:00:59.671762Z[0m [32m INFO[0m [2mlibp2p_swarm[0m[2m:[0m [3mlocal_peer_id[0m[2m=[0m12D3KooWQsdUcexvC8nrzMCFxVjMSvEWDVqsGagP1ZjYJBdSFctN
+[2m2025-11-22T20:00:59.671973Z[0m [32m INFO[0m [2mpangea_ces::dht[0m[2m:[0m DHT node listening on /ip4/127.0.0.1/tcp/9092
+[2m2025-11-22T20:00:59.671986Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m ✓ DHT node initialized on /ip4/127.0.0.1/tcp/9092
+[2m2025-11-22T20:00:59.671992Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m ✓ RPC server initialized
+[2m2025-11-22T20:00:59.671995Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m ✓ CES pipeline initialized (compression level: 9)
+[2m2025-11-22T20:00:59.671998Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m 🎯 All systems operational!
+[2m2025-11-22T20:00:59.672001Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m 📡 Listening:
+[2m2025-11-22T20:00:59.672003Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m   - RPC (Cap'n Proto): 127.0.0.1:8081
+[2m2025-11-22T20:00:59.672007Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m   - P2P (QUIC): 127.0.0.1:9091
+[2m2025-11-22T20:00:59.672009Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m   - DHT (libp2p): /ip4/127.0.0.1/tcp/9092
+[2m2025-11-22T20:00:59.672137Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m Press Ctrl+C to shutdown...
+[2m2025-11-22T20:00:59.672168Z[0m [32m INFO[0m [2mpangea_ces::rpc[0m[2m:[0m RPC server listening on 127.0.0.1:8081
+[2m2025-11-22T20:00:59.672220Z[0m [32m INFO[0m [2mpangea_rust_node[0m[2m:[0m DHT event: NewListenAddr { listener_id: ListenerId(1), address: /ip4/127.0.0.1/tcp/9092 }
+[2m2025-11-22T20:01:00.172402Z[0m [33m WARN[0m [2mlibp2p_kad::behaviour[0m[2m:[0m Failed to trigger bootstrap: No known peers.
+   [0;32m✓[0m Rust node started (PID: 6165)
+[0;32m✅ Multi-node startup PASSED[0m
+
+========================================
+📊 Test Summary
+========================================
+Total tests:  4
+Passed:       [0;32m3[0m
+Failed:       [0;31m1[0m
+========================================
+
+2025/11/22 15:01:01 🛑 Shutting down...
+2025/11/22 15:01:01 🛑 Shutting down libp2p Pangea node...
+[0;31m❌ SOME TESTS FAILED[0m
+
+Check the log files for details:
+  • /tmp/test_python.log
+  • /tmp/test_go.log
+  • /tmp/test_rust.log
+
+2025/11/22 15:01:01 ✅ libp2p Pangea node stopped
+2025/11/22 15:01:01 ✅ Shutdown complete
