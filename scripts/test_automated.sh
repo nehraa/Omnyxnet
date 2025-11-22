@@ -132,7 +132,7 @@ echo "$UPLOAD_OUTPUT"
 echo ""
 
 # Extract file hash from output
-FILE_HASH=$(echo "$UPLOAD_OUTPUT" | grep "File hash:" | awk '{print $3}')
+FILE_HASH=$(echo "$UPLOAD_OUTPUT" | grep -oP 'File hash:\s*\K\S+')
 
 if [ -z "$FILE_HASH" ]; then
     echo -e "${RED}❌ Failed to extract file hash from upload output${NC}"
