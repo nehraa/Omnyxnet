@@ -1,8 +1,16 @@
 use pangea_ces::*;
 use std::sync::Arc;
-use tracing::{info, error};
+use tracing::{info, error, warn};
 use tracing_subscriber;
 use clap::Parser;
+
+// Constants for cache configuration
+const DEFAULT_CACHE_MAX_ENTRIES: usize = 1000;
+const DEFAULT_CACHE_SIZE_BYTES: usize = 100 * 1024 * 1024; // 100MB
+
+// Constants for display formatting
+const BYTES_PER_MB: f64 = 1_048_576.0;
+const TABLE_SEPARATOR_LEN: usize = 10 + 30 + 15 + 10 + 10 + 4; // Column widths + spacing
 
 #[derive(Parser, Debug)]
 #[clap(name = "pangea-rust-node")]
@@ -42,7 +50,7 @@ struct Args {
 
 #[derive(Parser, Debug)]
 enum Command {
-    /// Upload a file using CES pipeline and Go transport
+    /// Upload a file using CES pipeline and Go transport (manual mode)
     Upload {
         /// File to upload
         #[clap(value_name = "FILE")]
@@ -53,7 +61,7 @@ enum Command {
         peers: Vec<u32>,
     },
 
-    /// Download a file using CES reconstruction and Go transport
+    /// Download a file using CES reconstruction and Go transport (manual mode)
     Download {
         /// Output file path
         #[clap(value_name = "FILE")]
@@ -62,6 +70,41 @@ enum Command {
         /// Shard locations in format: shard_index:peer_id (comma-separated)
         #[clap(long, value_delimiter = ',')]
         shards: Vec<String>,
+    },
+
+    /// Automated upload - just provide file path, discovers peers automatically
+    Put {
+        /// File to upload
+        #[clap(value_name = "FILE")]
+        file: String,
+    },
+
+    /// Automated download - just provide file hash, handles everything
+    Get {
+        /// File hash
+        #[clap(value_name = "HASH")]
+        hash: String,
+
+        /// Output file path (optional - uses original filename if not provided)
+        #[clap(short = 'o', long)]
+        output: Option<String>,
+    },
+
+    /// List all available files
+    List,
+
+    /// Search files by name pattern
+    Search {
+        /// Search pattern
+        #[clap(value_name = "PATTERN")]
+        pattern: String,
+    },
+
+    /// Get file information
+    Info {
+        /// File hash
+        #[clap(value_name = "HASH")]
+        hash: String,
     },
 
     /// Run as daemon (default mode - runs RPC server for Python to call)
@@ -85,6 +128,21 @@ async fn main() -> anyhow::Result<()> {
         }
         Some(Command::Download { ref file, ref shards }) => {
             return handle_download(file, shards.clone(), &args).await;
+        }
+        Some(Command::Put { ref file }) => {
+            return handle_automated_upload(file, &args).await;
+        }
+        Some(Command::Get { ref hash, ref output }) => {
+            return handle_automated_download(hash, output.as_deref(), &args).await;
+        }
+        Some(Command::List) => {
+            return handle_list(&args).await;
+        }
+        Some(Command::Search { ref pattern }) => {
+            return handle_search(pattern, &args).await;
+        }
+        Some(Command::Info { ref hash }) => {
+            return handle_info(hash, &args).await;
         }
         Some(Command::Daemon) | None => {
             // Run as daemon (default)
@@ -291,6 +349,272 @@ async fn handle_download(file: &str, shards: Vec<String>, args: &Args) -> anyhow
     // Download file
     let bytes = download.download_file(Path::new(file), shard_locations).await?;
     info!("✅ Download complete! {} bytes", bytes);
+
+    Ok(())
+}
+
+/// Get default cache directory
+fn get_cache_dir() -> String {
+    std::env::var("PANGEA_CACHE_DIR")
+        .unwrap_or_else(|_| format!("{}/.pangea/cache", std::env::var("HOME").unwrap_or_else(|_| "/tmp".to_string())))
+}
+
+/// Initialize DHT with bootstrap peers
+async fn init_dht(args: &Args) -> Option<Arc<tokio::sync::RwLock<dht::DhtNode>>> {
+    let dht_port = args.dht_addr.split(':').nth(1)
+        .and_then(|p| p.parse::<u16>().ok())
+        .unwrap_or(9091);
+    
+    let bootstrap_peers: Vec<libp2p::Multiaddr> = args.bootstrap
+        .iter()
+        .filter_map(|s| s.parse().ok())
+        .collect();
+    
+    match dht::DhtNode::new(dht_port, bootstrap_peers).await {
+        Ok(mut dht_node) => {
+            let dht_listen = dht::local_multiaddr(dht_port);
+            if let Err(e) = dht_node.listen_on(dht_listen) {
+                warn!("DHT listen failed: {}", e);
+                return None;
+            }
+            Some(Arc::new(tokio::sync::RwLock::new(dht_node)))
+        }
+        Err(e) => {
+            warn!("DHT initialization failed: {}, continuing without DHT", e);
+            None
+        }
+    }
+}
+
+/// Create a downloader for read-only cache operations (list, search, info)
+/// This is optimized to not create unnecessary network components
+async fn create_cache_downloader(_args: &Args) -> anyhow::Result<AutomatedDownloader> {
+    use pangea_ces::{AutomatedDownloader, Cache};
+    
+    // For cache-only operations, we still need minimal setup
+    // but we don't need to connect to the Go node
+    let go_addr: std::net::SocketAddr = _args.go_addr.parse()?;
+    let go_client = Arc::new(go_client::GoClient::new(go_addr));
+    
+    let caps = capabilities::HardwareCaps::probe();
+    let ces_config = types::CesConfig::adaptive(&caps, 1024 * 1024, 1.0);
+    let ces = Arc::new(ces::CesPipeline::new(ces_config));
+
+    let cache_dir = get_cache_dir();
+    let cache = Arc::new(Cache::new(&cache_dir, DEFAULT_CACHE_MAX_ENTRIES, DEFAULT_CACHE_SIZE_BYTES)?);
+    
+    let store = Arc::new(store::NodeStore::new());
+
+    Ok(AutomatedDownloader::new(ces, go_client, cache, store, None))
+}
+
+/// Format file information for display (UTF-8 safe)
+fn format_file_display(file: &FileInfo) -> (String, String, String) {
+    let hash_short = if file.file_hash.chars().count() > 10 {
+        file.file_hash.chars().take(10).collect::<String>()
+    } else {
+        file.file_hash.clone()
+    };
+    
+    let name_display = if file.file_name.chars().count() > 30 {
+        format!("{}...", file.file_name.chars().take(27).collect::<String>())
+    } else {
+        file.file_name.clone()
+    };
+    
+    let status = if file.is_available { "✅ Ready" } else { "⚠️  Partial" };
+    
+    (hash_short, name_display, status.to_string())
+}
+
+/// Handle automated upload command
+async fn handle_automated_upload(file: &str, args: &Args) -> anyhow::Result<()> {
+    use std::path::Path;
+    use pangea_ces::{AutomatedUploader, Cache};
+
+    info!("🚀 Automated upload mode: {}", file);
+    info!("Using Go node at: {}", args.go_addr);
+
+    // Create Go client
+    let go_addr: std::net::SocketAddr = args.go_addr.parse()?;
+    let go_client = Arc::new(go_client::GoClient::new(go_addr));
+
+    // Connect to Go node
+    go_client.connect().await?;
+
+    // Create CES pipeline
+    let caps = capabilities::HardwareCaps::probe();
+    let ces_config = types::CesConfig::adaptive(&caps, 1024 * 1024, 1.0);
+    let ces = Arc::new(ces::CesPipeline::new(ces_config));
+
+    // Create cache (use default location)
+    let cache_dir = get_cache_dir();
+    let cache = Arc::new(Cache::new(&cache_dir, DEFAULT_CACHE_MAX_ENTRIES, DEFAULT_CACHE_SIZE_BYTES)?);
+
+    // Create node store
+    let store = Arc::new(store::NodeStore::new());
+
+    // Initialize DHT (optional)
+    let dht = init_dht(args).await;
+
+    // Create automated uploader
+    let uploader = AutomatedUploader::new(ces, go_client, cache, store, dht);
+
+    // Upload file
+    let result = uploader.upload(Path::new(file)).await?;
+    
+    println!("\n📊 Upload Summary:");
+    println!("  File hash: {}", result.file_hash);
+    println!("  Shards: {}", result.shard_count);
+    println!("  Distributed to: {} peer(s)", result.total_peers);
+    println!("\n📝 Manifest:\n{}", result.manifest_json);
+
+    Ok(())
+}
+
+/// Handle automated download command
+async fn handle_automated_download(hash: &str, output: Option<&str>, args: &Args) -> anyhow::Result<()> {
+    use std::path::PathBuf;
+    use pangea_ces::{AutomatedDownloader, Cache};
+
+    info!("🚀 Automated download mode: {}", hash);
+    info!("Using Go node at: {}", args.go_addr);
+
+    // Create Go client
+    let go_addr: std::net::SocketAddr = args.go_addr.parse()?;
+    let go_client = Arc::new(go_client::GoClient::new(go_addr));
+
+    // Connect to Go node
+    go_client.connect().await?;
+
+    // Create CES pipeline
+    let caps = capabilities::HardwareCaps::probe();
+    let ces_config = types::CesConfig::adaptive(&caps, 1024 * 1024, 1.0);
+    let ces = Arc::new(ces::CesPipeline::new(ces_config));
+
+    // Create cache
+    let cache_dir = get_cache_dir();
+    let cache = Arc::new(Cache::new(&cache_dir, DEFAULT_CACHE_MAX_ENTRIES, DEFAULT_CACHE_SIZE_BYTES)?);
+
+    // Create node store
+    let store = Arc::new(store::NodeStore::new());
+
+    // Initialize DHT (optional)
+    let dht = init_dht(args).await;
+
+    // Create automated downloader
+    let downloader = AutomatedDownloader::new(ces, go_client, cache, store, dht);
+
+    // Determine output path
+    let output_path = if let Some(path) = output {
+        PathBuf::from(path)
+    } else {
+        // Use file info to get original filename
+        if let Some(info) = downloader.get_info(hash).await? {
+            PathBuf::from(format!("./{}", info.file_name))
+        } else {
+            // Use UTF-8 safe truncation for hash
+            let hash_short: String = hash.chars().take(8).collect();
+            PathBuf::from(format!("./{}.bin", hash_short))
+        }
+    };
+
+    // Download file
+    let result = downloader.download(hash, &output_path).await?;
+    
+    println!("\n📊 Download Summary:");
+    println!("  File: {}", result.file_name);
+    println!("  Hash: {}", result.file_hash);
+    println!("  Downloaded: {} bytes", result.bytes_written);
+    println!("  Shards fetched: {}", result.shards_fetched);
+    println!("  Saved to: {:?}", result.output_path);
+
+    Ok(())
+}
+
+/// Handle list command
+async fn handle_list(args: &Args) -> anyhow::Result<()> {
+    info!("📋 Listing files");
+
+    let downloader = create_cache_downloader(args).await?;
+    let files = downloader.list_files().await?;
+
+    if files.is_empty() {
+        println!("No files found in cache.");
+        return Ok(());
+    }
+
+    println!("\n📁 Available Files ({} total):\n", files.len());
+    println!("{:<10} {:<30} {:<15} {:<10} {:<10}", "Hash", "Name", "Size", "Shards", "Status");
+    println!("{}", "-".repeat(TABLE_SEPARATOR_LEN));
+    
+    for file in files {
+        let (hash_short, name_display, status) = format_file_display(&file);
+        println!("{:<10} {:<30} {:<15} {:<10} {:<10}", 
+                 hash_short,
+                 name_display,
+                 format!("{} B", file.file_size),
+                 file.shard_count,
+                 status);
+    }
+    println!();
+
+    Ok(())
+}
+
+/// Handle search command
+async fn handle_search(pattern: &str, args: &Args) -> anyhow::Result<()> {
+    info!("🔍 Searching for: {}", pattern);
+
+    let downloader = create_cache_downloader(args).await?;
+    let files = downloader.search(pattern).await?;
+
+    if files.is_empty() {
+        println!("No files matching '{}' found.", pattern);
+        return Ok(());
+    }
+
+    println!("\n🔍 Search Results for '{}' ({} found):\n", pattern, files.len());
+    println!("{:<10} {:<30} {:<15} {:<10} {:<10}", "Hash", "Name", "Size", "Shards", "Status");
+    println!("{}", "-".repeat(TABLE_SEPARATOR_LEN));
+    
+    for file in files {
+        let (hash_short, name_display, status) = format_file_display(&file);
+        println!("{:<10} {:<30} {:<15} {:<10} {:<10}", 
+                 hash_short,
+                 name_display,
+                 format!("{} B", file.file_size),
+                 file.shard_count,
+                 status);
+    }
+    println!();
+
+    Ok(())
+}
+
+/// Handle info command
+async fn handle_info(hash: &str, args: &Args) -> anyhow::Result<()> {
+    info!("ℹ️  Getting info for: {}", hash);
+
+    let downloader = create_cache_downloader(args).await?;
+    
+    if let Some(info) = downloader.get_info(hash).await? {
+        use chrono::{DateTime, Utc};
+        let timestamp_str = DateTime::<Utc>::from_timestamp(info.timestamp, 0)
+            .map(|dt| dt.format("%Y-%m-%d %H:%M:%S").to_string())
+            .unwrap_or_else(|| "Unknown".to_string());
+            
+        println!("\n📄 File Information:");
+        println!("  Name: {}", info.file_name);
+        println!("  Hash: {}", info.file_hash);
+        println!("  Size: {} bytes ({:.2} MB)", info.file_size, info.file_size as f64 / BYTES_PER_MB);
+        println!("  Shards: {}", info.shard_count);
+        println!("  Status: {}", if info.is_available { "✅ Available" } else { "⚠️  Partially available" });
+        println!("  Timestamp: {}", timestamp_str);
+        println!();
+    } else {
+        println!("❌ File not found: {}", hash);
+    }
 
     Ok(())
 }
