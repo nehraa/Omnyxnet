@@ -88,6 +88,11 @@ func (c *CESPipeline) Process(data []byte) ([]Shard, error) {
 		return nil, fmt.Errorf("CES processing failed")
 	}
 
+	// Validate shard count to prevent out-of-bounds access
+	if ffiShards.count > 10000 {
+		return nil, fmt.Errorf("shard count too large: %d", ffiShards.count)
+	}
+
 	// Convert C shards to Go
 	shards := make([]Shard, int(ffiShards.count))
 	cShards := (*[1 << 30]C.FFIShard)(unsafe.Pointer(ffiShards.shards))[:ffiShards.count:ffiShards.count]

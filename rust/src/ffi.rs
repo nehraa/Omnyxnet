@@ -1,9 +1,8 @@
 /// FFI layer for Go ↔ Rust interop
 /// Exposes CES pipeline functions as C-compatible API
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::os::raw::{c_char, c_int, c_uchar};
 use std::slice;
-use std::sync::Arc;
 
 use crate::ces::CesPipeline;
 use crate::types::CesConfig;
@@ -164,10 +163,8 @@ pub extern "C" fn ces_reconstruct(
 pub extern "C" fn ces_free_result(result: FFIResult) {
     unsafe {
         if !result.data.is_null() {
-            drop(Box::from_raw(slice::from_raw_parts_mut(
-                result.data,
-                result.data_len,
-            )));
+            // Reconstruct the boxed slice that was created with Box::into_raw
+            let _ = Box::from_raw(slice::from_raw_parts_mut(result.data, result.data_len));
         }
         if !result.error_msg.is_null() {
             drop(CString::from_raw(result.error_msg));
@@ -186,10 +183,8 @@ pub extern "C" fn ces_free_shards(shards: FFIShards) {
         let shards_vec = Vec::from_raw_parts(shards.shards, shards.count, shards.count);
         for shard in shards_vec {
             if !shard.data.is_null() {
-                drop(Box::from_raw(slice::from_raw_parts_mut(
-                    shard.data,
-                    shard.len,
-                )));
+                // Reconstruct the boxed slice that was created with Box::into_raw
+                let _ = Box::from_raw(slice::from_raw_parts_mut(shard.data, shard.len));
             }
         }
     }

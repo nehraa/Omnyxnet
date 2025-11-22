@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use capnp::capability::Promise;
+
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 use std::net::SocketAddr;
 use std::sync::RwLock;
