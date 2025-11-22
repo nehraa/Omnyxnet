@@ -241,7 +241,11 @@ list_files() {
 }
 
 status() {
-    PID=$(cat "$DATA_DIR/node.pid" 2>/dev/null)
+    if [ -f "$DATA_DIR/node.pid" ]; then
+        PID=$(cat "$DATA_DIR/node.pid")
+    else
+        PID=""
+    fi
     if [ -n "$PID" ] && ps -p $PID > /dev/null 2>&1; then
         echo "Node Status: RUNNING (PID: $PID)"
     else
