@@ -28,6 +28,7 @@
 - **Cross-device P2P communication (tested and working)**
 - **Dynamic port assignment with libp2p**
 - **Peer discovery and NAT traversal**
+- **mDNS auto-discovery for local networks (zero-config peer finding)**
 
 #### In Progress 🚧
 - Production hardening and monitoring

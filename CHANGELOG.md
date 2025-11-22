@@ -29,6 +29,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Peer discovery and NAT traversal capabilities**
 - Enhanced `easy_test.sh` script with automatic port/peer ID extraction
 - Interactive cross-device setup with proper multiaddr handling
+- **mDNS auto-discovery** for zero-config local network peer finding
+- Automatic connection to mDNS-discovered peers
+- `test_mdns.sh` script for testing local peer discovery
+- Comprehensive mDNS documentation in `docs/MDNS.md`
 
 ### Changed
 - Updated README.md to clarify alpha status and limitations
