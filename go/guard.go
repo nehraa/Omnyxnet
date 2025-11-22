@@ -218,7 +218,7 @@ func (g *GuardObject) AuthenticateStream(stream network.Stream, token string, se
 }
 
 // ProcessAuthenticatedData passes authenticated data to CES pipeline
-func (g *GuardObject) ProcessAuthenticatedData(data []byte) ([]Shard, error) {
+func (g *GuardObject) ProcessAuthenticatedData(data []byte) ([]ShardData, error) {
 	if g.cesPipeline == nil {
 		return nil, fmt.Errorf("CES pipeline not configured")
 	}
