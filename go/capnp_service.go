@@ -1,0 +1,400 @@
+// Package main implements the Cap'n Proto RPC server for Python-Go communication.
+//
+// IMPORTANT: This file requires generated code from schema.capnp.
+// Before building, run: capnp compile -ogo schema.capnp
+// This will generate types like NodeService_getNode, NodeService_ServerToClient, etc.
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net"
+
+	"capnproto.org/go/capnp/v3"
+	"capnproto.org/go/capnp/v3/rpc"
+)
+
+// nodeServiceServer implements the Cap'n Proto NodeService interface
+// Note: NodeService_Server interface is generated in schema.capnp.go
+type nodeServiceServer struct {
+	store   *NodeStore
+	network NetworkAdapter
+	shmMgr  *SharedMemoryManager
+}
+
+// NewNodeServiceServer creates a new NodeService server
+func NewNodeServiceServer(store *NodeStore, network NetworkAdapter, shmMgr *SharedMemoryManager) NodeService_Server {
+	return &nodeServiceServer{
+		store:   store,
+		network: network,
+		shmMgr:  shmMgr,
+	}
+}
+
+// GetNode implements the getNode method
+func (s *nodeServiceServer) GetNode(ctx context.Context, call NodeService_getNode) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	query, err := args.Query()
+	if err != nil {
+		return err
+	}
+
+	nodeID := query.NodeId()
+	localNode, exists := s.store.GetNode(nodeID)
+	if !exists {
+		return fmt.Errorf("node %d not found", nodeID)
+	}
+
+	nodeMsg, err := results.NewNode()
+	if err != nil {
+		return err
+	}
+
+	nodeMsg.SetId(localNode.ID)
+	nodeMsg.SetStatus(uint32(localNode.Status))
+	nodeMsg.SetLatencyMs(localNode.LatencyMs)
+	nodeMsg.SetThreatScore(localNode.ThreatScore)
+
+	return nil
+}
+
+// GetAllNodes implements the getAllNodes method
+func (s *nodeServiceServer) GetAllNodes(ctx context.Context, call NodeService_getAllNodes) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	localNodes := s.store.GetAllNodes()
+	nodeList, err := results.NewNodes()
+	if err != nil {
+		return err
+	}
+
+	// Create a list of nodes using generated code
+	seg := results.Segment()
+	nodesList, err := NewNode_List(seg, int32(len(localNodes)))
+	if err != nil {
+		return err
+	}
+
+	for i, localNode := range localNodes {
+		nodeMsg := nodesList.At(i)
+		nodeMsg.SetId(localNode.ID)
+		nodeMsg.SetStatus(uint32(localNode.Status))
+		nodeMsg.SetLatencyMs(localNode.LatencyMs)
+		nodeMsg.SetThreatScore(localNode.ThreatScore)
+	}
+
+	nodeList.SetNodes(nodesList)
+	return nil
+}
+
+// UpdateNode implements the updateNode method
+func (s *nodeServiceServer) UpdateNode(ctx context.Context, call NodeService_updateNode) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	update, err := args.Update()
+	if err != nil {
+		return err
+	}
+
+	nodeID := update.NodeId()
+	latencyMs := update.LatencyMs()
+	threatScore := update.ThreatScore()
+
+	success := s.store.UpdateLatency(nodeID, latencyMs)
+	if success {
+		success = s.store.UpdateThreatScore(nodeID, threatScore)
+	}
+
+	results.SetSuccess(success)
+	return nil
+}
+
+// UpdateLatency implements the updateLatency method
+func (s *nodeServiceServer) UpdateLatency(ctx context.Context, call NodeService_updateLatency) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	nodeID := args.NodeId()
+	latencyMs := args.LatencyMs()
+
+	success := s.store.UpdateLatency(nodeID, latencyMs)
+	results.SetSuccess(success)
+	return nil
+}
+
+// StreamUpdates implements the streamUpdates method
+// NOTE: Real-time streaming would require event-driven architecture
+// For high-throughput data, use shared memory (see WriteToSharedMemory/ReadFromSharedMemory)
+func (s *nodeServiceServer) StreamUpdates(ctx context.Context, call NodeService_streamUpdates) error {
+	// UNTESTABLE: Requires multi-node deployment with real network events
+	// This is a placeholder that demonstrates the intended structure
+
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	// In production, this would:
+	// 1. Subscribe to node state change events
+	// 2. Stream updates as they occur
+	// 3. For large data streams, write to shared memory and return pointers
+
+	// Return current snapshot for now
+	update, err := results.NewUpdate()
+	if err != nil {
+		return err
+	}
+
+	// Get first node as example
+	nodes := s.store.GetAllNodes()
+	if len(nodes) > 0 {
+		update.SetNodeId(nodes[0].ID)
+		update.SetLatencyMs(nodes[0].LatencyMs)
+		update.SetThreatScore(nodes[0].ThreatScore)
+	}
+
+	return nil
+}
+
+// ConnectToPeer implements the connectToPeer method
+func (s *nodeServiceServer) ConnectToPeer(ctx context.Context, call NodeService_connectToPeer) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	peer, err := args.Peer()
+	if err != nil {
+		return err
+	}
+
+	peerID := peer.PeerId()
+	host, err := peer.Host()
+	if err != nil {
+		return err
+	}
+	port := peer.Port()
+
+	// Construct peer address
+	peerAddr := fmt.Sprintf("%s:%d", host, port)
+
+	// Connect using network adapter
+	err = s.network.ConnectToPeer(peerAddr, peerID)
+	if err != nil {
+		results.SetSuccess(false)
+		return nil // Don't fail RPC call, just indicate failure
+	}
+
+	// Get connection quality
+	latencyMs, jitterMs, packetLoss, err := s.network.GetConnectionQuality(peerID)
+	if err != nil {
+		latencyMs = 0
+		jitterMs = 0
+		packetLoss = 0
+	}
+
+	// Set success and quality
+	results.SetSuccess(true)
+	quality, err := results.NewQuality()
+	if err != nil {
+		return err
+	}
+	quality.SetLatencyMs(latencyMs)
+	quality.SetJitterMs(jitterMs)
+	quality.SetPacketLoss(packetLoss)
+
+	return nil
+}
+
+// SendMessage implements the sendMessage method
+func (s *nodeServiceServer) SendMessage(ctx context.Context, call NodeService_sendMessage) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	msg, err := args.Msg()
+	if err != nil {
+		return err
+	}
+
+	toPeerID := msg.ToPeerId()
+	data, err := msg.Data()
+	if err != nil {
+		return err
+	}
+
+	// Send message using network adapter
+	err = s.network.SendMessage(toPeerID, data)
+	if err != nil {
+		log.Printf("Failed to send message to peer %d: %v", toPeerID, err)
+		results.SetSuccess(false)
+	} else {
+		results.SetSuccess(true)
+	}
+
+	return nil
+}
+
+// GetConnectionQuality implements the getConnectionQuality method
+func (s *nodeServiceServer) GetConnectionQuality(ctx context.Context, call NodeService_getConnectionQuality) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	peerID := args.PeerId()
+
+	// Get quality metrics from network adapter
+	latencyMs, jitterMs, packetLoss, err := s.network.GetConnectionQuality(peerID)
+	if err != nil {
+		// Return zero values if error
+		latencyMs = 0
+		jitterMs = 0
+		packetLoss = 0
+	}
+
+	quality, err := results.NewQuality()
+	if err != nil {
+		return err
+	}
+
+	quality.SetLatencyMs(latencyMs)
+	quality.SetJitterMs(jitterMs)
+	quality.SetPacketLoss(packetLoss)
+
+	return nil
+}
+
+// DisconnectPeer implements the disconnectPeer method
+func (s *nodeServiceServer) DisconnectPeer(ctx context.Context, call NodeService_disconnectPeer) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	peerID := args.PeerId()
+
+	// Disconnect using network adapter
+	err = s.network.DisconnectPeer(peerID)
+	if err != nil {
+		log.Printf("Failed to disconnect peer %d: %v", peerID, err)
+		results.SetSuccess(false)
+	} else {
+		results.SetSuccess(true)
+	}
+
+	return nil
+}
+
+// GetConnectedPeers implements the getConnectedPeers method
+func (s *nodeServiceServer) GetConnectedPeers(ctx context.Context, call NodeService_getConnectedPeers) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	// Get connected peers from network adapter
+	peerIDs := s.network.GetConnectedPeers()
+
+	// Create uint32 list
+	seg := results.Segment()
+	peersList, err := capnp.NewUInt32List(seg, int32(len(peerIDs)))
+	if err != nil {
+		return err
+	}
+
+	for i, peerID := range peerIDs {
+		peersList.Set(i, peerID)
+	}
+
+	if err := results.SetPeers(peersList); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// StartCapnpServer starts the Cap'n Proto RPC server
+func StartCapnpServer(store *NodeStore, network NetworkAdapter, shmMgr *SharedMemoryManager, address string) error {
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return fmt.Errorf("failed to listen on %s: %w", address, err)
+	}
+
+	log.Printf("Cap'n Proto server listening on %s", address)
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Printf("Error accepting connection: %v", err)
+			continue
+		}
+
+		go handleCapnpConnection(conn, store, network, shmMgr)
+	}
+}
+
+func handleCapnpConnection(conn net.Conn, store *NodeStore, network NetworkAdapter, shmMgr *SharedMemoryManager) {
+	defer conn.Close()
+
+	transport := rpc.NewStreamTransport(conn)
+	defer transport.Close()
+
+	// Create the service implementation
+	serviceImpl := NewNodeServiceServer(store, network, shmMgr)
+
+	// Create RPC connection with our service as bootstrap
+	// NodeService_ServerToClient returns a NodeService which is a capnp.Client
+	bootstrapClient := NodeService_ServerToClient(serviceImpl)
+	conn_rpc := rpc.NewConn(transport, &rpc.Options{
+		BootstrapClient: capnp.Client(bootstrapClient),
+	})
+	defer conn_rpc.Close()
+
+	<-conn_rpc.Done()
+}
+
+// WriteToSharedMemory writes data to shared memory and returns the offset
+// Python can call this to efficiently transfer large data (shards, messages)
+func (s *nodeServiceServer) WriteToSharedMemory(ringName string, data []byte) (uint64, error) {
+	ring, ok := s.shmMgr.GetRing(ringName)
+	if !ok {
+		// Create ring on first use (16MB default)
+		var err error
+		ring, err = s.shmMgr.CreateRing(ringName, 16*1024*1024)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create shared memory ring: %w", err)
+		}
+	}
+	return ring.Write(data)
+}
+
+// ReadFromSharedMemory reads data from shared memory at the given offset
+func (s *nodeServiceServer) ReadFromSharedMemory(ringName string, offset uint64) ([]byte, error) {
+	ring, ok := s.shmMgr.GetRing(ringName)
+	if !ok {
+		return nil, fmt.Errorf("shared memory ring %s not found", ringName)
+	}
+	return ring.ReadAt(offset)
+}

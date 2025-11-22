@@ -1,0 +1,56 @@
+# Binaries
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Dependency directories
+vendor/
+
+# Go workspace file
+go.work
+
+# Generated Cap'n Proto files
+*_capnp.go
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Rust
+rust/target/
+*.rs.bk
+Cargo.lock
+
+# Go
+go/bin/
+
+# Shared memory
+/dev/shm/*
+
+# OS
+.DS_Store
+Thumbs.db
+

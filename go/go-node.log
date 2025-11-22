@@ -1,0 +1,6 @@
+nohup: ignoring input
+2025/11/21 00:32:04 Starting Pangea Net Go Node (ID: 1)
+2025/11/21 00:32:04 Created node 1 with status: 0
+2025/11/21 00:32:04 P2P Node 1 listening on :9090
+2025/11/21 00:32:04 Cap'n Proto server listening on :8080
+2025/11/21 00:32:04 Node running. Press Ctrl+C to stop.
