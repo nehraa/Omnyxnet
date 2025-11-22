@@ -627,6 +627,1300 @@ func (f ConnectionQuality_Future) Struct() (ConnectionQuality, error) {
 	return ConnectionQuality(p.Struct()), err
 }
 
+type NetworkMetrics capnp.Struct
+
+// NetworkMetrics_TypeID is the unique identifier for the type NetworkMetrics.
+const NetworkMetrics_TypeID = 0xbfcdf2aecb6717a5
+
+func NewNetworkMetrics(s *capnp.Segment) (NetworkMetrics, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 24, PointerCount: 0})
+	return NetworkMetrics(st), err
+}
+
+func NewRootNetworkMetrics(s *capnp.Segment) (NetworkMetrics, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 24, PointerCount: 0})
+	return NetworkMetrics(st), err
+}
+
+func ReadRootNetworkMetrics(msg *capnp.Message) (NetworkMetrics, error) {
+	root, err := msg.Root()
+	return NetworkMetrics(root.Struct()), err
+}
+
+func (s NetworkMetrics) String() string {
+	str, _ := text.Marshal(0xbfcdf2aecb6717a5, capnp.Struct(s))
+	return str
+}
+
+func (s NetworkMetrics) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (NetworkMetrics) DecodeFromPtr(p capnp.Ptr) NetworkMetrics {
+	return NetworkMetrics(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s NetworkMetrics) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s NetworkMetrics) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s NetworkMetrics) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s NetworkMetrics) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s NetworkMetrics) AvgRttMs() float32 {
+	return math.Float32frombits(capnp.Struct(s).Uint32(0))
+}
+
+func (s NetworkMetrics) SetAvgRttMs(v float32) {
+	capnp.Struct(s).SetUint32(0, math.Float32bits(v))
+}
+
+func (s NetworkMetrics) PacketLoss() float32 {
+	return math.Float32frombits(capnp.Struct(s).Uint32(4))
+}
+
+func (s NetworkMetrics) SetPacketLoss(v float32) {
+	capnp.Struct(s).SetUint32(4, math.Float32bits(v))
+}
+
+func (s NetworkMetrics) BandwidthMbps() float32 {
+	return math.Float32frombits(capnp.Struct(s).Uint32(8))
+}
+
+func (s NetworkMetrics) SetBandwidthMbps(v float32) {
+	capnp.Struct(s).SetUint32(8, math.Float32bits(v))
+}
+
+func (s NetworkMetrics) PeerCount() uint32 {
+	return capnp.Struct(s).Uint32(12)
+}
+
+func (s NetworkMetrics) SetPeerCount(v uint32) {
+	capnp.Struct(s).SetUint32(12, v)
+}
+
+func (s NetworkMetrics) CpuUsage() float32 {
+	return math.Float32frombits(capnp.Struct(s).Uint32(16))
+}
+
+func (s NetworkMetrics) SetCpuUsage(v float32) {
+	capnp.Struct(s).SetUint32(16, math.Float32bits(v))
+}
+
+func (s NetworkMetrics) IoCapacity() float32 {
+	return math.Float32frombits(capnp.Struct(s).Uint32(20))
+}
+
+func (s NetworkMetrics) SetIoCapacity(v float32) {
+	capnp.Struct(s).SetUint32(20, math.Float32bits(v))
+}
+
+// NetworkMetrics_List is a list of NetworkMetrics.
+type NetworkMetrics_List = capnp.StructList[NetworkMetrics]
+
+// NewNetworkMetrics creates a new list of NetworkMetrics.
+func NewNetworkMetrics_List(s *capnp.Segment, sz int32) (NetworkMetrics_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 24, PointerCount: 0}, sz)
+	return capnp.StructList[NetworkMetrics](l), err
+}
+
+// NetworkMetrics_Future is a wrapper for a NetworkMetrics promised by a client call.
+type NetworkMetrics_Future struct{ *capnp.Future }
+
+func (f NetworkMetrics_Future) Struct() (NetworkMetrics, error) {
+	p, err := f.Future.Ptr()
+	return NetworkMetrics(p.Struct()), err
+}
+
+type Shard capnp.Struct
+
+// Shard_TypeID is the unique identifier for the type Shard.
+const Shard_TypeID = 0xe9e132c3e15249f5
+
+func NewShard(s *capnp.Segment) (Shard, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	return Shard(st), err
+}
+
+func NewRootShard(s *capnp.Segment) (Shard, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	return Shard(st), err
+}
+
+func ReadRootShard(msg *capnp.Message) (Shard, error) {
+	root, err := msg.Root()
+	return Shard(root.Struct()), err
+}
+
+func (s Shard) String() string {
+	str, _ := text.Marshal(0xe9e132c3e15249f5, capnp.Struct(s))
+	return str
+}
+
+func (s Shard) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (Shard) DecodeFromPtr(p capnp.Ptr) Shard {
+	return Shard(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s Shard) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s Shard) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s Shard) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s Shard) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s Shard) Index() uint32 {
+	return capnp.Struct(s).Uint32(0)
+}
+
+func (s Shard) SetIndex(v uint32) {
+	capnp.Struct(s).SetUint32(0, v)
+}
+
+func (s Shard) Data() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s Shard) HasData() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s Shard) SetData(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+// Shard_List is a list of Shard.
+type Shard_List = capnp.StructList[Shard]
+
+// NewShard creates a new list of Shard.
+func NewShard_List(s *capnp.Segment, sz int32) (Shard_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
+	return capnp.StructList[Shard](l), err
+}
+
+// Shard_Future is a wrapper for a Shard promised by a client call.
+type Shard_Future struct{ *capnp.Future }
+
+func (f Shard_Future) Struct() (Shard, error) {
+	p, err := f.Future.Ptr()
+	return Shard(p.Struct()), err
+}
+
+type ShardLocation capnp.Struct
+
+// ShardLocation_TypeID is the unique identifier for the type ShardLocation.
+const ShardLocation_TypeID = 0xde9e0c15482a1a59
+
+func NewShardLocation(s *capnp.Segment) (ShardLocation, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
+	return ShardLocation(st), err
+}
+
+func NewRootShardLocation(s *capnp.Segment) (ShardLocation, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0})
+	return ShardLocation(st), err
+}
+
+func ReadRootShardLocation(msg *capnp.Message) (ShardLocation, error) {
+	root, err := msg.Root()
+	return ShardLocation(root.Struct()), err
+}
+
+func (s ShardLocation) String() string {
+	str, _ := text.Marshal(0xde9e0c15482a1a59, capnp.Struct(s))
+	return str
+}
+
+func (s ShardLocation) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (ShardLocation) DecodeFromPtr(p capnp.Ptr) ShardLocation {
+	return ShardLocation(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s ShardLocation) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s ShardLocation) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s ShardLocation) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s ShardLocation) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s ShardLocation) ShardIndex() uint32 {
+	return capnp.Struct(s).Uint32(0)
+}
+
+func (s ShardLocation) SetShardIndex(v uint32) {
+	capnp.Struct(s).SetUint32(0, v)
+}
+
+func (s ShardLocation) PeerId() uint32 {
+	return capnp.Struct(s).Uint32(4)
+}
+
+func (s ShardLocation) SetPeerId(v uint32) {
+	capnp.Struct(s).SetUint32(4, v)
+}
+
+// ShardLocation_List is a list of ShardLocation.
+type ShardLocation_List = capnp.StructList[ShardLocation]
+
+// NewShardLocation creates a new list of ShardLocation.
+func NewShardLocation_List(s *capnp.Segment, sz int32) (ShardLocation_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 0}, sz)
+	return capnp.StructList[ShardLocation](l), err
+}
+
+// ShardLocation_Future is a wrapper for a ShardLocation promised by a client call.
+type ShardLocation_Future struct{ *capnp.Future }
+
+func (f ShardLocation_Future) Struct() (ShardLocation, error) {
+	p, err := f.Future.Ptr()
+	return ShardLocation(p.Struct()), err
+}
+
+type FileManifest capnp.Struct
+
+// FileManifest_TypeID is the unique identifier for the type FileManifest.
+const FileManifest_TypeID = 0xef279ef0520dc3ad
+
+func NewFileManifest(s *capnp.Segment) (FileManifest, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 32, PointerCount: 3})
+	return FileManifest(st), err
+}
+
+func NewRootFileManifest(s *capnp.Segment) (FileManifest, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 32, PointerCount: 3})
+	return FileManifest(st), err
+}
+
+func ReadRootFileManifest(msg *capnp.Message) (FileManifest, error) {
+	root, err := msg.Root()
+	return FileManifest(root.Struct()), err
+}
+
+func (s FileManifest) String() string {
+	str, _ := text.Marshal(0xef279ef0520dc3ad, capnp.Struct(s))
+	return str
+}
+
+func (s FileManifest) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (FileManifest) DecodeFromPtr(p capnp.Ptr) FileManifest {
+	return FileManifest(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s FileManifest) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s FileManifest) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s FileManifest) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s FileManifest) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s FileManifest) FileHash() (string, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s FileManifest) HasFileHash() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s FileManifest) FileHashBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s FileManifest) SetFileHash(v string) error {
+	return capnp.Struct(s).SetText(0, v)
+}
+
+func (s FileManifest) FileName() (string, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.Text(), err
+}
+
+func (s FileManifest) HasFileName() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s FileManifest) FileNameBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.TextBytes(), err
+}
+
+func (s FileManifest) SetFileName(v string) error {
+	return capnp.Struct(s).SetText(1, v)
+}
+
+func (s FileManifest) FileSize() uint64 {
+	return capnp.Struct(s).Uint64(0)
+}
+
+func (s FileManifest) SetFileSize(v uint64) {
+	capnp.Struct(s).SetUint64(0, v)
+}
+
+func (s FileManifest) ShardCount() uint32 {
+	return capnp.Struct(s).Uint32(8)
+}
+
+func (s FileManifest) SetShardCount(v uint32) {
+	capnp.Struct(s).SetUint32(8, v)
+}
+
+func (s FileManifest) ParityCount() uint32 {
+	return capnp.Struct(s).Uint32(12)
+}
+
+func (s FileManifest) SetParityCount(v uint32) {
+	capnp.Struct(s).SetUint32(12, v)
+}
+
+func (s FileManifest) ShardLocations() (ShardLocation_List, error) {
+	p, err := capnp.Struct(s).Ptr(2)
+	return ShardLocation_List(p.List()), err
+}
+
+func (s FileManifest) HasShardLocations() bool {
+	return capnp.Struct(s).HasPtr(2)
+}
+
+func (s FileManifest) SetShardLocations(v ShardLocation_List) error {
+	return capnp.Struct(s).SetPtr(2, v.ToPtr())
+}
+
+// NewShardLocations sets the shardLocations field to a newly
+// allocated ShardLocation_List, preferring placement in s's segment.
+func (s FileManifest) NewShardLocations(n int32) (ShardLocation_List, error) {
+	l, err := NewShardLocation_List(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return ShardLocation_List{}, err
+	}
+	err = capnp.Struct(s).SetPtr(2, l.ToPtr())
+	return l, err
+}
+func (s FileManifest) Timestamp() int64 {
+	return int64(capnp.Struct(s).Uint64(16))
+}
+
+func (s FileManifest) SetTimestamp(v int64) {
+	capnp.Struct(s).SetUint64(16, uint64(v))
+}
+
+func (s FileManifest) Ttl() uint32 {
+	return capnp.Struct(s).Uint32(24)
+}
+
+func (s FileManifest) SetTtl(v uint32) {
+	capnp.Struct(s).SetUint32(24, v)
+}
+
+// FileManifest_List is a list of FileManifest.
+type FileManifest_List = capnp.StructList[FileManifest]
+
+// NewFileManifest creates a new list of FileManifest.
+func NewFileManifest_List(s *capnp.Segment, sz int32) (FileManifest_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 32, PointerCount: 3}, sz)
+	return capnp.StructList[FileManifest](l), err
+}
+
+// FileManifest_Future is a wrapper for a FileManifest promised by a client call.
+type FileManifest_Future struct{ *capnp.Future }
+
+func (f FileManifest_Future) Struct() (FileManifest, error) {
+	p, err := f.Future.Ptr()
+	return FileManifest(p.Struct()), err
+}
+
+type CesProcessRequest capnp.Struct
+
+// CesProcessRequest_TypeID is the unique identifier for the type CesProcessRequest.
+const CesProcessRequest_TypeID = 0x9c9ab3d3281ae5e1
+
+func NewCesProcessRequest(s *capnp.Segment) (CesProcessRequest, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	return CesProcessRequest(st), err
+}
+
+func NewRootCesProcessRequest(s *capnp.Segment) (CesProcessRequest, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1})
+	return CesProcessRequest(st), err
+}
+
+func ReadRootCesProcessRequest(msg *capnp.Message) (CesProcessRequest, error) {
+	root, err := msg.Root()
+	return CesProcessRequest(root.Struct()), err
+}
+
+func (s CesProcessRequest) String() string {
+	str, _ := text.Marshal(0x9c9ab3d3281ae5e1, capnp.Struct(s))
+	return str
+}
+
+func (s CesProcessRequest) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (CesProcessRequest) DecodeFromPtr(p capnp.Ptr) CesProcessRequest {
+	return CesProcessRequest(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s CesProcessRequest) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s CesProcessRequest) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s CesProcessRequest) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s CesProcessRequest) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s CesProcessRequest) Data() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s CesProcessRequest) HasData() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s CesProcessRequest) SetData(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+func (s CesProcessRequest) CompressionLevel() int32 {
+	return int32(capnp.Struct(s).Uint32(0))
+}
+
+func (s CesProcessRequest) SetCompressionLevel(v int32) {
+	capnp.Struct(s).SetUint32(0, uint32(v))
+}
+
+// CesProcessRequest_List is a list of CesProcessRequest.
+type CesProcessRequest_List = capnp.StructList[CesProcessRequest]
+
+// NewCesProcessRequest creates a new list of CesProcessRequest.
+func NewCesProcessRequest_List(s *capnp.Segment, sz int32) (CesProcessRequest_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 1}, sz)
+	return capnp.StructList[CesProcessRequest](l), err
+}
+
+// CesProcessRequest_Future is a wrapper for a CesProcessRequest promised by a client call.
+type CesProcessRequest_Future struct{ *capnp.Future }
+
+func (f CesProcessRequest_Future) Struct() (CesProcessRequest, error) {
+	p, err := f.Future.Ptr()
+	return CesProcessRequest(p.Struct()), err
+}
+
+type CesProcessResponse capnp.Struct
+
+// CesProcessResponse_TypeID is the unique identifier for the type CesProcessResponse.
+const CesProcessResponse_TypeID = 0xbd582f74ede03bbc
+
+func NewCesProcessResponse(s *capnp.Segment) (CesProcessResponse, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	return CesProcessResponse(st), err
+}
+
+func NewRootCesProcessResponse(s *capnp.Segment) (CesProcessResponse, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	return CesProcessResponse(st), err
+}
+
+func ReadRootCesProcessResponse(msg *capnp.Message) (CesProcessResponse, error) {
+	root, err := msg.Root()
+	return CesProcessResponse(root.Struct()), err
+}
+
+func (s CesProcessResponse) String() string {
+	str, _ := text.Marshal(0xbd582f74ede03bbc, capnp.Struct(s))
+	return str
+}
+
+func (s CesProcessResponse) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (CesProcessResponse) DecodeFromPtr(p capnp.Ptr) CesProcessResponse {
+	return CesProcessResponse(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s CesProcessResponse) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s CesProcessResponse) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s CesProcessResponse) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s CesProcessResponse) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s CesProcessResponse) Success() bool {
+	return capnp.Struct(s).Bit(0)
+}
+
+func (s CesProcessResponse) SetSuccess(v bool) {
+	capnp.Struct(s).SetBit(0, v)
+}
+
+func (s CesProcessResponse) ErrorMsg() (string, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s CesProcessResponse) HasErrorMsg() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s CesProcessResponse) ErrorMsgBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s CesProcessResponse) SetErrorMsg(v string) error {
+	return capnp.Struct(s).SetText(0, v)
+}
+
+func (s CesProcessResponse) Shards() (Shard_List, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return Shard_List(p.List()), err
+}
+
+func (s CesProcessResponse) HasShards() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s CesProcessResponse) SetShards(v Shard_List) error {
+	return capnp.Struct(s).SetPtr(1, v.ToPtr())
+}
+
+// NewShards sets the shards field to a newly
+// allocated Shard_List, preferring placement in s's segment.
+func (s CesProcessResponse) NewShards(n int32) (Shard_List, error) {
+	l, err := NewShard_List(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return Shard_List{}, err
+	}
+	err = capnp.Struct(s).SetPtr(1, l.ToPtr())
+	return l, err
+}
+
+// CesProcessResponse_List is a list of CesProcessResponse.
+type CesProcessResponse_List = capnp.StructList[CesProcessResponse]
+
+// NewCesProcessResponse creates a new list of CesProcessResponse.
+func NewCesProcessResponse_List(s *capnp.Segment, sz int32) (CesProcessResponse_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2}, sz)
+	return capnp.StructList[CesProcessResponse](l), err
+}
+
+// CesProcessResponse_Future is a wrapper for a CesProcessResponse promised by a client call.
+type CesProcessResponse_Future struct{ *capnp.Future }
+
+func (f CesProcessResponse_Future) Struct() (CesProcessResponse, error) {
+	p, err := f.Future.Ptr()
+	return CesProcessResponse(p.Struct()), err
+}
+
+type CesReconstructRequest capnp.Struct
+
+// CesReconstructRequest_TypeID is the unique identifier for the type CesReconstructRequest.
+const CesReconstructRequest_TypeID = 0x98aa6cc818c60bb5
+
+func NewCesReconstructRequest(s *capnp.Segment) (CesReconstructRequest, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	return CesReconstructRequest(st), err
+}
+
+func NewRootCesReconstructRequest(s *capnp.Segment) (CesReconstructRequest, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	return CesReconstructRequest(st), err
+}
+
+func ReadRootCesReconstructRequest(msg *capnp.Message) (CesReconstructRequest, error) {
+	root, err := msg.Root()
+	return CesReconstructRequest(root.Struct()), err
+}
+
+func (s CesReconstructRequest) String() string {
+	str, _ := text.Marshal(0x98aa6cc818c60bb5, capnp.Struct(s))
+	return str
+}
+
+func (s CesReconstructRequest) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (CesReconstructRequest) DecodeFromPtr(p capnp.Ptr) CesReconstructRequest {
+	return CesReconstructRequest(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s CesReconstructRequest) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s CesReconstructRequest) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s CesReconstructRequest) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s CesReconstructRequest) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s CesReconstructRequest) Shards() (Shard_List, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return Shard_List(p.List()), err
+}
+
+func (s CesReconstructRequest) HasShards() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s CesReconstructRequest) SetShards(v Shard_List) error {
+	return capnp.Struct(s).SetPtr(0, v.ToPtr())
+}
+
+// NewShards sets the shards field to a newly
+// allocated Shard_List, preferring placement in s's segment.
+func (s CesReconstructRequest) NewShards(n int32) (Shard_List, error) {
+	l, err := NewShard_List(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return Shard_List{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, l.ToPtr())
+	return l, err
+}
+func (s CesReconstructRequest) ShardPresent() (capnp.BitList, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return capnp.BitList(p.List()), err
+}
+
+func (s CesReconstructRequest) HasShardPresent() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s CesReconstructRequest) SetShardPresent(v capnp.BitList) error {
+	return capnp.Struct(s).SetPtr(1, v.ToPtr())
+}
+
+// NewShardPresent sets the shardPresent field to a newly
+// allocated capnp.BitList, preferring placement in s's segment.
+func (s CesReconstructRequest) NewShardPresent(n int32) (capnp.BitList, error) {
+	l, err := capnp.NewBitList(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return capnp.BitList{}, err
+	}
+	err = capnp.Struct(s).SetPtr(1, l.ToPtr())
+	return l, err
+}
+func (s CesReconstructRequest) CompressionLevel() int32 {
+	return int32(capnp.Struct(s).Uint32(0))
+}
+
+func (s CesReconstructRequest) SetCompressionLevel(v int32) {
+	capnp.Struct(s).SetUint32(0, uint32(v))
+}
+
+// CesReconstructRequest_List is a list of CesReconstructRequest.
+type CesReconstructRequest_List = capnp.StructList[CesReconstructRequest]
+
+// NewCesReconstructRequest creates a new list of CesReconstructRequest.
+func NewCesReconstructRequest_List(s *capnp.Segment, sz int32) (CesReconstructRequest_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2}, sz)
+	return capnp.StructList[CesReconstructRequest](l), err
+}
+
+// CesReconstructRequest_Future is a wrapper for a CesReconstructRequest promised by a client call.
+type CesReconstructRequest_Future struct{ *capnp.Future }
+
+func (f CesReconstructRequest_Future) Struct() (CesReconstructRequest, error) {
+	p, err := f.Future.Ptr()
+	return CesReconstructRequest(p.Struct()), err
+}
+
+type CesReconstructResponse capnp.Struct
+
+// CesReconstructResponse_TypeID is the unique identifier for the type CesReconstructResponse.
+const CesReconstructResponse_TypeID = 0x90acbda6faadea6a
+
+func NewCesReconstructResponse(s *capnp.Segment) (CesReconstructResponse, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	return CesReconstructResponse(st), err
+}
+
+func NewRootCesReconstructResponse(s *capnp.Segment) (CesReconstructResponse, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	return CesReconstructResponse(st), err
+}
+
+func ReadRootCesReconstructResponse(msg *capnp.Message) (CesReconstructResponse, error) {
+	root, err := msg.Root()
+	return CesReconstructResponse(root.Struct()), err
+}
+
+func (s CesReconstructResponse) String() string {
+	str, _ := text.Marshal(0x90acbda6faadea6a, capnp.Struct(s))
+	return str
+}
+
+func (s CesReconstructResponse) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (CesReconstructResponse) DecodeFromPtr(p capnp.Ptr) CesReconstructResponse {
+	return CesReconstructResponse(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s CesReconstructResponse) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s CesReconstructResponse) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s CesReconstructResponse) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s CesReconstructResponse) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s CesReconstructResponse) Success() bool {
+	return capnp.Struct(s).Bit(0)
+}
+
+func (s CesReconstructResponse) SetSuccess(v bool) {
+	capnp.Struct(s).SetBit(0, v)
+}
+
+func (s CesReconstructResponse) ErrorMsg() (string, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s CesReconstructResponse) HasErrorMsg() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s CesReconstructResponse) ErrorMsgBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s CesReconstructResponse) SetErrorMsg(v string) error {
+	return capnp.Struct(s).SetText(0, v)
+}
+
+func (s CesReconstructResponse) Data() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return []byte(p.Data()), err
+}
+
+func (s CesReconstructResponse) HasData() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s CesReconstructResponse) SetData(v []byte) error {
+	return capnp.Struct(s).SetData(1, v)
+}
+
+// CesReconstructResponse_List is a list of CesReconstructResponse.
+type CesReconstructResponse_List = capnp.StructList[CesReconstructResponse]
+
+// NewCesReconstructResponse creates a new list of CesReconstructResponse.
+func NewCesReconstructResponse_List(s *capnp.Segment, sz int32) (CesReconstructResponse_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2}, sz)
+	return capnp.StructList[CesReconstructResponse](l), err
+}
+
+// CesReconstructResponse_Future is a wrapper for a CesReconstructResponse promised by a client call.
+type CesReconstructResponse_Future struct{ *capnp.Future }
+
+func (f CesReconstructResponse_Future) Struct() (CesReconstructResponse, error) {
+	p, err := f.Future.Ptr()
+	return CesReconstructResponse(p.Struct()), err
+}
+
+type UploadRequest capnp.Struct
+
+// UploadRequest_TypeID is the unique identifier for the type UploadRequest.
+const UploadRequest_TypeID = 0x8d153cb065ae9641
+
+func NewUploadRequest(s *capnp.Segment) (UploadRequest, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return UploadRequest(st), err
+}
+
+func NewRootUploadRequest(s *capnp.Segment) (UploadRequest, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return UploadRequest(st), err
+}
+
+func ReadRootUploadRequest(msg *capnp.Message) (UploadRequest, error) {
+	root, err := msg.Root()
+	return UploadRequest(root.Struct()), err
+}
+
+func (s UploadRequest) String() string {
+	str, _ := text.Marshal(0x8d153cb065ae9641, capnp.Struct(s))
+	return str
+}
+
+func (s UploadRequest) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (UploadRequest) DecodeFromPtr(p capnp.Ptr) UploadRequest {
+	return UploadRequest(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s UploadRequest) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s UploadRequest) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s UploadRequest) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s UploadRequest) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s UploadRequest) Data() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return []byte(p.Data()), err
+}
+
+func (s UploadRequest) HasData() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s UploadRequest) SetData(v []byte) error {
+	return capnp.Struct(s).SetData(0, v)
+}
+
+func (s UploadRequest) TargetPeers() (capnp.UInt32List, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return capnp.UInt32List(p.List()), err
+}
+
+func (s UploadRequest) HasTargetPeers() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s UploadRequest) SetTargetPeers(v capnp.UInt32List) error {
+	return capnp.Struct(s).SetPtr(1, v.ToPtr())
+}
+
+// NewTargetPeers sets the targetPeers field to a newly
+// allocated capnp.UInt32List, preferring placement in s's segment.
+func (s UploadRequest) NewTargetPeers(n int32) (capnp.UInt32List, error) {
+	l, err := capnp.NewUInt32List(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return capnp.UInt32List{}, err
+	}
+	err = capnp.Struct(s).SetPtr(1, l.ToPtr())
+	return l, err
+}
+
+// UploadRequest_List is a list of UploadRequest.
+type UploadRequest_List = capnp.StructList[UploadRequest]
+
+// NewUploadRequest creates a new list of UploadRequest.
+func NewUploadRequest_List(s *capnp.Segment, sz int32) (UploadRequest_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	return capnp.StructList[UploadRequest](l), err
+}
+
+// UploadRequest_Future is a wrapper for a UploadRequest promised by a client call.
+type UploadRequest_Future struct{ *capnp.Future }
+
+func (f UploadRequest_Future) Struct() (UploadRequest, error) {
+	p, err := f.Future.Ptr()
+	return UploadRequest(p.Struct()), err
+}
+
+type UploadResponse capnp.Struct
+
+// UploadResponse_TypeID is the unique identifier for the type UploadResponse.
+const UploadResponse_TypeID = 0xf4e8a50912f9f3a3
+
+func NewUploadResponse(s *capnp.Segment) (UploadResponse, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	return UploadResponse(st), err
+}
+
+func NewRootUploadResponse(s *capnp.Segment) (UploadResponse, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2})
+	return UploadResponse(st), err
+}
+
+func ReadRootUploadResponse(msg *capnp.Message) (UploadResponse, error) {
+	root, err := msg.Root()
+	return UploadResponse(root.Struct()), err
+}
+
+func (s UploadResponse) String() string {
+	str, _ := text.Marshal(0xf4e8a50912f9f3a3, capnp.Struct(s))
+	return str
+}
+
+func (s UploadResponse) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (UploadResponse) DecodeFromPtr(p capnp.Ptr) UploadResponse {
+	return UploadResponse(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s UploadResponse) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s UploadResponse) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s UploadResponse) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s UploadResponse) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s UploadResponse) Success() bool {
+	return capnp.Struct(s).Bit(0)
+}
+
+func (s UploadResponse) SetSuccess(v bool) {
+	capnp.Struct(s).SetBit(0, v)
+}
+
+func (s UploadResponse) ErrorMsg() (string, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s UploadResponse) HasErrorMsg() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s UploadResponse) ErrorMsgBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s UploadResponse) SetErrorMsg(v string) error {
+	return capnp.Struct(s).SetText(0, v)
+}
+
+func (s UploadResponse) Manifest() (FileManifest, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return FileManifest(p.Struct()), err
+}
+
+func (s UploadResponse) HasManifest() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s UploadResponse) SetManifest(v FileManifest) error {
+	return capnp.Struct(s).SetPtr(1, capnp.Struct(v).ToPtr())
+}
+
+// NewManifest sets the manifest field to a newly
+// allocated FileManifest struct, preferring placement in s's segment.
+func (s UploadResponse) NewManifest() (FileManifest, error) {
+	ss, err := NewFileManifest(capnp.Struct(s).Segment())
+	if err != nil {
+		return FileManifest{}, err
+	}
+	err = capnp.Struct(s).SetPtr(1, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// UploadResponse_List is a list of UploadResponse.
+type UploadResponse_List = capnp.StructList[UploadResponse]
+
+// NewUploadResponse creates a new list of UploadResponse.
+func NewUploadResponse_List(s *capnp.Segment, sz int32) (UploadResponse_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 8, PointerCount: 2}, sz)
+	return capnp.StructList[UploadResponse](l), err
+}
+
+// UploadResponse_Future is a wrapper for a UploadResponse promised by a client call.
+type UploadResponse_Future struct{ *capnp.Future }
+
+func (f UploadResponse_Future) Struct() (UploadResponse, error) {
+	p, err := f.Future.Ptr()
+	return UploadResponse(p.Struct()), err
+}
+func (p UploadResponse_Future) Manifest() FileManifest_Future {
+	return FileManifest_Future{Future: p.Future.Field(1, nil)}
+}
+
+type DownloadRequest capnp.Struct
+
+// DownloadRequest_TypeID is the unique identifier for the type DownloadRequest.
+const DownloadRequest_TypeID = 0xee38373305fd81dc
+
+func NewDownloadRequest(s *capnp.Segment) (DownloadRequest, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return DownloadRequest(st), err
+}
+
+func NewRootDownloadRequest(s *capnp.Segment) (DownloadRequest, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2})
+	return DownloadRequest(st), err
+}
+
+func ReadRootDownloadRequest(msg *capnp.Message) (DownloadRequest, error) {
+	root, err := msg.Root()
+	return DownloadRequest(root.Struct()), err
+}
+
+func (s DownloadRequest) String() string {
+	str, _ := text.Marshal(0xee38373305fd81dc, capnp.Struct(s))
+	return str
+}
+
+func (s DownloadRequest) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (DownloadRequest) DecodeFromPtr(p capnp.Ptr) DownloadRequest {
+	return DownloadRequest(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s DownloadRequest) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s DownloadRequest) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s DownloadRequest) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s DownloadRequest) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s DownloadRequest) ShardLocations() (ShardLocation_List, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return ShardLocation_List(p.List()), err
+}
+
+func (s DownloadRequest) HasShardLocations() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s DownloadRequest) SetShardLocations(v ShardLocation_List) error {
+	return capnp.Struct(s).SetPtr(0, v.ToPtr())
+}
+
+// NewShardLocations sets the shardLocations field to a newly
+// allocated ShardLocation_List, preferring placement in s's segment.
+func (s DownloadRequest) NewShardLocations(n int32) (ShardLocation_List, error) {
+	l, err := NewShardLocation_List(capnp.Struct(s).Segment(), n)
+	if err != nil {
+		return ShardLocation_List{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, l.ToPtr())
+	return l, err
+}
+func (s DownloadRequest) FileHash() (string, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.Text(), err
+}
+
+func (s DownloadRequest) HasFileHash() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s DownloadRequest) FileHashBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return p.TextBytes(), err
+}
+
+func (s DownloadRequest) SetFileHash(v string) error {
+	return capnp.Struct(s).SetText(1, v)
+}
+
+// DownloadRequest_List is a list of DownloadRequest.
+type DownloadRequest_List = capnp.StructList[DownloadRequest]
+
+// NewDownloadRequest creates a new list of DownloadRequest.
+func NewDownloadRequest_List(s *capnp.Segment, sz int32) (DownloadRequest_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 2}, sz)
+	return capnp.StructList[DownloadRequest](l), err
+}
+
+// DownloadRequest_Future is a wrapper for a DownloadRequest promised by a client call.
+type DownloadRequest_Future struct{ *capnp.Future }
+
+func (f DownloadRequest_Future) Struct() (DownloadRequest, error) {
+	p, err := f.Future.Ptr()
+	return DownloadRequest(p.Struct()), err
+}
+
+type DownloadResponse capnp.Struct
+
+// DownloadResponse_TypeID is the unique identifier for the type DownloadResponse.
+const DownloadResponse_TypeID = 0xa440f5ee0afc6952
+
+func NewDownloadResponse(s *capnp.Segment) (DownloadResponse, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 16, PointerCount: 2})
+	return DownloadResponse(st), err
+}
+
+func NewRootDownloadResponse(s *capnp.Segment) (DownloadResponse, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 16, PointerCount: 2})
+	return DownloadResponse(st), err
+}
+
+func ReadRootDownloadResponse(msg *capnp.Message) (DownloadResponse, error) {
+	root, err := msg.Root()
+	return DownloadResponse(root.Struct()), err
+}
+
+func (s DownloadResponse) String() string {
+	str, _ := text.Marshal(0xa440f5ee0afc6952, capnp.Struct(s))
+	return str
+}
+
+func (s DownloadResponse) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (DownloadResponse) DecodeFromPtr(p capnp.Ptr) DownloadResponse {
+	return DownloadResponse(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s DownloadResponse) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s DownloadResponse) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s DownloadResponse) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s DownloadResponse) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s DownloadResponse) Success() bool {
+	return capnp.Struct(s).Bit(0)
+}
+
+func (s DownloadResponse) SetSuccess(v bool) {
+	capnp.Struct(s).SetBit(0, v)
+}
+
+func (s DownloadResponse) ErrorMsg() (string, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.Text(), err
+}
+
+func (s DownloadResponse) HasErrorMsg() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s DownloadResponse) ErrorMsgBytes() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return p.TextBytes(), err
+}
+
+func (s DownloadResponse) SetErrorMsg(v string) error {
+	return capnp.Struct(s).SetText(0, v)
+}
+
+func (s DownloadResponse) Data() ([]byte, error) {
+	p, err := capnp.Struct(s).Ptr(1)
+	return []byte(p.Data()), err
+}
+
+func (s DownloadResponse) HasData() bool {
+	return capnp.Struct(s).HasPtr(1)
+}
+
+func (s DownloadResponse) SetData(v []byte) error {
+	return capnp.Struct(s).SetData(1, v)
+}
+
+func (s DownloadResponse) BytesDownloaded() uint64 {
+	return capnp.Struct(s).Uint64(8)
+}
+
+func (s DownloadResponse) SetBytesDownloaded(v uint64) {
+	capnp.Struct(s).SetUint64(8, v)
+}
+
+// DownloadResponse_List is a list of DownloadResponse.
+type DownloadResponse_List = capnp.StructList[DownloadResponse]
+
+// NewDownloadResponse creates a new list of DownloadResponse.
+func NewDownloadResponse_List(s *capnp.Segment, sz int32) (DownloadResponse_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 16, PointerCount: 2}, sz)
+	return capnp.StructList[DownloadResponse](l), err
+}
+
+// DownloadResponse_Future is a wrapper for a DownloadResponse promised by a client call.
+type DownloadResponse_Future struct{ *capnp.Future }
+
+func (f DownloadResponse_Future) Struct() (DownloadResponse, error) {
+	p, err := f.Future.Ptr()
+	return DownloadResponse(p.Struct()), err
+}
+
 type NodeService capnp.Client
 
 // NodeService_TypeID is the unique identifier for the type NodeService.
@@ -832,6 +2126,106 @@ func (c NodeService) GetConnectedPeers(ctx context.Context, params func(NodeServ
 
 }
 
+func (c NodeService) GetNetworkMetrics(ctx context.Context, params func(NodeService_getNetworkMetrics_Params) error) (NodeService_getNetworkMetrics_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xad9c3e2a4e163cf5,
+			MethodID:      10,
+			InterfaceName: "schema/schema.capnp:NodeService",
+			MethodName:    "getNetworkMetrics",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 0}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(NodeService_getNetworkMetrics_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return NodeService_getNetworkMetrics_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c NodeService) CesProcess(ctx context.Context, params func(NodeService_cesProcess_Params) error) (NodeService_cesProcess_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xad9c3e2a4e163cf5,
+			MethodID:      11,
+			InterfaceName: "schema/schema.capnp:NodeService",
+			MethodName:    "cesProcess",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(NodeService_cesProcess_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return NodeService_cesProcess_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c NodeService) CesReconstruct(ctx context.Context, params func(NodeService_cesReconstruct_Params) error) (NodeService_cesReconstruct_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xad9c3e2a4e163cf5,
+			MethodID:      12,
+			InterfaceName: "schema/schema.capnp:NodeService",
+			MethodName:    "cesReconstruct",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(NodeService_cesReconstruct_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return NodeService_cesReconstruct_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c NodeService) Upload(ctx context.Context, params func(NodeService_upload_Params) error) (NodeService_upload_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xad9c3e2a4e163cf5,
+			MethodID:      13,
+			InterfaceName: "schema/schema.capnp:NodeService",
+			MethodName:    "upload",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(NodeService_upload_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return NodeService_upload_Results_Future{Future: ans.Future()}, release
+
+}
+
+func (c NodeService) Download(ctx context.Context, params func(NodeService_download_Params) error) (NodeService_download_Results_Future, capnp.ReleaseFunc) {
+
+	s := capnp.Send{
+		Method: capnp.Method{
+			InterfaceID:   0xad9c3e2a4e163cf5,
+			MethodID:      14,
+			InterfaceName: "schema/schema.capnp:NodeService",
+			MethodName:    "download",
+		},
+	}
+	if params != nil {
+		s.ArgsSize = capnp.ObjectSize{DataSize: 0, PointerCount: 1}
+		s.PlaceArgs = func(s capnp.Struct) error { return params(NodeService_download_Params(s)) }
+	}
+
+	ans, release := capnp.Client(c).SendCall(ctx, s)
+	return NodeService_download_Results_Future{Future: ans.Future()}, release
+
+}
+
 func (c NodeService) WaitStreaming() error {
 	return capnp.Client(c).WaitStreaming()
 }
@@ -924,6 +2318,16 @@ type NodeService_Server interface {
 	DisconnectPeer(context.Context, NodeService_disconnectPeer) error
 
 	GetConnectedPeers(context.Context, NodeService_getConnectedPeers) error
+
+	GetNetworkMetrics(context.Context, NodeService_getNetworkMetrics) error
+
+	CesProcess(context.Context, NodeService_cesProcess) error
+
+	CesReconstruct(context.Context, NodeService_cesReconstruct) error
+
+	Upload(context.Context, NodeService_upload) error
+
+	Download(context.Context, NodeService_download) error
 }
 
 // NodeService_NewServer creates a new Server from an implementation of NodeService_Server.
@@ -942,7 +2346,7 @@ func NodeService_ServerToClient(s NodeService_Server) NodeService {
 // This can be used to create a more complicated Server.
 func NodeService_Methods(methods []server.Method, s NodeService_Server) []server.Method {
 	if cap(methods) == 0 {
-		methods = make([]server.Method, 0, 10)
+		methods = make([]server.Method, 0, 15)
 	}
 
 	methods = append(methods, server.Method{
@@ -1062,6 +2466,66 @@ func NodeService_Methods(methods []server.Method, s NodeService_Server) []server
 		},
 		Impl: func(ctx context.Context, call *server.Call) error {
 			return s.GetConnectedPeers(ctx, NodeService_getConnectedPeers{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xad9c3e2a4e163cf5,
+			MethodID:      10,
+			InterfaceName: "schema/schema.capnp:NodeService",
+			MethodName:    "getNetworkMetrics",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.GetNetworkMetrics(ctx, NodeService_getNetworkMetrics{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xad9c3e2a4e163cf5,
+			MethodID:      11,
+			InterfaceName: "schema/schema.capnp:NodeService",
+			MethodName:    "cesProcess",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.CesProcess(ctx, NodeService_cesProcess{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xad9c3e2a4e163cf5,
+			MethodID:      12,
+			InterfaceName: "schema/schema.capnp:NodeService",
+			MethodName:    "cesReconstruct",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.CesReconstruct(ctx, NodeService_cesReconstruct{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xad9c3e2a4e163cf5,
+			MethodID:      13,
+			InterfaceName: "schema/schema.capnp:NodeService",
+			MethodName:    "upload",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Upload(ctx, NodeService_upload{call})
+		},
+	})
+
+	methods = append(methods, server.Method{
+		Method: capnp.Method{
+			InterfaceID:   0xad9c3e2a4e163cf5,
+			MethodID:      14,
+			InterfaceName: "schema/schema.capnp:NodeService",
+			MethodName:    "download",
+		},
+		Impl: func(ctx context.Context, call *server.Call) error {
+			return s.Download(ctx, NodeService_download{call})
 		},
 	})
 
@@ -1236,6 +2700,91 @@ func (c NodeService_getConnectedPeers) Args() NodeService_getConnectedPeers_Para
 func (c NodeService_getConnectedPeers) AllocResults() (NodeService_getConnectedPeers_Results, error) {
 	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
 	return NodeService_getConnectedPeers_Results(r), err
+}
+
+// NodeService_getNetworkMetrics holds the state for a server call to NodeService.getNetworkMetrics.
+// See server.Call for documentation.
+type NodeService_getNetworkMetrics struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c NodeService_getNetworkMetrics) Args() NodeService_getNetworkMetrics_Params {
+	return NodeService_getNetworkMetrics_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c NodeService_getNetworkMetrics) AllocResults() (NodeService_getNetworkMetrics_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_getNetworkMetrics_Results(r), err
+}
+
+// NodeService_cesProcess holds the state for a server call to NodeService.cesProcess.
+// See server.Call for documentation.
+type NodeService_cesProcess struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c NodeService_cesProcess) Args() NodeService_cesProcess_Params {
+	return NodeService_cesProcess_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c NodeService_cesProcess) AllocResults() (NodeService_cesProcess_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_cesProcess_Results(r), err
+}
+
+// NodeService_cesReconstruct holds the state for a server call to NodeService.cesReconstruct.
+// See server.Call for documentation.
+type NodeService_cesReconstruct struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c NodeService_cesReconstruct) Args() NodeService_cesReconstruct_Params {
+	return NodeService_cesReconstruct_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c NodeService_cesReconstruct) AllocResults() (NodeService_cesReconstruct_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_cesReconstruct_Results(r), err
+}
+
+// NodeService_upload holds the state for a server call to NodeService.upload.
+// See server.Call for documentation.
+type NodeService_upload struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c NodeService_upload) Args() NodeService_upload_Params {
+	return NodeService_upload_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c NodeService_upload) AllocResults() (NodeService_upload_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_upload_Results(r), err
+}
+
+// NodeService_download holds the state for a server call to NodeService.download.
+// See server.Call for documentation.
+type NodeService_download struct {
+	*server.Call
+}
+
+// Args returns the call's arguments.
+func (c NodeService_download) Args() NodeService_download_Params {
+	return NodeService_download_Params(c.Call.Args())
+}
+
+// AllocResults allocates the results struct.
+func (c NodeService_download) AllocResults() (NodeService_download_Results, error) {
+	r, err := c.Call.AllocResults(capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_download_Results(r), err
 }
 
 // NodeService_List is a list of NodeService.
@@ -2869,112 +4418,1090 @@ func (f NodeService_getConnectedPeers_Results_Future) Struct() (NodeService_getC
 	return NodeService_getConnectedPeers_Results(p.Struct()), err
 }
 
-const schema_8513e0c6129c1f4c = "x\xda\xb4W\x7flTY\x15>\xe7\xbe\x99\xb9\xed\xb4" +
-	"\xc3\xcc\xdbW6\xba\xab\x99U\xbb\xa64-\xb6t7" +
-	"\xd1f\xdd\xe9\xd2\xdd\xac\xb0S2\xafP\xdd\x90\xd5\xec" +
-	"c\xe6n;n\xdb\x99\xce{\xb3\xa4\xc4\xa6\x1b\x95\x1a" +
-	"\"\xeb*\x81lX\x81\xc4\x1a\x10H\xc0h\xe2\x0f\x1a" +
-	"c1\xb1(\x10\xa2(c(B\x0a\x15D0\x18\xab" +
-	"6F\x08>s\xef\xcc\xfb1\xd3)\xed\x10\xfc\xab\xd3" +
-	"y\xdf;\xf7\xbb\xdf9\xe7;gZ~\xef\xe9\xf0\xb4" +
-	"\x06h\x0d\x10\xf5m\xaf\xcf\xfc\xfaL\xaci\xcf\xcb\xfa" +
-	"W@}\x0a\x11\xc0C\x01\xda\x92\xde\x1f\"\xa02\xec" +
-	"\x8d\x00\x9a\xbb>\xf0\xd7'\x1bwO\x8c\x15\x00^\xe4" +
-	"\x88\xbdy\xc4\x11\xefV@s\xac\xed/\xdf3\xa7\xa2" +
-	";A~\xca\x06x}\xdb8@\xf6\xf1\x10\x1b\xdb\xff" +
-	"s\xfd\xd7W\x9e{\xcf}F\xabo\x96\x03^\x12\x80" +
-	"\xe7\xa7\xcf\xee\x9eZ=]\x04`\xbeq\x0e\xc8\x0a\xc0" +
-	"7\x0e\x1f\x8aNN\xae\x19w\x03\xf6\xf8\x8er\xc0A" +
-	"\x1f\xe7\xd0\xf2\xfe\xe3\x9f\xbb\xf8\x93\x91\xf1\"\x0et\x17" +
-	"\x07\xac\xa4<\xc2\xb6\xc6g\x1a\x9ag\xfe\xf5\xdd<@" +
-	"\x04x\x96\x9eA\xf0\x98\xbf\xdd\xfdV\xb3\xcc\x82\x07A" +
-	"\xadCbF\xc3\xfb\x1e;uU\xd9. \xca*z" +
-	"Wy\x96\xf2O\xad\xf4\xfb\x80\xe6\xfcs\x8foh|" +
-	"~\xdf1\x90\xeb$\x07\x0a\xd8v\x9e\x12T\xaepd" +
-	"\xdb4\xfd\x1aQ\xf6TS\x00\xf3\x8d\xb1\xe3#\x07." +
-	">q\xdc\xcdj\xa4Z\xd0~\xa7\x9a\xb3j\xfa\xd4\xcf" +
-	"Gw\xaa\x87\x7f\xec\x06\x1c\xab\xfe2\x07\x9c\x10\x80\xa1" +
-	"\xadc\x7f\x8f\xfc\xea\xb3Se\xc8\xb5MW\xafA\xe5" +
-	"\x16?H\xb9Q\xcd\xd9M\x9d|\xb3f\xe2\x0b\x7f\x9a" +
-	"rG\xdb\xe1\x7f\x9fG\xdb\xeb\xe7\xd1\xfey`\xd5\xd3" +
-	"m\xef\x1e\xfa\x8d[\xc6\x13~\x91\xca\xd3\x02\xe0\xdf\xbf" +
-	"\xfe~\xb4s\xe6|9-n\xf9\xcf(\xf3~\xfei" +
-	"\xce\x7f\x13\xd0|\xf2Z\xd3\xa7\xdf\x89\xe6.p,:" +
-	"\xd8\xfc\xb1\xe7j\x08*\xd35\x1c\x9d\xab\xe1\xdc~v" +
-	"\xf2\x8d\x0f5\xe7\xf0\xa2\x9b\xdb@\xad8z\xa4\x96\x1f" +
-	"}\x99\x8e?\x16Y\xf9J\x11`\x7f\xed\xef8\xe0\x07" +
-	"\x02 }\xf5=\xcf\xf1\xc8\xc7/\xbb\x01\xd7jos" +
-	"\xc0\xbc\x00\x1c\xe9\xfa\xe6\xdf\xfe}\xf6\xa7\xb3 \xd7\x95" +
-	"\xf2QV\x06n+\x1f\x09\xf0O\x1f\x0ep\xec\xc4\xdd" +
-	"?\xe6r9\xcfM\xb7\x12]\x01!\xd5\xe7\x05\xe0\xd2" +
-	"\xab\xef~{\xe6\xed\xabwJn'\x94\x18\x09\xfcC" +
-	"\xd9!\x82m\x17\xd8\xce\x97\xe9\xa4\xbc\xf7\xc59Wm" +
-	"\x1d\x0c\x1c\xe5\xb55,u\xfe2po\xfb\\Q\xdd" +
-	"\x06&D\xdd\x8aW'_\xf1K\x7f>w\xe1\x9e\xfb" +
-	"RS\x01Q\xf99\x01\x98\x9di\xb9\xf4\xb1\x9e\x9d\xff" +
-	"u\xc5\x9e\xe7<=\xe6\xfd\xcd\xd7c\x0d\x7f8e\x96" +
-	"\xd3_\xb9\x11\x98U\xe6\x04\xc5;\x81\xad\xd0l\xea\xf1" +
-	">6\xa0}B\xf7\x8a\xbf\xab\xe3Zz0\xdd\xbe!" +
-	"\x95`\x1bY\xe6\xadd\x9c\xadN$\xf5xjp\x90" +
-	"\xc5\x8d\x18c\x99\xfaXX\xcbh\x03\xba\xea\x91<\x00" +
-	"\x1e\x04\x90\x03\xed\x00j\x95\x84j\x1d\xc1H\x9a\xb1\xcc" +
-	"\xba\x04V\x01\xc1*\xc0\xa5\xa3\x17BoJ\x89\xe0\xdd" +
-	",\xacg\xfb\x0d]\xad\xb2\xa3\xafZ\x0b\xa0\xd6K\xa8" +
-	"\xb6\x10D\xac\xe3b\xc9\xcd\xfc\xbb\x06\x09\xd5g\x08\x8e" +
-	"\xea\xd9x\x9c\xe9:\"\x10D\xc0\xd1\xa1\xac\xd6\x9f4" +
-	"\x861\xe4\xb4\x08 \x86\\d<\x8b\x91\xe9e\x06\xff" +
-	"\xb7>\x12[p\xc75\xce\x1d\xc3CY\x96\xe1\xf1\xed" +
-	"J(\x89\xef{@\xfc\xce\xfc}\x93\xa9A5\xcf\xb3" +
-	">\xa6e\xe8#\x14Tg\x83\x89.\xa6\xebZ/\xab" +
-	"\xeffz\x96r9]\xb1\xd7:\xb1K\xa5[:x" +
-	"6\x9d\xd0\x0c\x16\xd5\x0c6\x18\xe7\xcc\x83B&W\xb2" +
-	"\xda\x9dd\xc9v\xb6\xba\x01\xd4&\x09\xd5O\x12\x8c\x0c" +
-	"\xa6\x12\xccu\x9d\xfe|\xa8.@\x1d\xfd@\xd0\xbf|" +
-	"\x16\"S\"Q\xb8\xa8xy$\x86\x1c+\xaf<U" +
-	",\xc1KS\xcf\x1f\xa5\x03\xd8\xef\x92\xd2w#=\xe2" +
-	"\xb8\x18\xa2Zk\xf3y\x89\xf3\xe9\x90P\x8d\xba$Y" +
-	"\xc7%\xf9\x8c\x84\xea&\x822!uH\x00du\x0b" +
-	"\x80\x1a\x93P}my:\x19}\x19\xa6\x19\x1b\xe3@" +
-	"S\x19\xb6@=i\x91\x9b\x01\xa7\xd7 y\x01\xec\xf1" +
-	"\x8c\xd6\xb0QZq-\x10\xe5i\xa4\xe8\xf8\x0bZN" +
-	"\xa4|\x10\xb7\x00Qd\xa4H\xec\xb1\x8a\x96_*^" +
-	"\xdc\x0cD\xbeOQ\xb2\x872ZcE\x9e\xcb\x00\x91" +
-	"oQ\xf4\xd8\x96\x88\x96\xef\xcbW\xf8\xb3\x1cE\xaf=" +
-	"\x15\xd1Z-\xe4\xd3\xfc\xd9/(\xfa\xec\x11\x86\xd6J" +
-	" \xffh\x0b\x10\xf9\x18Ej\xaf\x11hM\x02\xf9;" +
-	"G\x81\xc8\xfb)V\xd9k\x0cZ\x8e+\x7fk\x1b\x10" +
-	"y\x07\xc5j{\xf4\xa35b\xe4\x91]@\xe4a:" +
-	"Zp\x82\x0e4{\x99\xf1B\x7f\xff\x86\x14\xd0\x04\xd3" +
-	";\xd0\xb4\x8a\x0f$\xf1\xd8\xea\x08\x08\x8b\x04u\xa0\xa9" +
-	"\x1b\x19\xa6\x0d\xf4\xa4!\xcc\x9f\xf0W,\x8f\x83\xb0p" +
-	"9\x8e)4)P\xad\xb7p\x88\xa86\xb4\x9c!\xc8" +
-	"\xad\xa1\x03M\xcb|!\x92\xb7\xdfbl\xbe4Q\xef" +
-	"\xc0\x18V\xec\xb5V\xf7\xbaZ\xa7\xd1i\x9d \xf7\x1d" +
-	"\x0c9\xb3\xbc\xa4q\xbcKy(\xf7\x9e~C\x87\xc5" +
-	"\xe2\xf3\x02\xc7\x90\xb3W\x94\xc4/*_\xb7i\x86\x85" +
-	"k\x96\xf4\x18o\xa7\x17%Tc\xae\x1e\xebZ\x0f\xa0" +
-	"F%T_u\xf5X\xcff\x00u\x93\x84\xea\xeb\xa4" +
-	"|S}1i\x18,\xd3\xa5\x03\x80\xfd]Z\x8b\xbf" +
-	"\xc9\x8ch\x0a$\xbd\x02\x97r\x1b1\xf7\x0e\xa9X\xeb" +
-	"\x8f:Z\xd0\x01\xbd\x17C\xce\xd8^\xae\xd4\xc5nl" +
-	"\xcf\xce\x0a\xcd~\x81\x8d\x81\xb0\x88\x90\x1dE{\x02@" +
-	"}MB\xb5\xcf\xa5.\xe3\xb6\xf6\xba\x84j\xbfK\xdd" +
-	"$\xcfC\x9f\x84\xaaAP\x96\xa4:\x94\x00\xe4!n" +
-	"ki\x09\xd5/\x11\x94\x92\xb6\xa5EtC3\xb2\xfa" +
-	"\xa3r8^\xd2/$\x12\x19\xdeT\x8b\x1b\xb0\xed\xbf" +
-	"\x8d\xae\x82\xb1\xd8w5:\xa6\\2v\x83})\xdd" +
-	"\xc0Z X\x0b\x18L\xa72\x06R H\x97U\x07" +
-	"\x05?\x10nP6K\xff\xaf\x89\x95oA,\xbb\xc7" +
-	"\xd4\x13\x0c\xf3;\xea\xb8\x020&\xa1\xb8\xe9\x8a\x87^" +
-	"b\xba\x99\x1e|P\xf1-\xbd\x94-(\xc3`4\xa9" +
-	"\x1b<\x95\x8b\xb0\xe7\x06b\xb3/6\x92\x15\x15n\x11" +
-	"B(\xe9\x11\xb4NX\xe5\xaba\x09iwzK\xc6" +
-	"z\x85\xc5S\xb0\xec\x8aw\xf6\xee\x08{(kx\x90" +
-	"\xc9\x8b\xa1\x98`z\xd9%\xd3\xbd-\xe7\xf3\x14r~" +
-	"\x84U0I\xecC\x0a\x06Z^y\xee\xb2|\x90r" +
-	"\xdd]\xbb\xe8z\xe7G\x82\xd5\xf7\xad\x8d\xce*j\x1a" +
-	"b\x0e\xaeKp\xab\xb7\xfa<\xa1\x19\x1a\x06\x80`\x00" +
-	"\xf0\x7f\x01\x00\x00\xff\xffy\xa9\xb5\xb2"
+type NodeService_getNetworkMetrics_Params capnp.Struct
+
+// NodeService_getNetworkMetrics_Params_TypeID is the unique identifier for the type NodeService_getNetworkMetrics_Params.
+const NodeService_getNetworkMetrics_Params_TypeID = 0xecf9aff98759a8a0
+
+func NewNodeService_getNetworkMetrics_Params(s *capnp.Segment) (NodeService_getNetworkMetrics_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return NodeService_getNetworkMetrics_Params(st), err
+}
+
+func NewRootNodeService_getNetworkMetrics_Params(s *capnp.Segment) (NodeService_getNetworkMetrics_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0})
+	return NodeService_getNetworkMetrics_Params(st), err
+}
+
+func ReadRootNodeService_getNetworkMetrics_Params(msg *capnp.Message) (NodeService_getNetworkMetrics_Params, error) {
+	root, err := msg.Root()
+	return NodeService_getNetworkMetrics_Params(root.Struct()), err
+}
+
+func (s NodeService_getNetworkMetrics_Params) String() string {
+	str, _ := text.Marshal(0xecf9aff98759a8a0, capnp.Struct(s))
+	return str
+}
+
+func (s NodeService_getNetworkMetrics_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (NodeService_getNetworkMetrics_Params) DecodeFromPtr(p capnp.Ptr) NodeService_getNetworkMetrics_Params {
+	return NodeService_getNetworkMetrics_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s NodeService_getNetworkMetrics_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s NodeService_getNetworkMetrics_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s NodeService_getNetworkMetrics_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s NodeService_getNetworkMetrics_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+
+// NodeService_getNetworkMetrics_Params_List is a list of NodeService_getNetworkMetrics_Params.
+type NodeService_getNetworkMetrics_Params_List = capnp.StructList[NodeService_getNetworkMetrics_Params]
+
+// NewNodeService_getNetworkMetrics_Params creates a new list of NodeService_getNetworkMetrics_Params.
+func NewNodeService_getNetworkMetrics_Params_List(s *capnp.Segment, sz int32) (NodeService_getNetworkMetrics_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 0}, sz)
+	return capnp.StructList[NodeService_getNetworkMetrics_Params](l), err
+}
+
+// NodeService_getNetworkMetrics_Params_Future is a wrapper for a NodeService_getNetworkMetrics_Params promised by a client call.
+type NodeService_getNetworkMetrics_Params_Future struct{ *capnp.Future }
+
+func (f NodeService_getNetworkMetrics_Params_Future) Struct() (NodeService_getNetworkMetrics_Params, error) {
+	p, err := f.Future.Ptr()
+	return NodeService_getNetworkMetrics_Params(p.Struct()), err
+}
+
+type NodeService_getNetworkMetrics_Results capnp.Struct
+
+// NodeService_getNetworkMetrics_Results_TypeID is the unique identifier for the type NodeService_getNetworkMetrics_Results.
+const NodeService_getNetworkMetrics_Results_TypeID = 0xbe6ae07a1c260fd0
+
+func NewNodeService_getNetworkMetrics_Results(s *capnp.Segment) (NodeService_getNetworkMetrics_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_getNetworkMetrics_Results(st), err
+}
+
+func NewRootNodeService_getNetworkMetrics_Results(s *capnp.Segment) (NodeService_getNetworkMetrics_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_getNetworkMetrics_Results(st), err
+}
+
+func ReadRootNodeService_getNetworkMetrics_Results(msg *capnp.Message) (NodeService_getNetworkMetrics_Results, error) {
+	root, err := msg.Root()
+	return NodeService_getNetworkMetrics_Results(root.Struct()), err
+}
+
+func (s NodeService_getNetworkMetrics_Results) String() string {
+	str, _ := text.Marshal(0xbe6ae07a1c260fd0, capnp.Struct(s))
+	return str
+}
+
+func (s NodeService_getNetworkMetrics_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (NodeService_getNetworkMetrics_Results) DecodeFromPtr(p capnp.Ptr) NodeService_getNetworkMetrics_Results {
+	return NodeService_getNetworkMetrics_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s NodeService_getNetworkMetrics_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s NodeService_getNetworkMetrics_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s NodeService_getNetworkMetrics_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s NodeService_getNetworkMetrics_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s NodeService_getNetworkMetrics_Results) Metrics() (NetworkMetrics, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return NetworkMetrics(p.Struct()), err
+}
+
+func (s NodeService_getNetworkMetrics_Results) HasMetrics() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s NodeService_getNetworkMetrics_Results) SetMetrics(v NetworkMetrics) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewMetrics sets the metrics field to a newly
+// allocated NetworkMetrics struct, preferring placement in s's segment.
+func (s NodeService_getNetworkMetrics_Results) NewMetrics() (NetworkMetrics, error) {
+	ss, err := NewNetworkMetrics(capnp.Struct(s).Segment())
+	if err != nil {
+		return NetworkMetrics{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// NodeService_getNetworkMetrics_Results_List is a list of NodeService_getNetworkMetrics_Results.
+type NodeService_getNetworkMetrics_Results_List = capnp.StructList[NodeService_getNetworkMetrics_Results]
+
+// NewNodeService_getNetworkMetrics_Results creates a new list of NodeService_getNetworkMetrics_Results.
+func NewNodeService_getNetworkMetrics_Results_List(s *capnp.Segment, sz int32) (NodeService_getNetworkMetrics_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[NodeService_getNetworkMetrics_Results](l), err
+}
+
+// NodeService_getNetworkMetrics_Results_Future is a wrapper for a NodeService_getNetworkMetrics_Results promised by a client call.
+type NodeService_getNetworkMetrics_Results_Future struct{ *capnp.Future }
+
+func (f NodeService_getNetworkMetrics_Results_Future) Struct() (NodeService_getNetworkMetrics_Results, error) {
+	p, err := f.Future.Ptr()
+	return NodeService_getNetworkMetrics_Results(p.Struct()), err
+}
+func (p NodeService_getNetworkMetrics_Results_Future) Metrics() NetworkMetrics_Future {
+	return NetworkMetrics_Future{Future: p.Future.Field(0, nil)}
+}
+
+type NodeService_cesProcess_Params capnp.Struct
+
+// NodeService_cesProcess_Params_TypeID is the unique identifier for the type NodeService_cesProcess_Params.
+const NodeService_cesProcess_Params_TypeID = 0xf6ae61c0f3b5765c
+
+func NewNodeService_cesProcess_Params(s *capnp.Segment) (NodeService_cesProcess_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_cesProcess_Params(st), err
+}
+
+func NewRootNodeService_cesProcess_Params(s *capnp.Segment) (NodeService_cesProcess_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_cesProcess_Params(st), err
+}
+
+func ReadRootNodeService_cesProcess_Params(msg *capnp.Message) (NodeService_cesProcess_Params, error) {
+	root, err := msg.Root()
+	return NodeService_cesProcess_Params(root.Struct()), err
+}
+
+func (s NodeService_cesProcess_Params) String() string {
+	str, _ := text.Marshal(0xf6ae61c0f3b5765c, capnp.Struct(s))
+	return str
+}
+
+func (s NodeService_cesProcess_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (NodeService_cesProcess_Params) DecodeFromPtr(p capnp.Ptr) NodeService_cesProcess_Params {
+	return NodeService_cesProcess_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s NodeService_cesProcess_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s NodeService_cesProcess_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s NodeService_cesProcess_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s NodeService_cesProcess_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s NodeService_cesProcess_Params) Request() (CesProcessRequest, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return CesProcessRequest(p.Struct()), err
+}
+
+func (s NodeService_cesProcess_Params) HasRequest() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s NodeService_cesProcess_Params) SetRequest(v CesProcessRequest) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewRequest sets the request field to a newly
+// allocated CesProcessRequest struct, preferring placement in s's segment.
+func (s NodeService_cesProcess_Params) NewRequest() (CesProcessRequest, error) {
+	ss, err := NewCesProcessRequest(capnp.Struct(s).Segment())
+	if err != nil {
+		return CesProcessRequest{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// NodeService_cesProcess_Params_List is a list of NodeService_cesProcess_Params.
+type NodeService_cesProcess_Params_List = capnp.StructList[NodeService_cesProcess_Params]
+
+// NewNodeService_cesProcess_Params creates a new list of NodeService_cesProcess_Params.
+func NewNodeService_cesProcess_Params_List(s *capnp.Segment, sz int32) (NodeService_cesProcess_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[NodeService_cesProcess_Params](l), err
+}
+
+// NodeService_cesProcess_Params_Future is a wrapper for a NodeService_cesProcess_Params promised by a client call.
+type NodeService_cesProcess_Params_Future struct{ *capnp.Future }
+
+func (f NodeService_cesProcess_Params_Future) Struct() (NodeService_cesProcess_Params, error) {
+	p, err := f.Future.Ptr()
+	return NodeService_cesProcess_Params(p.Struct()), err
+}
+func (p NodeService_cesProcess_Params_Future) Request() CesProcessRequest_Future {
+	return CesProcessRequest_Future{Future: p.Future.Field(0, nil)}
+}
+
+type NodeService_cesProcess_Results capnp.Struct
+
+// NodeService_cesProcess_Results_TypeID is the unique identifier for the type NodeService_cesProcess_Results.
+const NodeService_cesProcess_Results_TypeID = 0xd3201a28488935ea
+
+func NewNodeService_cesProcess_Results(s *capnp.Segment) (NodeService_cesProcess_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_cesProcess_Results(st), err
+}
+
+func NewRootNodeService_cesProcess_Results(s *capnp.Segment) (NodeService_cesProcess_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_cesProcess_Results(st), err
+}
+
+func ReadRootNodeService_cesProcess_Results(msg *capnp.Message) (NodeService_cesProcess_Results, error) {
+	root, err := msg.Root()
+	return NodeService_cesProcess_Results(root.Struct()), err
+}
+
+func (s NodeService_cesProcess_Results) String() string {
+	str, _ := text.Marshal(0xd3201a28488935ea, capnp.Struct(s))
+	return str
+}
+
+func (s NodeService_cesProcess_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (NodeService_cesProcess_Results) DecodeFromPtr(p capnp.Ptr) NodeService_cesProcess_Results {
+	return NodeService_cesProcess_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s NodeService_cesProcess_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s NodeService_cesProcess_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s NodeService_cesProcess_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s NodeService_cesProcess_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s NodeService_cesProcess_Results) Response() (CesProcessResponse, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return CesProcessResponse(p.Struct()), err
+}
+
+func (s NodeService_cesProcess_Results) HasResponse() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s NodeService_cesProcess_Results) SetResponse(v CesProcessResponse) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewResponse sets the response field to a newly
+// allocated CesProcessResponse struct, preferring placement in s's segment.
+func (s NodeService_cesProcess_Results) NewResponse() (CesProcessResponse, error) {
+	ss, err := NewCesProcessResponse(capnp.Struct(s).Segment())
+	if err != nil {
+		return CesProcessResponse{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// NodeService_cesProcess_Results_List is a list of NodeService_cesProcess_Results.
+type NodeService_cesProcess_Results_List = capnp.StructList[NodeService_cesProcess_Results]
+
+// NewNodeService_cesProcess_Results creates a new list of NodeService_cesProcess_Results.
+func NewNodeService_cesProcess_Results_List(s *capnp.Segment, sz int32) (NodeService_cesProcess_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[NodeService_cesProcess_Results](l), err
+}
+
+// NodeService_cesProcess_Results_Future is a wrapper for a NodeService_cesProcess_Results promised by a client call.
+type NodeService_cesProcess_Results_Future struct{ *capnp.Future }
+
+func (f NodeService_cesProcess_Results_Future) Struct() (NodeService_cesProcess_Results, error) {
+	p, err := f.Future.Ptr()
+	return NodeService_cesProcess_Results(p.Struct()), err
+}
+func (p NodeService_cesProcess_Results_Future) Response() CesProcessResponse_Future {
+	return CesProcessResponse_Future{Future: p.Future.Field(0, nil)}
+}
+
+type NodeService_cesReconstruct_Params capnp.Struct
+
+// NodeService_cesReconstruct_Params_TypeID is the unique identifier for the type NodeService_cesReconstruct_Params.
+const NodeService_cesReconstruct_Params_TypeID = 0xa0c909c1dc5fac1c
+
+func NewNodeService_cesReconstruct_Params(s *capnp.Segment) (NodeService_cesReconstruct_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_cesReconstruct_Params(st), err
+}
+
+func NewRootNodeService_cesReconstruct_Params(s *capnp.Segment) (NodeService_cesReconstruct_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_cesReconstruct_Params(st), err
+}
+
+func ReadRootNodeService_cesReconstruct_Params(msg *capnp.Message) (NodeService_cesReconstruct_Params, error) {
+	root, err := msg.Root()
+	return NodeService_cesReconstruct_Params(root.Struct()), err
+}
+
+func (s NodeService_cesReconstruct_Params) String() string {
+	str, _ := text.Marshal(0xa0c909c1dc5fac1c, capnp.Struct(s))
+	return str
+}
+
+func (s NodeService_cesReconstruct_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (NodeService_cesReconstruct_Params) DecodeFromPtr(p capnp.Ptr) NodeService_cesReconstruct_Params {
+	return NodeService_cesReconstruct_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s NodeService_cesReconstruct_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s NodeService_cesReconstruct_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s NodeService_cesReconstruct_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s NodeService_cesReconstruct_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s NodeService_cesReconstruct_Params) Request() (CesReconstructRequest, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return CesReconstructRequest(p.Struct()), err
+}
+
+func (s NodeService_cesReconstruct_Params) HasRequest() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s NodeService_cesReconstruct_Params) SetRequest(v CesReconstructRequest) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewRequest sets the request field to a newly
+// allocated CesReconstructRequest struct, preferring placement in s's segment.
+func (s NodeService_cesReconstruct_Params) NewRequest() (CesReconstructRequest, error) {
+	ss, err := NewCesReconstructRequest(capnp.Struct(s).Segment())
+	if err != nil {
+		return CesReconstructRequest{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// NodeService_cesReconstruct_Params_List is a list of NodeService_cesReconstruct_Params.
+type NodeService_cesReconstruct_Params_List = capnp.StructList[NodeService_cesReconstruct_Params]
+
+// NewNodeService_cesReconstruct_Params creates a new list of NodeService_cesReconstruct_Params.
+func NewNodeService_cesReconstruct_Params_List(s *capnp.Segment, sz int32) (NodeService_cesReconstruct_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[NodeService_cesReconstruct_Params](l), err
+}
+
+// NodeService_cesReconstruct_Params_Future is a wrapper for a NodeService_cesReconstruct_Params promised by a client call.
+type NodeService_cesReconstruct_Params_Future struct{ *capnp.Future }
+
+func (f NodeService_cesReconstruct_Params_Future) Struct() (NodeService_cesReconstruct_Params, error) {
+	p, err := f.Future.Ptr()
+	return NodeService_cesReconstruct_Params(p.Struct()), err
+}
+func (p NodeService_cesReconstruct_Params_Future) Request() CesReconstructRequest_Future {
+	return CesReconstructRequest_Future{Future: p.Future.Field(0, nil)}
+}
+
+type NodeService_cesReconstruct_Results capnp.Struct
+
+// NodeService_cesReconstruct_Results_TypeID is the unique identifier for the type NodeService_cesReconstruct_Results.
+const NodeService_cesReconstruct_Results_TypeID = 0xf598cd4903936ecc
+
+func NewNodeService_cesReconstruct_Results(s *capnp.Segment) (NodeService_cesReconstruct_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_cesReconstruct_Results(st), err
+}
+
+func NewRootNodeService_cesReconstruct_Results(s *capnp.Segment) (NodeService_cesReconstruct_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_cesReconstruct_Results(st), err
+}
+
+func ReadRootNodeService_cesReconstruct_Results(msg *capnp.Message) (NodeService_cesReconstruct_Results, error) {
+	root, err := msg.Root()
+	return NodeService_cesReconstruct_Results(root.Struct()), err
+}
+
+func (s NodeService_cesReconstruct_Results) String() string {
+	str, _ := text.Marshal(0xf598cd4903936ecc, capnp.Struct(s))
+	return str
+}
+
+func (s NodeService_cesReconstruct_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (NodeService_cesReconstruct_Results) DecodeFromPtr(p capnp.Ptr) NodeService_cesReconstruct_Results {
+	return NodeService_cesReconstruct_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s NodeService_cesReconstruct_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s NodeService_cesReconstruct_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s NodeService_cesReconstruct_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s NodeService_cesReconstruct_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s NodeService_cesReconstruct_Results) Response() (CesReconstructResponse, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return CesReconstructResponse(p.Struct()), err
+}
+
+func (s NodeService_cesReconstruct_Results) HasResponse() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s NodeService_cesReconstruct_Results) SetResponse(v CesReconstructResponse) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewResponse sets the response field to a newly
+// allocated CesReconstructResponse struct, preferring placement in s's segment.
+func (s NodeService_cesReconstruct_Results) NewResponse() (CesReconstructResponse, error) {
+	ss, err := NewCesReconstructResponse(capnp.Struct(s).Segment())
+	if err != nil {
+		return CesReconstructResponse{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// NodeService_cesReconstruct_Results_List is a list of NodeService_cesReconstruct_Results.
+type NodeService_cesReconstruct_Results_List = capnp.StructList[NodeService_cesReconstruct_Results]
+
+// NewNodeService_cesReconstruct_Results creates a new list of NodeService_cesReconstruct_Results.
+func NewNodeService_cesReconstruct_Results_List(s *capnp.Segment, sz int32) (NodeService_cesReconstruct_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[NodeService_cesReconstruct_Results](l), err
+}
+
+// NodeService_cesReconstruct_Results_Future is a wrapper for a NodeService_cesReconstruct_Results promised by a client call.
+type NodeService_cesReconstruct_Results_Future struct{ *capnp.Future }
+
+func (f NodeService_cesReconstruct_Results_Future) Struct() (NodeService_cesReconstruct_Results, error) {
+	p, err := f.Future.Ptr()
+	return NodeService_cesReconstruct_Results(p.Struct()), err
+}
+func (p NodeService_cesReconstruct_Results_Future) Response() CesReconstructResponse_Future {
+	return CesReconstructResponse_Future{Future: p.Future.Field(0, nil)}
+}
+
+type NodeService_upload_Params capnp.Struct
+
+// NodeService_upload_Params_TypeID is the unique identifier for the type NodeService_upload_Params.
+const NodeService_upload_Params_TypeID = 0x8e2f87ba4b3a0dd1
+
+func NewNodeService_upload_Params(s *capnp.Segment) (NodeService_upload_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_upload_Params(st), err
+}
+
+func NewRootNodeService_upload_Params(s *capnp.Segment) (NodeService_upload_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_upload_Params(st), err
+}
+
+func ReadRootNodeService_upload_Params(msg *capnp.Message) (NodeService_upload_Params, error) {
+	root, err := msg.Root()
+	return NodeService_upload_Params(root.Struct()), err
+}
+
+func (s NodeService_upload_Params) String() string {
+	str, _ := text.Marshal(0x8e2f87ba4b3a0dd1, capnp.Struct(s))
+	return str
+}
+
+func (s NodeService_upload_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (NodeService_upload_Params) DecodeFromPtr(p capnp.Ptr) NodeService_upload_Params {
+	return NodeService_upload_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s NodeService_upload_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s NodeService_upload_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s NodeService_upload_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s NodeService_upload_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s NodeService_upload_Params) Request() (UploadRequest, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return UploadRequest(p.Struct()), err
+}
+
+func (s NodeService_upload_Params) HasRequest() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s NodeService_upload_Params) SetRequest(v UploadRequest) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewRequest sets the request field to a newly
+// allocated UploadRequest struct, preferring placement in s's segment.
+func (s NodeService_upload_Params) NewRequest() (UploadRequest, error) {
+	ss, err := NewUploadRequest(capnp.Struct(s).Segment())
+	if err != nil {
+		return UploadRequest{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// NodeService_upload_Params_List is a list of NodeService_upload_Params.
+type NodeService_upload_Params_List = capnp.StructList[NodeService_upload_Params]
+
+// NewNodeService_upload_Params creates a new list of NodeService_upload_Params.
+func NewNodeService_upload_Params_List(s *capnp.Segment, sz int32) (NodeService_upload_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[NodeService_upload_Params](l), err
+}
+
+// NodeService_upload_Params_Future is a wrapper for a NodeService_upload_Params promised by a client call.
+type NodeService_upload_Params_Future struct{ *capnp.Future }
+
+func (f NodeService_upload_Params_Future) Struct() (NodeService_upload_Params, error) {
+	p, err := f.Future.Ptr()
+	return NodeService_upload_Params(p.Struct()), err
+}
+func (p NodeService_upload_Params_Future) Request() UploadRequest_Future {
+	return UploadRequest_Future{Future: p.Future.Field(0, nil)}
+}
+
+type NodeService_upload_Results capnp.Struct
+
+// NodeService_upload_Results_TypeID is the unique identifier for the type NodeService_upload_Results.
+const NodeService_upload_Results_TypeID = 0xfcc65426d628c621
+
+func NewNodeService_upload_Results(s *capnp.Segment) (NodeService_upload_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_upload_Results(st), err
+}
+
+func NewRootNodeService_upload_Results(s *capnp.Segment) (NodeService_upload_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_upload_Results(st), err
+}
+
+func ReadRootNodeService_upload_Results(msg *capnp.Message) (NodeService_upload_Results, error) {
+	root, err := msg.Root()
+	return NodeService_upload_Results(root.Struct()), err
+}
+
+func (s NodeService_upload_Results) String() string {
+	str, _ := text.Marshal(0xfcc65426d628c621, capnp.Struct(s))
+	return str
+}
+
+func (s NodeService_upload_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (NodeService_upload_Results) DecodeFromPtr(p capnp.Ptr) NodeService_upload_Results {
+	return NodeService_upload_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s NodeService_upload_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s NodeService_upload_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s NodeService_upload_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s NodeService_upload_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s NodeService_upload_Results) Response() (UploadResponse, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return UploadResponse(p.Struct()), err
+}
+
+func (s NodeService_upload_Results) HasResponse() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s NodeService_upload_Results) SetResponse(v UploadResponse) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewResponse sets the response field to a newly
+// allocated UploadResponse struct, preferring placement in s's segment.
+func (s NodeService_upload_Results) NewResponse() (UploadResponse, error) {
+	ss, err := NewUploadResponse(capnp.Struct(s).Segment())
+	if err != nil {
+		return UploadResponse{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// NodeService_upload_Results_List is a list of NodeService_upload_Results.
+type NodeService_upload_Results_List = capnp.StructList[NodeService_upload_Results]
+
+// NewNodeService_upload_Results creates a new list of NodeService_upload_Results.
+func NewNodeService_upload_Results_List(s *capnp.Segment, sz int32) (NodeService_upload_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[NodeService_upload_Results](l), err
+}
+
+// NodeService_upload_Results_Future is a wrapper for a NodeService_upload_Results promised by a client call.
+type NodeService_upload_Results_Future struct{ *capnp.Future }
+
+func (f NodeService_upload_Results_Future) Struct() (NodeService_upload_Results, error) {
+	p, err := f.Future.Ptr()
+	return NodeService_upload_Results(p.Struct()), err
+}
+func (p NodeService_upload_Results_Future) Response() UploadResponse_Future {
+	return UploadResponse_Future{Future: p.Future.Field(0, nil)}
+}
+
+type NodeService_download_Params capnp.Struct
+
+// NodeService_download_Params_TypeID is the unique identifier for the type NodeService_download_Params.
+const NodeService_download_Params_TypeID = 0xc356867a7b362410
+
+func NewNodeService_download_Params(s *capnp.Segment) (NodeService_download_Params, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_download_Params(st), err
+}
+
+func NewRootNodeService_download_Params(s *capnp.Segment) (NodeService_download_Params, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_download_Params(st), err
+}
+
+func ReadRootNodeService_download_Params(msg *capnp.Message) (NodeService_download_Params, error) {
+	root, err := msg.Root()
+	return NodeService_download_Params(root.Struct()), err
+}
+
+func (s NodeService_download_Params) String() string {
+	str, _ := text.Marshal(0xc356867a7b362410, capnp.Struct(s))
+	return str
+}
+
+func (s NodeService_download_Params) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (NodeService_download_Params) DecodeFromPtr(p capnp.Ptr) NodeService_download_Params {
+	return NodeService_download_Params(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s NodeService_download_Params) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s NodeService_download_Params) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s NodeService_download_Params) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s NodeService_download_Params) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s NodeService_download_Params) Request() (DownloadRequest, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return DownloadRequest(p.Struct()), err
+}
+
+func (s NodeService_download_Params) HasRequest() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s NodeService_download_Params) SetRequest(v DownloadRequest) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewRequest sets the request field to a newly
+// allocated DownloadRequest struct, preferring placement in s's segment.
+func (s NodeService_download_Params) NewRequest() (DownloadRequest, error) {
+	ss, err := NewDownloadRequest(capnp.Struct(s).Segment())
+	if err != nil {
+		return DownloadRequest{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// NodeService_download_Params_List is a list of NodeService_download_Params.
+type NodeService_download_Params_List = capnp.StructList[NodeService_download_Params]
+
+// NewNodeService_download_Params creates a new list of NodeService_download_Params.
+func NewNodeService_download_Params_List(s *capnp.Segment, sz int32) (NodeService_download_Params_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[NodeService_download_Params](l), err
+}
+
+// NodeService_download_Params_Future is a wrapper for a NodeService_download_Params promised by a client call.
+type NodeService_download_Params_Future struct{ *capnp.Future }
+
+func (f NodeService_download_Params_Future) Struct() (NodeService_download_Params, error) {
+	p, err := f.Future.Ptr()
+	return NodeService_download_Params(p.Struct()), err
+}
+func (p NodeService_download_Params_Future) Request() DownloadRequest_Future {
+	return DownloadRequest_Future{Future: p.Future.Field(0, nil)}
+}
+
+type NodeService_download_Results capnp.Struct
+
+// NodeService_download_Results_TypeID is the unique identifier for the type NodeService_download_Results.
+const NodeService_download_Results_TypeID = 0xf82e045f7682ca7e
+
+func NewNodeService_download_Results(s *capnp.Segment) (NodeService_download_Results, error) {
+	st, err := capnp.NewStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_download_Results(st), err
+}
+
+func NewRootNodeService_download_Results(s *capnp.Segment) (NodeService_download_Results, error) {
+	st, err := capnp.NewRootStruct(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1})
+	return NodeService_download_Results(st), err
+}
+
+func ReadRootNodeService_download_Results(msg *capnp.Message) (NodeService_download_Results, error) {
+	root, err := msg.Root()
+	return NodeService_download_Results(root.Struct()), err
+}
+
+func (s NodeService_download_Results) String() string {
+	str, _ := text.Marshal(0xf82e045f7682ca7e, capnp.Struct(s))
+	return str
+}
+
+func (s NodeService_download_Results) EncodeAsPtr(seg *capnp.Segment) capnp.Ptr {
+	return capnp.Struct(s).EncodeAsPtr(seg)
+}
+
+func (NodeService_download_Results) DecodeFromPtr(p capnp.Ptr) NodeService_download_Results {
+	return NodeService_download_Results(capnp.Struct{}.DecodeFromPtr(p))
+}
+
+func (s NodeService_download_Results) ToPtr() capnp.Ptr {
+	return capnp.Struct(s).ToPtr()
+}
+func (s NodeService_download_Results) IsValid() bool {
+	return capnp.Struct(s).IsValid()
+}
+
+func (s NodeService_download_Results) Message() *capnp.Message {
+	return capnp.Struct(s).Message()
+}
+
+func (s NodeService_download_Results) Segment() *capnp.Segment {
+	return capnp.Struct(s).Segment()
+}
+func (s NodeService_download_Results) Response() (DownloadResponse, error) {
+	p, err := capnp.Struct(s).Ptr(0)
+	return DownloadResponse(p.Struct()), err
+}
+
+func (s NodeService_download_Results) HasResponse() bool {
+	return capnp.Struct(s).HasPtr(0)
+}
+
+func (s NodeService_download_Results) SetResponse(v DownloadResponse) error {
+	return capnp.Struct(s).SetPtr(0, capnp.Struct(v).ToPtr())
+}
+
+// NewResponse sets the response field to a newly
+// allocated DownloadResponse struct, preferring placement in s's segment.
+func (s NodeService_download_Results) NewResponse() (DownloadResponse, error) {
+	ss, err := NewDownloadResponse(capnp.Struct(s).Segment())
+	if err != nil {
+		return DownloadResponse{}, err
+	}
+	err = capnp.Struct(s).SetPtr(0, capnp.Struct(ss).ToPtr())
+	return ss, err
+}
+
+// NodeService_download_Results_List is a list of NodeService_download_Results.
+type NodeService_download_Results_List = capnp.StructList[NodeService_download_Results]
+
+// NewNodeService_download_Results creates a new list of NodeService_download_Results.
+func NewNodeService_download_Results_List(s *capnp.Segment, sz int32) (NodeService_download_Results_List, error) {
+	l, err := capnp.NewCompositeList(s, capnp.ObjectSize{DataSize: 0, PointerCount: 1}, sz)
+	return capnp.StructList[NodeService_download_Results](l), err
+}
+
+// NodeService_download_Results_Future is a wrapper for a NodeService_download_Results promised by a client call.
+type NodeService_download_Results_Future struct{ *capnp.Future }
+
+func (f NodeService_download_Results_Future) Struct() (NodeService_download_Results, error) {
+	p, err := f.Future.Ptr()
+	return NodeService_download_Results(p.Struct()), err
+}
+func (p NodeService_download_Results_Future) Response() DownloadResponse_Future {
+	return DownloadResponse_Future{Future: p.Future.Field(0, nil)}
+}
+
+const schema_8513e0c6129c1f4c = "x\xda\xb4Y{t\x14\xe5\x15\xbfwf\x97!\x8f%" +
+	"\xd9\xcc\x06\x92\x90\x9c\xa0\x05\x0b9\x80<\xb4\xd5\x14M" +
+	"0\xb4\x12L8\x99\x0dQ\xe0hu\xd8\xfdH\x16\x93" +
+	"\xdd\xcd\xce,\x94\xb4\x14\xb5\x05\x0f\xd6w\xa5*U\x8e" +
+	"\xa2X\xe0\x08J[\xacpT\xe0hPTNE\xc5" +
+	"\x03\x16\xcb\xa3R\x85\xaa\x155\xadQ\xe9\xf6\xdcov" +
+	"\x1e\xd9\xec\x86\x0d\xb6\x7f\xb1\x99\xb9\xdc\xef>\x7f\xf7w" +
+	"\xbf\x99\xf4LN\xadk\xb2\xe7\xfe\"\x10\x94\x83\xee!" +
+	"\x89_\x1di\x1a\xbf\xfaJ\xed\x17\xa0\x8cB\x04pI" +
+	"\x00S'\xe7\xfc\x1e\x01\xe5\xe995\x80\x89{K\xfe" +
+	"1\xb2\xea\xbe\x1d+\x93\x02n$\x09\xd5\x90\xe8\xccY" +
+	"\x02\x98X9\xf5\xc3\xdf%\xba\x1bn\x07\xef(K`" +
+	"_N\x17\x09\x1c\xe2*\xa6\xfff\x0b{zZ\xf1\x1d" +
+	"\xe0\xf5a\xa2\xa1\xf2\xa1\xa2=G\xe5\x15\xe0\x16H\xb0" +
+	"7\xa7\x08\xe5\x9c\\\x09@v\xe7\x92\xb6\xfd\x9e\xea\xab" +
+	"v\xdcz\xe1\x9dNm\xf1\xdc\x18i\xbb9\x97\xb4-" +
+	":\xb5\xf9\xab'\x9e\x7f\xf2nP|\xd8O\xdd\xa3\xb9" +
+	"\xf3Q\xde\xc6\xd5m\xcd}\x0a0\xd1\\\xdd\xfb\xfe+" +
+	"\xefM\xbb\xdf\xe9_c\xdeqR\xa7\xe6\x91\xba\xcb\x0f" +
+	"\xbdv_\xf7\xc4C}\x04n\xce[G\x02\xf7p\x81" +
+	"my{J^i\xdf\xf4@\xda\xf3\xb6\xe6\xf9Q\xee" +
+	"\xce\xa3\xf3v\xe7\xd1y\xc7N\x94\x8d}\xeb\x0fk\x1e" +
+	"J\x95\xe6~\xac\xc8\x9f\x82\xf2\xea|\x92\xbe'\x9f\x9c" +
+	"-\x7f\xf2\xfa\xc3\xbbs\xf6>\xe2t\xb6'\x9f\xc7\xd6" +
+	"\xed\xa1\xc3\xef\xdc\xf0D\xc3\xce\x9dS\xd69\xad\x1b\xe3" +
+	"\xd9D\x02\x17{H\xc3\xa45\xc3\xaf9\xf8\xa7e\xeb" +
+	"\x9c\x1aV{\xee%\x81\xf5\\CW\xd5Ec'\x1c" +
+	"\xf9\xe21C\x80+\xe8\xf6\xbc\x8a\xe0J\xf8C\xdf\xe4" +
+	"~\xd2S\xfb8\x99*\xa4:\xb6\xddS\x85\xf2^\x0f" +
+	"\x99\xda\xed\xf9\x000\xf1\xc6}\x8b'xY\xc1\xfa\x14" +
+	"iR(?:\xec+y\xf30\xfa\xb5q\x18\x05\xa1" +
+	"g\xda\xf0\xd9U\x97?\xb4\x19\xbc>\xd1\x16\x05\x9cZ" +
+	"_ \xa0\xdcR@\x07(\x05/\x8b\xf2I\xaf\x04\x90" +
+	"X\xb8r\xcb\xb2\xb5\x07\xcb\xb68}\xd8\xef\xe5N\x1e" +
+	"\xf3\x92\x0f\xe3/}a\xf9\xed\xca\x86g\x9c\x02Xt" +
+	"\x0b\x09x\x8aH\xe0\xb9\x1f\x1c\xfdX\xbfp\xee\xf3i" +
+	"s4\xa1\xa8\x1a\xe5\xcb\x8a\xc8\xbcK\x8b\xc8\xbc7\x0a" +
+	".(\xef:\xba\xe8\x05\xa7\xba\x13Eo\x92\xba^\xae" +
+	"n\xfd\x88\xd6\xd7\xb6|\xb6o'\xa9\x13\xfb\xfa:\xb5" +
+	"T.Cy\x9c\xcc\x13!_\x83\x80\x89\xc2\xd1\xdf\xfb" +
+	"i\xd7\xca\xab_t\xaa[\xe5\xe3\xd6\xad\xf6\x91\xba\xce" +
+	"%+?\xady\xf9\xea\xee4\xa1\x9b\xba\xcd7\x05\xe5" +
+	"n\x1f/ \x1f\x19\xd7\xbd\xeb\xc6\xbc\x1d?\xfe[\xb7" +
+	"S\x1b+^C\xda\xe2\xc5\xa4\xed\xf3\xb5\xe3\xc6L\xbd" +
+	"\xeb\x89?;Kbu1\xaf\x99\xf5\\ \xf7\xe1Y" +
+	"g\x1a\xea\x8e\xecO\x97\xa9\xee\xe2W\xe5\xfd\xc5\xf4k" +
+	"_1e\xf5\xd4\xc5\xabf\x8e-\x1b\xf5\x96\xf3\xb4\x8d" +
+	"\xc3\xf9i\xdb\x87\x93\xb2\x91\xc7\xc6_vG\xc3\x81\xb7" +
+	"\xd3\xd6\xf3{\xc3\x05\x94O\x0e'u'\x86\x93\xf1\xcf" +
+	"\xedZX>\xe1\x00\x1et\xaa[6\x82\xdbv\xc7\x08" +
+	"RwXZWTS|U\x1f\x81\xcd#x\xe8w" +
+	"s\x01\xf1\x97\xf7\xbb\xb6\xd4\\p\xd8)pz\xc4)" +
+	"\xde\x11%$0\xaf\xacjfq\xfe\xda\xbf\xa6\x18d" +
+	"tFI\x11\xca\x17\x97\x90=\x93K\xa8;66\xde" +
+	"\xfd\xc9\xbf_{\xf6x\x0a\xf2 \xef\xc0\x92S\xf2\xc3" +
+	"\\\xf6A\xaex\xc7W\x7f9p\xe0\x80\xeb\x03g\\" +
+	"\xf7\x96\xf0P\x1c\xe2\x02=\xf5\xfec/N9v2" +
+	"](\xe4\xde\x927ew)\xfd\xc2R:\xf9\x91\x0d" +
+	"\xf3n\xed}\xaa\xf7#G\xdb]W\xca\xdb\xee\xdd\xb9" +
+	"w\xfd\xf6\xc8MG?N\xe3\x80\xac\x94~&_\xc7" +
+	"\xb5\xcc+\xe5\xe1\xba\xf9\x8c{\xea\xf7/\xf9$\x1dr" +
+	".-=\x1f\xe5U\\x\x05?r\xf3\x8b\x1e\xff\xa7" +
+	"k\xbf\xfbOR\xecrH\x8b\x1cgKsQ\xce)" +
+	"\xa3\x9f\xee\xb2\x97\xa9l\xeb\xae\x94vz\x1f\x9cq\xda" +
+	"aa\xcf\xc8Md\xe1R\xb1\xee%\xcf\xd7+N;" +
+	"#qb\xe4\x0e\x8aD\xcfH2\xeb\xb1\xcf{\x8br" +
+	"\xd6\x7f\xf8E\xdav+./CyL9\xd9u^" +
+	"9\x15\xc5\xeb\xe1_\x8b\xf5\xfb\x1e\xe8q\xa6tw9" +
+	"W\xb7\xbf\x9c\xd4]\xbbx\xdb\xe7\xbb\xd4-\xff\xea\x83" +
+	"\x82\xe5\x1c\xc3\xdc\x15$\xf0\xf3WoY|\xbdk\xe2" +
+	"\x97N\x811\x15\xb7q\x14\xe4\x02;\xaf\xca\x15\xff\xbe" +
+	"\xef\xed\xaf\x9d\x02\xf3*8\x88\x87\xb8\xc0y{\xc6\xbe" +
+	"s\xc1\x9c=\xdf\xf4\xe9\xd1\x0a>\xa3Vs\x81\xe3G" +
+	"&\xbd\xfb\x9d\x96\xdb\xff\xe3\x88\xc6\xf6\x8a5\x14\x8d3" +
+	"\xf3\xdfo\x1a\xfb\xce\x9eD\xda\xb4o\xac8.o\xab" +
+	"\xe0\xe3\xa6b\x09LHh\x816\xd6\xa1^\xa8\xb9\xf9" +
+	"\xbf\x13\x03j4\x1c\xad\x9e\x1d\x09\xb2f\x16[\x1c\x0a" +
+	"\xb0\x89\xc1\x90\x16\x88\x84\xc3,\xa071\x16\x1b\xddT" +
+	"\xa9\xc6\xd4\x0eMq\x89.\x00\x17\x02x=\xd5\x00\xca" +
+	"P\x11\x15\x9f\x805Q\xc6b\xf5A\x1c\x0a\x02\x0e\x05" +
+	"<\xbb\xf6\xa4\xea9\x11\xae\xdc\xcf*\xb5x\xbb\xae)" +
+	"C-\xed\xe3\xae\x00PF\x8b\xa8L\x12\x10\xd1G\xe9" +
+	"\xf5N\xa0gcET.\x12p\xb9\x16\x0f\x04\x98\xa6" +
+	"!\x82\x80\x08\xb8\xbc3\xae\xb6\x87\xf4\xa5Xh\xa3\x18" +
+	" \x16:\x8cqe2\xa6\x95\xe9\xf4\xe7\xe8\x9a\xa6~" +
+	">N\xb1}\xac\xec\x8c\xb3\x18\xe9\xb7\xfa\"E\xbf\xe8" +
+	"\xd4\xdf\x12m\x8f\xa8A?\xeb\x8c3\x0d\xf5&D\xa7" +
+	"oU\xb6o^\xcb\xb9\x05\x00\xcax\x11\x95\x99\x02\x16" +
+	"\x04U]E\x0f\x08\xe8\x01L\xe8j\xac\x95\xe9M\x0c" +
+	"$\x16\xd3p\x18`\x93\x88<\xd2\xc3\xb2q.\xce\x0d" +
+	"I\x97\xbf+l\xdf\x96\xc7\xb8\xa1:\x16\xda\x1ch\xa0" +
+	"\xe8\xd51\xcd\xcf\x02\x91\xb0\xa6\xc7\xe2\x01\xdd\xcf\xb4h" +
+	"$,j\x8c\xdc\xcc\xb7\x0e\xf8!\x1dP+\xa2\xd2`" +
+	"\xa7\xb0~\x16\x802SDe\x8e\x80^\x01}(\x00" +
+	"x\x15\x8aG\x83\x88\xca\xdc\xfeyM\xb0X,\x12k" +
+	"\xd4Z\x01\x00\xf3A\xc0|H\x09\x8fi\xe0\x90\x01\xd2" +
+	"[g\x94[(\x12V\x8c2\x19\xdd\xa4\xc6\xa4\xffa" +
+	"=k,\x1cld\x9a\xa6\xb6\xb2\xd1~\xa6\xc5%\xaa" +
+	"\xe6\x0c\xb1N\xf50\xab\x08\xdbu\xe4\x08pu2\xc0" +
+	"\xd7:\xeah\xde\"\x00e\xae\x88\x8a. \x0aF\x80" +
+	";o\x03Pt\x11\x95\x9b\x04\xac\xd1\xda\xd4X\xd0\xaa" +
+	"\xa3B{Z\x00\x1a\x15E\xef\x9bb\x0c\x0a4\x16\xd6" +
+	"M9L\xd6[ \xd2\x11\x8d\x91\xf5\xa1H\xb8\x81-" +
+	"f\xed\x00\xe8\x02\x01]\x99\x1a\xa1\x8eiM\xb1\x089" +
+	"\xecg\x95\xbc\xc827\x83\xd5\x0bd\xef$\x11\x95i" +
+	"\xa9\xbd\x90\xcd\xf1\x99A\xa7OL\xb3o\x09\x8bX\xa7" +
+	"\xb4\x84;s\xcf\x05U\x9d5\xa8:\x0b\x07\xa8\xd4\x0a" +
+	"\xf89\x0e\x9f\xab\xd3\x01\x80?\x09\x00\x97\x08X\x13\x8e" +
+	"\x04\x99\xa3\xfe\xda\x0dU\x8d\x80\x1a\xe6\x82\x80\xb9\xd9[" +
+	"\xc1\x91\x8d\x03\x1bf\xacvC\x12\x0bm\xee\x9c\xe2i" +
+	"\x16\xbd\xc5\x82\x04\xe5\x9aq\x94\x06\x90\xbe\x1afD\x96" +
+	"\x84\x0d`\xd4\xa2\x05\x91\xb0\x01\x19\x85\x96U*%\xe0" +
+	"Z\x11\x956\xbb\x18\x18AFPD%\xea\x80\x8c\x0e" +
+	"\xaa\x9a6\xa3\xca\xbd\"\xfaP\xa42\xbf\x05@\x89\x8a" +
+	"\xa8\xfc\xec\\pd\xc1R\x9di3\"K\x90\x1b\xc8" +
+	"\x82\x809 `\x8e#\x0aBj\x14jZx\xe02" +
+	"te\x83#\xb9\xf5~'\xee%\xdbR!\xc8o2" +
+	"\xfa7\x9b\x8c\xebm1\xa6\xea\xcd\x01\x90\"1\xd6\xaf" +
+	"\x0e\xc4\x0c9\x022o\x9a\xe8\x06\xb0\x16`4\xf7\x14" +
+	"y?^\x01\x82\xdc\x8d\x12\xda\xcc\x02M\x92\"o\xc7" +
+	"\x05 \xc8[QB\xc1\xda\xdf\xd0\xa4\x9f\xf2z\x9c\x0f" +
+	"\x82\xfc0J(Z\xeb\x1f\x9a\xa4_\xbe\x07c \xc8" +
+	"\xabPB\x97\xc5\xe0\xd0\xa4\xdd\xf22\xfe6\x8e\x12\xba" +
+	"\xad\xad\x0a\xcd\x0d^\x0e\xf1\xb7*J8\xc4Z3\xd0" +
+	"\xdc\x7f\xe5\x16nU#J(Y[3\x9at\\\x9e" +
+	"\x8e\x9b@\x90/C\x09\x87Zw\x06h\x12Ey2" +
+	"v\x81 \x8fC\x09s\xac\x85\x13M\xae/W\xe0\xbd" +
+	" \xc8\xa5(a\xae\xc5\x8b\xd1\\\xc2d\x0f\x7f\x9b\x83" +
+	"\x12\xe6YL\x10\xcd\xbd\xc4{f>\x08\xde\x1e\x09\xf3" +
+	"\xad]\x19M>\xe9=\xd9\x05\x82\xf7\x98\x84\x1e\xeb\xd2" +
+	"\x00M\x9e\xe7=P\x0d\x82w\xaf\x84\xc3\xac\xf5\x0cM" +
+	"\x16\xe9}~\x16\x08\xdem\xd2\xf2$A\xa9\xc5D+" +
+	"\xd3\xa7\xb7\xb7\xcf\x8e\x80\x14dZ-&\xcc\x1e\x07\x91" +
+	"\xbf6\x81\x07*y\xf5\xd4bB\xd3cL\xedh\x89" +
+	"B%\xbd\xa1\xffbR/\xa8\xe4\xe4\x8bd\x92\xc3\x0b" +
+	"$\xb55y\x08oj4'f\x01\x8d\xccZL\x98" +
+	"\x9c\x10j\x0cV\xd8W\xd6@\x00\xd4\x8c\xa7\xb3\x99\xbe" +
+	"$\x82\xb1\x1b\x1b\x99\x1e\x0b\x05\xf8\xd3@r\x14\x80\xa8" +
+	"%\xff\xe4p\x0c5\x06 \xd7\x12\x10Q\xef\xd1II" +
+	"\x9c\x00\x80Zl\xc2A3J\x13s\x1d\x80We\x03" +
+	"^\x01\x8dw,\xb4w\xc6l\x81\xddd\x8a4\xe2\xdb" +
+	"u\x0d2\xe9\xa7f\xc6B{\xc1\x1d\x88):\x07d" +
+	"\x0d\x11\xa9s\xe7Q\xd5I\x1e\xd5\x96\x1d\xfe\x9d\x9d\x0a" +
+	"d\x01\xff<\xcff\x9a\xb5dd0\xe3T\xed0\xe4" +
+	"\xb0\xd0\xbe\xbb\x18(8N\xedb@\xa3\xc0\x94X\x8a" +
+	"\x1f\xa4 < \xa2\xf2\xb8\x03i\x1f\x9d\x0f\xa0<\"" +
+	"\xa2\xf2\xa4\x03i7\xc6\x00\x94\x0d\"*\x7f\xa4q!" +
+	"\x1a\xe3b+a\xf2\xd3\"*\xcf\x09\xe8u\xb9|\xe8" +
+	"\x02\xf0n'\x9d\xcf\x8a\xa8\xbc$\xa0\xd7\xed\xf6\xa1\x1b" +
+	"\xc0\xbb\x9bt\xee\x12Qy]\xc0\x84\xba\xb8\xd5\xaf\xeb" +
+	"\x8d\x1a\x05\xd2\xc4\xe0\xa8\x1a\xb8\x91\xe9\x0d\x11\xaal\xeb" +
+	"\xe1\x025\x1c\\\x12\x0a\xeaP\xd9\xd6\xb8 j?\xa7" +
+	"\xe2\xab\x8b\xc4\xc3\x80\xba\x05\xf7\x81h\xbc\x85\xc8\xa3S" +
+	"i(R\xa7F\xd5@\x08D}i\xf6S\xdf\xec\x1c" +
+	"s\x10\x9f\x9d\xdeX\xbb\xfb\x80U\xea`\xd0\x95\x9cB" +
+	"\xa7\x14)\x05s\x86\x88J\x93#\x17\x8d\xb3lbo" +
+	"\xe5\xa2\x85\x829GD\xe5\x06!\xfd\x98[\x14\xd2u" +
+	"\x16\xcb\"\xc0\x83b\xe5\x14\x0e\xb1/\"\x9co\x87C" +
+	"\xea\xd0Z\xb1\xd0^\xa1\xcf\x8d\xe9Y{\xec \x99\x7f" +
+	"?b\x01\x90\xc2\x8b\xcal^dE\x97Q\xbb\xdf " +
+	"\xa2\xd2\xee\x88n\xc8\xef$F\xc9J\xef\\`\x13#" +
+	"1d\x91\x8c\x1aMW\xf5\xb8\xf6-8\xc7@T;" +
+	"\x09j\x06\"\x88}\x83Bu\x91/\xa2R\"`\"" +
+	"\xc6\x0c\xd0\xa3t\x17\xda\x17\xa4\x03\x15#A\xfc\xf4`" +
+	"\x90\x16\x01\xc8L\xbe,\xac\xacr\x94\xa6\x19\xa7\xc6*" +
+	"\x1b@S\xb6\xbd\x82\xb6\x88\xa6[\x1c1\x1a\x89\xe9(" +
+	"\x81\x80RV\x15\x97\x1c\xb7|\xd8\xa6\xad\x87\xff\x17\xef" +
+	"N\x07\xbc\xe6\xed\xc5h\x01+\xc9\xc7\x8c\xb7\x07\x83\xdb" +
+	"\x9d\xfdL+\x18\xa8\xcc\xcf~\x15\xd3'\x9b\xcd4\x85" +
+	"\x1a\"\x01U\x0fE0\x9c\xb2\x1d\xce\xb7\xaf|\xac\xc2" +
+	"\x9f\\moJ\xc6\xbaZ\x1f\x0e\x82\xc8~b\x15v" +
+	"\x86\xf5\xbd_\x9f\x154\x84\x8c}4C\xd0h\x8e;" +
+	"\xe6\xa3s\x9e\x0f\x1b\xe4\x0a\x96\xae\x0d\x06\x8d\x0d\x14*" +
+	"\x0c\xa6\x84hJ\x9a\x05\xba\xca\x0e[e(\x1c\xb4C" +
+	"3\xf8\xbb\x93\x94\x01\xdfo\xbf\xeb\x17\xd4J%\xceb" +
+	"KS\xa2\xea,\xfb\x94U\xe7,\x8bbg\\\xea\x7f" +
+	"i\xd0\x95\xf4o\x86\xa3,\xa6\xcf\xb2{\xdf(\x8b\x86" +
+	"H\x00j\xa8\xac\xc2\x8e$Z\xf7\xf2\xc9$.\x0c\xb5" +
+	"\xb3\x99\xaa\xd6\xe6 F\xe9M\xfaQ\xa8\x9d5\xaa\xe1" +
+	"\xd0B\xa6\xe9\x06@\x8f\xb2\x0c\xdaOg\xbf!\xa2r" +
+	"\xd8a\xd0!zxPD\xe5}\xfb*\xe6\x18=;" +
+	"*\xa2\xf2\x11\xe1\xb3`\xe0\xf3I\xaa\xf2\x0fET\xbe" +
+	" &\"\x1aL\xe44\x81\xf6\xa7\"*\xdf\x10\x13\x11" +
+	"\x0c&\xd2K\x8e\x7f)b\xb3\x0f\x05\xf4\x0e\x11|8" +
+	"\x04@\xf6\xa2\x1f\xa0\xb9\x10El.\xa7\xe7\xd2\x10\x1f" +
+	"\xbf\xf4-\xc5\xf3\x01\x9a}\xf4|\x14\x0a\xe9]\xa5g" +
+	"\xb3\xd5\x0e\x96\xfa\xac9\xd4\xc5\x9fYK0\x05\xb4." +
+	"\x12\x071l\xd3\x96\xa8\x1a\x0b\xe9K\xeb\" \xc5\x1d" +
+	"O\xb3\x8f\xbd\x1e\xea`\x9a\xaev\x00F\xd1\x0d\x02\xba" +
+	"\x01%]o\x1f\xc4\xbd[\x1f\xbcM\xb2\xfeA_n" +
+	"\xfbk\xd89\xcd\xed\xb47\xbe\xdf\xf2.t\x96}'" +
+	"\x90\x0d\x87OtX\x15I\xe3\xd3\xfa\xb4\x92-\x81I" +
+	"\xb9\x13K\x17\x89\xcc\xc3\xda\xfa\xc2=\x88\xd3LZ\x90" +
+	"\xe6J*==\xb5>Tg{\x88\xc5\x80\xcd-\x0d" +
+	"\xb2\xf3\xc6\xfa\xcc<\x88m\x90/\xe3A\xa6\xa5\xbd\xf4" +
+	"u~<0&I\xa1\xfd\xa1/\xdb\x8f\x13\xc9\xfb\xfb" +
+	"\xc1%\xc6\xfa\xeeu.\xae$\x99rz\x80':-" +
+	"\xa9\xad,\x05\x8fg\xd9\xf3\xc6\x9a\xd2U\x8e)\xad\xf3" +
+	"\xb5\xbc\x9e\xf6\xf9\xb4\x93\xe8\xbf\x01\x00\x00\xff\xff\x17\x9d" +
+	"\x06\xfb"
 
 func RegisterSchema(reg *schemas.Registry) {
 	reg.Register(&schemas.Schema{
@@ -2983,29 +5510,51 @@ func RegisterSchema(reg *schemas.Registry) {
 			0x837347952c50df8b,
 			0x86ba942a1beb1892,
 			0x8c4cc5ffa7e83386,
+			0x8d153cb065ae9641,
+			0x8e2f87ba4b3a0dd1,
+			0x90acbda6faadea6a,
 			0x973cddc8e4f93a53,
 			0x97d92ec594cbd93e,
+			0x98aa6cc818c60bb5,
+			0x9c9ab3d3281ae5e1,
+			0xa0c909c1dc5fac1c,
 			0xa232bfbf4ca6a88e,
 			0xa27db7d857169a30,
 			0xa3f4df2d28342a7a,
+			0xa440f5ee0afc6952,
 			0xa50f65112d7694d0,
 			0xad9c3e2a4e163cf5,
 			0xae1ad89e7dae8666,
 			0xb6a8518c7fbe392c,
+			0xbd582f74ede03bbc,
+			0xbe6ae07a1c260fd0,
+			0xbfcdf2aecb6717a5,
+			0xc356867a7b362410,
 			0xc556c73ff0867771,
 			0xc5e35eba0b6bc0c5,
 			0xcfa68f3325299ef3,
 			0xd1df434cfd4a9d0a,
+			0xd3201a28488935ea,
 			0xd4d54c8d3d2ce11b,
 			0xd801d52d1c66c0bc,
 			0xd84b153f12a207dc,
 			0xdc263fae04978403,
+			0xde9e0c15482a1a59,
 			0xe2b8cbf7ee904da9,
 			0xe704d5d5d5dbfaba,
+			0xe9e132c3e15249f5,
+			0xecf9aff98759a8a0,
 			0xede080df9b8f58da,
+			0xee38373305fd81dc,
+			0xef279ef0520dc3ad,
 			0xf1449911bf074743,
 			0xf185fb0dc4430379,
+			0xf4e8a50912f9f3a3,
+			0xf598cd4903936ecc,
+			0xf6ae61c0f3b5765c,
+			0xf82e045f7682ca7e,
 			0xfbd4cde6030a4bbf,
+			0xfcc65426d628c621,
 			0xfe8c5523da30dfe2,
 			0xffc6d62850e45afd,
 		},
