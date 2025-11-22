@@ -204,41 +204,38 @@ echo ""
 # Extract Peer ID and actual port from logs (wait a bit for it to appear)
 # NOTE: Both Peer ID and port change on every restart (no key persistence yet)
 sleep 2
-# Extract from listening addresses line (most reliable source)
-MULTIADDR_LINE=$(grep "Listening addresses:" -A 5 "$LOG_FILE" | grep "/ip4/${IP_ADDR}/" | head -1)
+# Extract from listening addresses line - prefer public/non-localhost addresses
+MULTIADDR_LINE=$(grep "Listening addresses:" -A 10 "$LOG_FILE" | grep -E "/ip4/[0-9]+\." | grep -v "127.0.0.1" | tail -1)
 
 if [ -z "$MULTIADDR_LINE" ]; then
     echo -e "${YELLOW}⏳ Waiting for listening addresses...${NC}"
     for i in {1..15}; do
         sleep 1
-        MULTIADDR_LINE=$(grep "Listening addresses:" -A 5 "$LOG_FILE" | grep "/ip4/${IP_ADDR}/" | head -1)
+        MULTIADDR_LINE=$(grep "Listening addresses:" -A 10 "$LOG_FILE" | grep -E "/ip4/[0-9]+\." | grep -v "127.0.0.1" | tail -1)
         [ -n "$MULTIADDR_LINE" ] && break
     done
 fi
 
-if [ -z "$MULTIADDR_LINE" ]; then
-    # Fallback to any non-localhost address
-    MULTIADDR_LINE=$(grep "Listening addresses:" -A 5 "$LOG_FILE" | grep -v "127.0.0.1" | head -1)
-fi
-
-# Extract port and peer ID from the multiaddr line
+# Extract IP, port and peer ID from the multiaddr line
+ACTUAL_IP=$(echo "$MULTIADDR_LINE" | grep -oP '/ip4/\K[0-9.]+')
 ACTUAL_PORT=$(echo "$MULTIADDR_LINE" | grep -oP '/tcp/\K[0-9]+')
 PEER_ID=$(echo "$MULTIADDR_LINE" | grep -oE '12D3Koo[a-zA-Z0-9]{44}')
 
-if [ -n "$PEER_ID" ] && [ -n "$ACTUAL_PORT" ]; then
+if [ -n "$PEER_ID" ] && [ -n "$ACTUAL_PORT" ] && [ -n "$ACTUAL_IP" ]; then
     echo -e "${GREEN}✓ Peer ID: ${PEER_ID}${NC}"
+    echo -e "${GREEN}✓ Public IP: ${ACTUAL_IP}${NC}"
     echo -e "${GREEN}✓ P2P Port: ${ACTUAL_PORT}${NC}"
     echo -e "${YELLOW}ℹ  Note: Both Peer ID and port change on each restart${NC}"
     echo ""
     echo -e "${CYAN}For other devices to join this network:${NC}"
-    echo -e "${YELLOW}  ./scripts/easy_test.sh <NODE_ID> /ip4/${IP_ADDR}/tcp/${ACTUAL_PORT}/p2p/${PEER_ID}${NC}"
+    echo -e "${YELLOW}  ./scripts/easy_test.sh <NODE_ID> /ip4/${ACTUAL_IP}/tcp/${ACTUAL_PORT}/p2p/${PEER_ID}${NC}"
     echo ""
     echo -e "Example:"
-    echo -e "  ${YELLOW}./scripts/easy_test.sh 2 /ip4/${IP_ADDR}/tcp/${ACTUAL_PORT}/p2p/${PEER_ID}${NC}"
+    echo -e "  ${YELLOW}./scripts/easy_test.sh 2 /ip4/${ACTUAL_IP}/tcp/${ACTUAL_PORT}/p2p/${PEER_ID}${NC}"
     echo ""
     
     # Save connection info
-    echo "/ip4/${IP_ADDR}/tcp/${ACTUAL_PORT}/p2p/${PEER_ID}" > "$DATA_DIR/multiaddr.txt"
+    echo "/ip4/${ACTUAL_IP}/tcp/${ACTUAL_PORT}/p2p/${PEER_ID}" > "$DATA_DIR/multiaddr.txt"
 else
     echo -e "${RED}⚠ Could not extract Peer ID from logs${NC}"
     echo -e "Check logs: tail -f $LOG_FILE"
@@ -450,7 +447,11 @@ echo "  PID:           $NODE_PID"
 echo "  Log File:      $LOG_FILE"
 echo "  Data Dir:      $DATA_DIR"
 echo "  Cache Dir:     $DATA_DIR/cache"
-echo "  Your IP:       $IP_ADDR"
+if [ -n "$ACTUAL_IP" ]; then
+    echo "  Your IP:       $ACTUAL_IP"
+else
+    echo "  Your IP:       $IP_ADDR"
+fi
 echo ""
 echo -e "${GREEN}✅ Node setup complete!${NC}"
 echo ""
