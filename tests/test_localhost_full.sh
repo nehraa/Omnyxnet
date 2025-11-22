@@ -82,6 +82,10 @@ echo -e "\n${BLUE}━━━━━━━━━━━━━━━━━━━━�
 echo -e "${BLUE}2️⃣  Starting ${NUM_NODES} Nodes${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
+# Set library path for Rust FFI before starting nodes
+export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
+export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
+
 NODE_PIDS=()
 BOOTSTRAP_ADDR=""
 
@@ -101,10 +105,6 @@ for i in $(seq 1 $NUM_NODES); do
     echo "  - P2P: :$P2P_PORT"
     echo "  - DHT: :$DHT_PORT"
     echo "  - Log: $LOG_FILE"
-    
-    # Set library path for Rust FFI
-    export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
-    export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
     
     # Start Go node with libp2p in local mode
     ./go/bin/go-node \
@@ -249,13 +249,14 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 
 # Check if all nodes are still running
 RUNNING_NODES=0
-for i in $(seq 1 $NUM_NODES); do
-    PID=${NODE_PIDS[$((i-1))]}
+for idx in "${!NODE_PIDS[@]}"; do
+    PID=${NODE_PIDS[$idx]}
+    NODE_NUM=$((idx + 1))
     if ps -p $PID > /dev/null 2>&1; then
-        echo -e "${GREEN}✅ Node $i (PID $PID): Running${NC}"
+        echo -e "${GREEN}✅ Node $NODE_NUM (PID $PID): Running${NC}"
         RUNNING_NODES=$((RUNNING_NODES + 1))
     else
-        echo -e "${RED}❌ Node $i (PID $PID): Stopped${NC}"
+        echo -e "${RED}❌ Node $NODE_NUM (PID $PID): Stopped${NC}"
     fi
 done
 
