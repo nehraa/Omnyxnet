@@ -646,8 +646,10 @@ func (s *nodeServiceServer) Upload(ctx context.Context, call NodeService_upload)
 
 	// Build manifest
 	// Calculate file hash (simple for now)
-	fileHash := fmt.Sprintf("%x", data[:32])
-	if len(data) < 32 {
+	var fileHash string
+	if len(data) >= 32 {
+		fileHash = fmt.Sprintf("%x", data[:32])
+	} else {
 		fileHash = fmt.Sprintf("%x", data)
 	}
 
