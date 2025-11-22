@@ -386,6 +386,7 @@ mod tests {
             file_name: "test.txt".to_string(),
             file_size: 1000,
             shard_count: 5,
+            parity_count: 2,
             shard_locations: vec![(0, 1), (1, 2), (2, 3), (3, 4), (4, 5)],
             timestamp: chrono::Utc::now().timestamp(),
             ttl: 3600,
