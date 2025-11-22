@@ -195,16 +195,25 @@ class ShardOptimizer:
         # Small files: Fewer shards (overhead matters more)
         # Large files: More shards (parallel transfer benefits)
         if file_size_bytes < 1024 * 1024:  # < 1MB
-            config.k = max(4, config.k - 2)
-            config.m = max(2, config.m - 1)
+            k = max(4, config.k - 2)
+            m = max(2, config.m - 1)
         elif file_size_bytes > 100 * 1024 * 1024:  # > 100MB
-            config.k = min(16, config.k + 2)
-            config.m = min(10, config.m + 1)
+            k = min(16, config.k + 2)
+            m = min(10, config.m + 1)
+        else:
+            k = config.k
+            m = config.m
+        
+        adjusted_config = ShardConfig(
+            k=k,
+            m=m,
+            confidence=config.confidence
+        )
         
         # Store for learning
-        self.record_decision(metrics, config, file_size_bytes)
+        self.record_decision(metrics, adjusted_config, file_size_bytes)
         
-        return config
+        return adjusted_config
     
     def record_decision(
         self,

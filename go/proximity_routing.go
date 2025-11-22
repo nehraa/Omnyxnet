@@ -20,7 +20,7 @@ type PeerProximity struct {
 type ProximityRouter struct {
 	mu          sync.RWMutex
 	proximity   map[peer.ID]*PeerProximity
-	pingService *PingService
+	pingService PingService
 }
 
 // PingService provides RTT measurements (simplified interface)
@@ -29,7 +29,7 @@ type PingService interface {
 }
 
 // NewProximityRouter creates a new proximity-based router
-func NewProximityRouter(pingService *PingService) *ProximityRouter {
+func NewProximityRouter(pingService PingService) *ProximityRouter {
 	return &ProximityRouter{
 		proximity:   make(map[peer.ID]*PeerProximity),
 		pingService: pingService,
@@ -208,7 +208,7 @@ func (pr *ProximityRouter) RefreshPeerRTT(peerID peer.ID) error {
 		return nil // Ping service not configured
 	}
 
-	rtt, err := (*pr.pingService).Ping(peerID)
+	rtt, err := pr.pingService.Ping(peerID)
 	if err != nil {
 		return err
 	}

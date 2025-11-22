@@ -1,7 +1,7 @@
 package main
 
 /*
-#cgo LDFLAGS: -L../rust/target/release -lpangea_ces
+#cgo LDFLAGS: -L${PANGEA_RUST_LIB_PATH} -lpangea_ces
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -86,6 +86,11 @@ func (c *CESPipeline) Process(data []byte) ([]Shard, error) {
 	// Check for error
 	if ffiShards.shards == nil || ffiShards.count == 0 {
 		return nil, fmt.Errorf("CES processing failed")
+	}
+
+	// Validate shard count to prevent out-of-bounds access
+	if ffiShards.count > 10000 {
+		return nil, fmt.Errorf("shard count too large: %d", ffiShards.count)
 	}
 
 	// Convert C shards to Go

@@ -147,8 +147,8 @@ impl FileDetector {
             _ if data.len() >= 12 && &data[4..8] == b"ftyp" => FileType::Video,
             // AVI: 52 49 46 46 ... 41 56 49 20
             [0x52, 0x49, 0x46, 0x46] if data.len() >= 12 && &data[8..12] == b"AVI " => FileType::Video,
-            // MP3: FF FB or FF F3
-            [0xFF, b, ..] if *b & 0xE0 == 0xE0 => FileType::Audio,
+            // MP3: FF FB, FF F3, or FF F2
+            [0xFF, b, ..] if (*b & 0xFE == 0xFA || *b & 0xFE == 0xF2) => FileType::Audio,
             // FLAC: 66 4C 61 43
             [0x66, 0x4C, 0x61, 0x43] => FileType::Audio,
             // WAV: 52 49 46 46 ... 57 41 56 45
