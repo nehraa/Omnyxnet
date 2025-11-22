@@ -12,7 +12,7 @@ use std::path::Path;
 use tracing::{debug, info};
 
 use crate::types::CesConfig;
-use crate::file_detector::{FileDetector, FileType};
+use crate::file_detector::FileDetector;
 
 /// CES Pipeline: Compression, Encryption, Sharding
 pub struct CesPipeline {
@@ -37,6 +37,11 @@ impl CesPipeline {
     pub fn with_key(mut self, key: [u8; 32]) -> Self {
         self.encryption_key = key;
         self
+    }
+
+    /// Get the parity count from config
+    pub fn parity_count(&self) -> usize {
+        self.config.parity_count
     }
 
     /// Process data through the CES pipeline

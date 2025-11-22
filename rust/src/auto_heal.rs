@@ -262,7 +262,7 @@ impl AutoHealer {
         let mut shards = vec![None; manifest.shard_count];
         let mut collected = 0;
 
-        for (shard_idx, peer_id) in &manifest.shard_locations {
+        for (shard_idx, _peer_id) in &manifest.shard_locations {
             // Try to get from cache first
             if let Some(data) = self.cache.get_shard(&manifest.file_hash, *shard_idx).await {
                 shards[*shard_idx] = Some(data);
