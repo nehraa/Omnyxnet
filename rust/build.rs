@@ -18,7 +18,10 @@ fn main() {
     }
 
     // Compile the schema from rust/schema.capnp (Rust-compatible version)
-    let schema_path = PathBuf::from("schema.capnp");
+    // Can be overridden with CAPNP_SCHEMA_PATH environment variable
+    let schema_path = std::env::var("CAPNP_SCHEMA_PATH")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("schema.capnp"));
     
     if schema_path.exists() {
         match capnpc::CompilerCommand::new()
