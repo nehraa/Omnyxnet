@@ -16,6 +16,8 @@ pub mod firewall;
 pub mod go_client;
 pub mod upload;
 pub mod download;
+pub mod cache;
+pub mod lookup;
 
 // Re-export commonly used types for ease of use
 pub use capabilities::HardwareCaps;
@@ -26,3 +28,5 @@ pub use dht::DhtNode;
 pub use ces::CesPipeline;
 pub use store::NodeStore;
 pub use firewall::Firewall;
+pub use cache::{Cache, FileManifest, CacheStats};
+pub use lookup::{LookupService, LookupResult, DiscoveryResult};

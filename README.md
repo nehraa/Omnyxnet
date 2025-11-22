@@ -121,7 +121,7 @@ Core P2P networking node with libp2p integration.
 
 ### Rust Node (`./rust/target/release/pangea-rust-node`)
 
-High-performance upload/download protocols with CES pipeline.
+High-performance upload/download protocols with CES pipeline, caching, and lookup.
 
 ```bash
 # Basic usage
@@ -272,9 +272,16 @@ python tools/load-testing/network_monitor.py --stress
 - **Health Scoring**: AI-powered peer quality assessment
 - **Data Processing**: Time-series analysis and prediction
 
+### **Storage Layer** (Rust)
+
+- **Upload/Download**: High-performance file transfers with CES pipeline
+- **Caching**: LRU cache for shards with persistent manifest storage
+- **Lookup**: Multi-source file discovery (cache, DHT, peers)
+- **CES Pipeline**: Adaptive compression, encryption, and Reed-Solomon sharding
+
 ### **Integration Layer**
 
-- **Cap'n Proto RPC**: Bi-directional Go ↔ Python communication
+- **Cap'n Proto RPC**: Bi-directional Go ↔ Python ↔ Rust communication
 - **Docker Orchestration**: Multi-node container deployment
 - **Monitoring**: Real-time performance and health metrics
 
