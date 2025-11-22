@@ -21,7 +21,7 @@ NC='\033[0m' # No Color
 cleanup() {
     echo ""
     echo "Cleaning up..."
-    if [ ! -z "$GO_NODE_PID" ]; then
+    if [ -n "$GO_NODE_PID" ]; then
         echo "Stopping Go node (PID: $GO_NODE_PID)"
         kill $GO_NODE_PID 2>/dev/null || true
         wait $GO_NODE_PID 2>/dev/null || true
