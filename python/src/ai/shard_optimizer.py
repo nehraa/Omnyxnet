@@ -314,27 +314,31 @@ class ShardOptimizer:
             self.history = json.load(f)
 
 
-# Example usage
-async def example_usage():
-    optimizer = ShardOptimizer()
+def _example_usage():
+    """Example usage (for documentation purposes only)"""
+    async def run_example():
+        optimizer = ShardOptimizer()
+        
+        # Simulate network metrics
+        metrics = NetworkMetrics(
+            avg_rtt_ms=50.0,
+            packet_loss=0.01,
+            bandwidth_mbps=100.0,
+            peer_count=10,
+            cpu_usage=0.3,
+            io_capacity=0.8
+        )
+        
+        # Get optimal configuration
+        config = await optimizer.optimize_with_feedback(metrics, file_size_bytes=10*1024*1024)
+        
+        print(f"Optimal shard config: k={config.k}, m={config.m}")
+        print(f"Redundancy: {config.m/config.k*100:.1f}%")
+        print(f"Confidence: {config.confidence:.2f}")
     
-    # Simulate network metrics
-    metrics = NetworkMetrics(
-        avg_rtt_ms=50.0,
-        packet_loss=0.01,
-        bandwidth_mbps=100.0,
-        peer_count=10,
-        cpu_usage=0.3,
-        io_capacity=0.8
-    )
-    
-    # Get optimal configuration
-    config = await optimizer.optimize_with_feedback(metrics, file_size_bytes=10*1024*1024)
-    
-    print(f"Optimal shard config: k={config.k}, m={config.m}")
-    print(f"Redundancy: {config.m/config.k*100:.1f}%")
-    print(f"Confidence: {config.confidence:.2f}")
+    return run_example
 
 
 if __name__ == '__main__':
-    asyncio.run(example_usage())
+    # Only run example when module is executed directly
+    asyncio.run(_example_usage()())
