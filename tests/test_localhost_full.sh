@@ -232,36 +232,7 @@ echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━�
 
 # Test Python connection if dependencies are available
 if command -v python3 &> /dev/null; then
-    cat > "$TEST_DIR/test_rpc.py" << 'PYTHON_EOF'
-import sys
-from pathlib import Path
-
-PROJECT_ROOT = Path(__file__).parent.parent
-sys.path.insert(0, str(PROJECT_ROOT / "python"))
-
-try:
-    from src.client.go_client import GoNodeClient
-    from src.utils.paths import get_go_schema_path
-    
-    # Test connection to first node
-    client = GoNodeClient('localhost', 8080, get_go_schema_path())
-    if client.connect():
-        nodes = client.get_all_nodes()
-        print(f"✅ Connected! Found {len(nodes)} nodes")
-        client.disconnect()
-        sys.exit(0)
-    else:
-        print("⚠️  Connection failed")
-        sys.exit(1)
-except ImportError as e:
-    print(f"⚠️  Python dependencies not installed: {e}")
-    sys.exit(2)
-except Exception as e:
-    print(f"⚠️  RPC test error: {e}")
-    sys.exit(3)
-PYTHON_EOF
-
-    if python3 "$TEST_DIR/test_rpc.py" 2>&1; then
+    if python3 "$PROJECT_ROOT/tests/test_rpc.py" 2>&1; then
         echo -e "${GREEN}✅ Python RPC connection successful${NC}"
     else
         echo -e "${YELLOW}⚠️  Python RPC test skipped (dependencies missing)${NC}"
