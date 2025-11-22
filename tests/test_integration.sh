@@ -74,6 +74,7 @@ echo -e "${GREEN}✅ Port $GO_NODE_PORT is available${NC}"
 # Test 3: Start Go node in background
 echo -e "\n${BLUE}3. Starting Go node...${NC}"
 cd "$PROJECT_ROOT"
+export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
 "$GO_DIR/bin/go-node-test" -node-id=$GO_NODE_ID -capnp-addr=:$GO_NODE_PORT -p2p-addr=:$P2P_PORT > /tmp/go-node.log 2>&1 &
 GO_NODE_PID=$!
 echo "   Go node PID: $GO_NODE_PID"

@@ -2,8 +2,12 @@
 
 # Generate Cap'n Proto code
 generate:
-	@export PATH=$$PATH:$$(go env GOPATH)/bin && \
-	capnp compile -I$$(go list -f '{{.Dir}}' capnproto.org/go/capnp/v3/std) -ogo schema.capnp
+	@if [ -f "schema/schema.capnp.go" ]; then \
+		echo "Cap'n Proto bindings already generated, skipping..."; \
+	else \
+		echo "Generating Cap'n Proto bindings..."; \
+		cd schema && capnp compile -I$$(go env GOMODCACHE)/capnproto.org/go/capnp/v3@v3.1.0-alpha.2/std -ogo schema.capnp; \
+	fi
 
 # Install dependencies
 deps:
@@ -11,7 +15,7 @@ deps:
 	go mod tidy
 
 # Build the project
-build: generate deps
+build: deps generate
 	go build -o bin/go-node .
 
 # Run the node

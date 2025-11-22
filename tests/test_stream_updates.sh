@@ -56,6 +56,7 @@ cd ..
 
 # Start Node 1 (libp2p mode on port 8080)
 echo -e "\n2. Starting Node 1 (port 8080)..."
+export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
 ./go/bin/go-node -node-id=1 -capnp-addr=:8080 -p2p-addr=:9090 -libp2p -local -test > /tmp/node1.log 2>&1 &
 NODE1_PID=$!
 echo "   Node 1 PID: $NODE1_PID"

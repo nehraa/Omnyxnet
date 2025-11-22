@@ -80,6 +80,7 @@ sleep 1
 
 # Start Go node
 echo "   Starting Go node..."
+export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
 ./go/bin/go-node -node-id 1 -capnp-addr :8080 -libp2p &
 GO_PID=$!
 sleep 2
