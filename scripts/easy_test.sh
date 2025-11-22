@@ -86,6 +86,7 @@ echo "  Cap'n Proto Port: $CAPNP_PORT"
 echo "  P2P Port: $P2P_PORT" 
 echo "  DHT Port: $DHT_PORT"
 echo "  Data Directory: $DATA_DIR"
+echo "  📡 mDNS: Enabled (auto-discovers local peers)"
 if [ -n "$BOOTSTRAP" ]; then
     echo "  Bootstrap Peer: $BOOTSTRAP"
 else
