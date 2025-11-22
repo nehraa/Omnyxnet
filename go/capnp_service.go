@@ -356,8 +356,7 @@ func (s *nodeServiceServer) GetNetworkMetrics(ctx context.Context, call NodeServ
 	metrics.SetCpuUsage(0.3)
 	metrics.SetIoCapacity(0.8)
 
-	// Add warning to response and log
-	metrics.SetWarning("WARNING: All metrics except PeerCount are mock values. See server logs and documentation.")
+	// Note: All metrics except PeerCount are currently mock values
 	log.Println("WARNING: GetNetworkMetrics returned mock values for all fields except PeerCount. This should be replaced with real metrics gathering.")
 	return nil
 }
@@ -516,12 +515,12 @@ func (s *nodeServiceServer) CesReconstruct(ctx context.Context, call NodeService
 	if err != nil {
 		return err
 	}
-	
+
 	presentList, err := request.ShardPresent()
 	if err != nil {
 		return err
 	}
-	
+
 	compressionLevel := request.CompressionLevel()
 
 	// Convert to Go shards
@@ -633,14 +632,14 @@ func (s *nodeServiceServer) Upload(ctx context.Context, call NodeService_upload)
 	shardLocations := make([][2]uint32, len(shards)) // [shardIndex, peerID]
 	for i, shard := range shards {
 		peerID := targetPeers[i%len(targetPeers)]
-		
+
 		// Send shard to peer
 		err := s.network.SendMessage(peerID, shard.Data)
 		if err != nil {
 			log.Printf("Warning: Failed to send shard %d to peer %d: %v", i, peerID, err)
 			// Continue - Reed-Solomon allows some failures
 		}
-		
+
 		shardLocations[i] = [2]uint32{uint32(i), peerID}
 	}
 
@@ -664,16 +663,8 @@ func (s *nodeServiceServer) Upload(ctx context.Context, call NodeService_upload)
 		return err
 	}
 	manifest.SetFileHash(fileHash)
-	// Use filename from request, fallback to "uploaded_file" if not provided
-	fileName := ""
-	req, err := call.Args().Request()
-	if err == nil {
-		fileName, _ = req.FileName()
-	}
-	if fileName == "" {
-		fileName = "uploaded_file"
-	}
-	manifest.SetFileName(fileName)
+	// Set default filename (UploadRequest doesn't include fileName field)
+	manifest.SetFileName("uploaded_file")
 	manifest.SetFileSize(uint64(len(data)))
 	manifest.SetShardCount(uint32(len(shards)))
 	manifest.SetParityCount(4) // From CES config
@@ -717,17 +708,81 @@ func (s *nodeServiceServer) Download(ctx context.Context, call NodeService_downl
 		return err
 	}
 
-	// TODO: Implement actual shard fetching from peers
-	// For now, return error indicating not fully implemented
+	shardCount := shardLocationsList.Len()
+	log.Printf("Download requested for %d shard locations", shardCount)
+
+	// Fetch shards from peers
+	shards := make([]ShardData, shardCount)
+	present := make([]bool, shardCount)
+
+	for i := 0; i < shardCount; i++ {
+		loc := shardLocationsList.At(i)
+		shardIndex := loc.ShardIndex()
+		peerID := loc.PeerId()
+
+		// Fetch shard from peer using network layer
+		log.Printf("Fetching shard %d from peer %d", shardIndex, peerID)
+		shardData, err := s.network.FetchShard(peerID, shardIndex)
+		if err != nil {
+			log.Printf("Warning: Failed to fetch shard %d from peer %d: %v", shardIndex, peerID, err)
+			present[i] = false
+			shards[i] = ShardData{Data: nil}
+			continue
+		}
+
+		present[i] = true
+		shards[i] = ShardData{Data: shardData}
+		log.Printf("Successfully fetched shard %d (%d bytes)", shardIndex, len(shardData))
+	}
+
+	// Check if we have enough shards to reconstruct
+	presentCount := 0
+	for _, p := range present {
+		if p {
+			presentCount++
+		}
+	}
+
 	response, err := results.NewResponse()
 	if err != nil {
 		return err
 	}
-	response.SetSuccess(false)
-	response.SetErrorMsg("Download not yet fully implemented - needs peer shard fetching")
-	response.SetBytesDownloaded(0)
 
-	log.Printf("Download requested for %d shard locations", shardLocationsList.Len())
+	// Need at least K shards to reconstruct (K = dataShards from Reed-Solomon)
+	// With 8 data + 4 parity shards, we need at least 8
+	minRequired := 8 // TODO: Get this from CES config
+	if presentCount < minRequired {
+		response.SetSuccess(false)
+		response.SetErrorMsg(fmt.Sprintf("Insufficient shards: have %d, need at least %d", presentCount, minRequired))
+		response.SetBytesDownloaded(0)
+		return nil
+	}
+
+	// Create CES pipeline for reconstruction
+	pipeline := NewCESPipeline(3)
+	if pipeline == nil {
+		response.SetSuccess(false)
+		response.SetErrorMsg("Failed to create CES pipeline")
+		response.SetBytesDownloaded(0)
+		return nil
+	}
+	defer pipeline.Close()
+
+	// Reconstruct data from shards
+	reconstructed, err := pipeline.Reconstruct(shards, present)
+	if err != nil {
+		response.SetSuccess(false)
+		response.SetErrorMsg(fmt.Sprintf("CES reconstruction failed: %v", err))
+		response.SetBytesDownloaded(0)
+		return nil
+	}
+
+	// Return reconstructed data
+	response.SetSuccess(true)
+	response.SetData(reconstructed)
+	response.SetBytesDownloaded(uint64(len(reconstructed)))
+
+	log.Printf("Successfully reconstructed %d bytes from %d shards", len(reconstructed), presentCount)
 
 	return nil
 }
