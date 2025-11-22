@@ -169,7 +169,7 @@ echo "File size: $(wc -c < "$TEST_FILE") bytes"
 # Test if Rust CLI exists
 if [ -f "rust/target/release/pangea-rust-node" ]; then
     echo "Attempting upload via Rust node..."
-    ./rust/target/release/pangea-rust-node upload "$TEST_FILE" 1,2,3 > "$TEST_DIR/upload-manifest.json" 2> "$TEST_DIR/upload-error.log" && {
+    ./rust/target/release/pangea-rust-node upload "$TEST_FILE" 1,2,3 2>&1 | tee "$TEST_DIR/upload-error.log" > "$TEST_DIR/upload-manifest.json" && {
         echo -e "${GREEN}✅ File uploaded successfully${NC}"
         echo "Manifest saved to: $TEST_DIR/upload-manifest.json"
         cat "$TEST_DIR/upload-manifest.json"
