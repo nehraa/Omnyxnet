@@ -335,6 +335,33 @@ func (s *nodeServiceServer) GetConnectedPeers(ctx context.Context, call NodeServ
 	return nil
 }
 
+// GetNetworkMetrics implements the getNetworkMetrics method
+func (s *nodeServiceServer) GetNetworkMetrics(ctx context.Context, call NodeService_getNetworkMetrics) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	// Get network metrics from network adapter
+	// For now, return mock data - this should be implemented properly
+	metrics, err := results.NewMetrics()
+	if err != nil {
+		return err
+	}
+
+	metrics.SetAvgRttMs(50.0)
+	metrics.SetPacketLoss(0.01)
+	metrics.SetBandwidthMbps(100.0)
+	metrics.SetPeerCount(uint32(len(s.network.GetConnectedPeers())))
+	metrics.SetCpuUsage(0.3)
+	metrics.SetIoCapacity(0.8)
+
+	// Add warning to response and log
+	metrics.SetWarning("WARNING: All metrics except PeerCount are mock values. See server logs and documentation.")
+	log.Println("WARNING: GetNetworkMetrics returned mock values for all fields except PeerCount. This should be replaced with real metrics gathering.")
+	return nil
+}
+
 // StartCapnpServer starts the Cap'n Proto RPC server
 func StartCapnpServer(store *NodeStore, network NetworkAdapter, shmMgr *SharedMemoryManager, address string) error {
 	listener, err := net.Listen("tcp", address)
@@ -397,4 +424,310 @@ func (s *nodeServiceServer) ReadFromSharedMemory(ringName string, offset uint64)
 		return nil, fmt.Errorf("shared memory ring %s not found", ringName)
 	}
 	return ring.ReadAt(offset)
+}
+
+// CesProcess implements the cesProcess method - Compress, Encrypt, Shard
+func (s *nodeServiceServer) CesProcess(ctx context.Context, call NodeService_cesProcess) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	request, err := args.Request()
+	if err != nil {
+		return err
+	}
+
+	// Get input data
+	data, err := request.Data()
+	if err != nil {
+		return err
+	}
+	compressionLevel := request.CompressionLevel()
+
+	// Create CES pipeline
+	pipeline := NewCESPipeline(int(compressionLevel))
+	if pipeline == nil {
+		response, err := results.NewResponse()
+		if err != nil {
+			return err
+		}
+		response.SetSuccess(false)
+		response.SetErrorMsg("Failed to create CES pipeline")
+		return nil
+	}
+	defer pipeline.Close()
+
+	// Process through CES pipeline
+	shards, err := pipeline.Process(data)
+	if err != nil {
+		response, err := results.NewResponse()
+		if err != nil {
+			return err
+		}
+		response.SetSuccess(false)
+		response.SetErrorMsg(fmt.Sprintf("CES processing failed: %v", err))
+		return nil
+	}
+
+	// Build response
+	response, err := results.NewResponse()
+	if err != nil {
+		return err
+	}
+	response.SetSuccess(true)
+
+	// Create shards list
+	seg := results.Segment()
+	shardsList, err := NewShard_List(seg, int32(len(shards)))
+	if err != nil {
+		return err
+	}
+
+	for i, shard := range shards {
+		shardMsg := shardsList.At(i)
+		shardMsg.SetIndex(uint32(i))
+		err = shardMsg.SetData(shard.Data)
+		if err != nil {
+			return err
+		}
+	}
+
+	response.SetShards(shardsList)
+	return nil
+}
+
+// CesReconstruct implements the cesReconstruct method - reverse CES pipeline
+func (s *nodeServiceServer) CesReconstruct(ctx context.Context, call NodeService_cesReconstruct) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	request, err := args.Request()
+	if err != nil {
+		return err
+	}
+
+	// Get input shards
+	shardsList, err := request.Shards()
+	if err != nil {
+		return err
+	}
+	
+	presentList, err := request.ShardPresent()
+	if err != nil {
+		return err
+	}
+	
+	compressionLevel := request.CompressionLevel()
+
+	// Convert to Go shards
+	shardCount := shardsList.Len()
+	shards := make([]ShardData, shardCount)
+	present := make([]bool, shardCount)
+
+	for i := 0; i < shardCount; i++ {
+		shardMsg := shardsList.At(i)
+		data, err := shardMsg.Data()
+		if err != nil {
+			continue
+		}
+		shards[i] = ShardData{Data: data}
+		present[i] = presentList.At(i)
+	}
+
+	// Create CES pipeline
+	pipeline := NewCESPipeline(int(compressionLevel))
+	if pipeline == nil {
+		response, err := results.NewResponse()
+		if err != nil {
+			return err
+		}
+		response.SetSuccess(false)
+		response.SetErrorMsg("Failed to create CES pipeline")
+		return nil
+	}
+	defer pipeline.Close()
+
+	// Reconstruct data
+	data, err := pipeline.Reconstruct(shards, present)
+	if err != nil {
+		response, err := results.NewResponse()
+		if err != nil {
+			return err
+		}
+		response.SetSuccess(false)
+		response.SetErrorMsg(fmt.Sprintf("CES reconstruction failed: %v", err))
+		return nil
+	}
+
+	// Build response
+	response, err := results.NewResponse()
+	if err != nil {
+		return err
+	}
+	response.SetSuccess(true)
+	response.SetData(data)
+
+	return nil
+}
+
+// Upload implements the upload method - high-level CES + distribute
+func (s *nodeServiceServer) Upload(ctx context.Context, call NodeService_upload) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	request, err := args.Request()
+	if err != nil {
+		return err
+	}
+
+	// Get input data
+	data, err := request.Data()
+	if err != nil {
+		return err
+	}
+
+	targetPeersList, err := request.TargetPeers()
+	if err != nil {
+		return err
+	}
+
+	targetPeers := make([]uint32, targetPeersList.Len())
+	for i := 0; i < targetPeersList.Len(); i++ {
+		targetPeers[i] = targetPeersList.At(i)
+	}
+
+	// Create CES pipeline with adaptive compression
+	pipeline := NewCESPipeline(3) // Default compression level
+	if pipeline == nil {
+		response, err := results.NewResponse()
+		if err != nil {
+			return err
+		}
+		response.SetSuccess(false)
+		response.SetErrorMsg("Failed to create CES pipeline")
+		return nil
+	}
+	defer pipeline.Close()
+
+	// Process through CES
+	shards, err := pipeline.Process(data)
+	if err != nil {
+		response, err := results.NewResponse()
+		if err != nil {
+			return err
+		}
+		response.SetSuccess(false)
+		response.SetErrorMsg(fmt.Sprintf("CES processing failed: %v", err))
+		return nil
+	}
+
+	// Distribute shards to peers
+	shardLocations := make([][2]uint32, len(shards)) // [shardIndex, peerID]
+	for i, shard := range shards {
+		peerID := targetPeers[i%len(targetPeers)]
+		
+		// Send shard to peer
+		err := s.network.SendMessage(peerID, shard.Data)
+		if err != nil {
+			log.Printf("Warning: Failed to send shard %d to peer %d: %v", i, peerID, err)
+			// Continue - Reed-Solomon allows some failures
+		}
+		
+		shardLocations[i] = [2]uint32{uint32(i), peerID}
+	}
+
+	// Build manifest
+	// Calculate file hash (simple for now)
+	var fileHash string
+	if len(data) >= 32 {
+		fileHash = fmt.Sprintf("%x", data[:32])
+	} else {
+		fileHash = fmt.Sprintf("%x", data)
+	}
+
+	response, err := results.NewResponse()
+	if err != nil {
+		return err
+	}
+	response.SetSuccess(true)
+
+	manifest, err := response.NewManifest()
+	if err != nil {
+		return err
+	}
+	manifest.SetFileHash(fileHash)
+	// Use filename from request, fallback to "uploaded_file" if not provided
+	fileName := ""
+	req, err := call.Args().Request()
+	if err == nil {
+		fileName, _ = req.FileName()
+	}
+	if fileName == "" {
+		fileName = "uploaded_file"
+	}
+	manifest.SetFileName(fileName)
+	manifest.SetFileSize(uint64(len(data)))
+	manifest.SetShardCount(uint32(len(shards)))
+	manifest.SetParityCount(4) // From CES config
+	manifest.SetTimestamp(0)   // TODO: Add timestamp
+	manifest.SetTtl(0)
+
+	// Set shard locations
+	seg := results.Segment()
+	locationsList, err := NewShardLocation_List(seg, int32(len(shardLocations)))
+	if err != nil {
+		return err
+	}
+
+	for i, loc := range shardLocations {
+		locMsg := locationsList.At(i)
+		locMsg.SetShardIndex(loc[0])
+		locMsg.SetPeerId(loc[1])
+	}
+
+	manifest.SetShardLocations(locationsList)
+
+	return nil
+}
+
+// Download implements the download method - fetch shards + CES reconstruct
+func (s *nodeServiceServer) Download(ctx context.Context, call NodeService_download) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	request, err := args.Request()
+	if err != nil {
+		return err
+	}
+
+	// Get shard locations
+	shardLocationsList, err := request.ShardLocations()
+	if err != nil {
+		return err
+	}
+
+	// TODO: Implement actual shard fetching from peers
+	// For now, return error indicating not fully implemented
+	response, err := results.NewResponse()
+	if err != nil {
+		return err
+	}
+	response.SetSuccess(false)
+	response.SetErrorMsg("Download not yet fully implemented - needs peer shard fetching")
+	response.SetBytesDownloaded(0)
+
+	log.Printf("Download requested for %d shard locations", shardLocationsList.Len())
+
+	return nil
 }

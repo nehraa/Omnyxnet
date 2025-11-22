@@ -44,8 +44,8 @@ type CESPipeline struct {
 	handle unsafe.Pointer
 }
 
-// Shard represents a single shard of data
-type Shard struct {
+// ShardData represents raw shard data (avoid conflict with generated Shard type)
+type ShardData struct {
 	Data []byte
 }
 
@@ -67,7 +67,7 @@ func (c *CESPipeline) Close() {
 }
 
 // Process data through the CES pipeline (Compress, Encrypt, Shard)
-func (c *CESPipeline) Process(data []byte) ([]Shard, error) {
+func (c *CESPipeline) Process(data []byte) ([]ShardData, error) {
 	if c.handle == nil {
 		return nil, fmt.Errorf("pipeline is closed")
 	}
@@ -94,7 +94,7 @@ func (c *CESPipeline) Process(data []byte) ([]Shard, error) {
 	}
 
 	// Convert C shards to Go
-	shards := make([]Shard, int(ffiShards.count))
+	shards := make([]ShardData, int(ffiShards.count))
 	cShards := (*[1 << 30]C.FFIShard)(unsafe.Pointer(ffiShards.shards))[:ffiShards.count:ffiShards.count]
 
 	for i := 0; i < int(ffiShards.count); i++ {
@@ -103,14 +103,14 @@ func (c *CESPipeline) Process(data []byte) ([]Shard, error) {
 		}
 		// Copy shard data to Go
 		shardData := C.GoBytes(unsafe.Pointer(cShards[i].data), C.int(cShards[i].len))
-		shards[i] = Shard{Data: shardData}
+		shards[i] = ShardData{Data: shardData}
 	}
 
 	return shards, nil
 }
 
 // Reconstruct data from shards (reverse CES pipeline)
-func (c *CESPipeline) Reconstruct(shards []Shard, present []bool) ([]byte, error) {
+func (c *CESPipeline) Reconstruct(shards []ShardData, present []bool) ([]byte, error) {
 	if c.handle == nil {
 		return nil, fmt.Errorf("pipeline is closed")
 	}
