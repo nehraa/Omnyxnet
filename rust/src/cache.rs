@@ -17,8 +17,11 @@ pub struct FileManifest {
     pub file_name: String,
     /// Total file size in bytes
     pub file_size: usize,
-    /// Number of shards
+    /// Number of shards (total = k + m)
     pub shard_count: usize,
+    /// Number of parity shards (m)
+    #[serde(default)]
+    pub parity_count: usize,
     /// Shard locations: (shard_index, peer_id)
     pub shard_locations: Vec<(usize, u32)>,
     /// Timestamp of upload
@@ -331,19 +334,19 @@ impl Cache {
 
     /// Refresh TTL for a manifest (called on download)
     pub async fn refresh_ttl(&self, file_hash: &str, new_ttl: u64) -> Result<bool> {
-        let mut cache = self.manifest_cache.write().await;
-        
-        if let Some(manifest) = cache.get_mut(file_hash) {
-            manifest.ttl = new_ttl;
-            manifest.timestamp = chrono::Utc::now().timestamp();
-            
-            // Persist the updated manifest
-            drop(cache); // Release lock before async operation
-            let updated_manifest = self.manifest_cache.read().await.get(file_hash).cloned();
-            if let Some(manifest) = updated_manifest {
-                self.persist_manifest(&manifest).await?;
+        // Acquire write lock and update manifest, then clone for persistence
+        let manifest_to_persist = {
+            let mut cache = self.manifest_cache.write().await;
+            if let Some(manifest) = cache.get_mut(file_hash) {
+                manifest.ttl = new_ttl;
+                manifest.timestamp = chrono::Utc::now().timestamp();
+                Some(manifest.clone())
+            } else {
+                None
             }
-            
+        };
+        if let Some(manifest) = manifest_to_persist {
+            self.persist_manifest(&manifest).await?;
             info!("Refreshed TTL for {}: {} seconds", file_hash, new_ttl);
             Ok(true)
         } else {
