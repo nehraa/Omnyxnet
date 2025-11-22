@@ -517,10 +517,10 @@ async fn handle_list(args: &Args) -> anyhow::Result<()> {
     
     for file in files {
         let status = if file.is_available { "✅ Ready" } else { "⚠️  Partial" };
-        let hash_short = if file.file_hash.len() > 10 { 
-            &file.file_hash[..10]
+        let hash_short = if file.file_hash.chars().count() > 10 {
+            file.file_hash.chars().take(10).collect::<String>()
         } else {
-            &file.file_hash
+            file.file_hash.clone()
         };
         let name_display = if file.file_name.len() > 30 { 
             format!("{}...", &file.file_name[..27])
