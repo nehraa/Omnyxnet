@@ -137,9 +137,10 @@ else
     CMD="$CMD -local=true"
 fi
 
-# Start in background
-$CMD > "$LOG_FILE" 2>&1 &
+# Start in background with nohup for persistence
+nohup $CMD > "$LOG_FILE" 2>&1 &
 NODE_PID=$!
+disown
 echo $NODE_PID > "$DATA_DIR/node.pid"
 
 echo -e "${GREEN}✅ Node started (PID: $NODE_PID)${NC}"
@@ -160,10 +161,24 @@ echo ""
 
 # Get IP address for other devices (try multiple methods for portability)
 if command -v hostname &> /dev/null; then
-    IP_ADDR=$(hostname -I 2>/dev/null | awk '{print $1}')
+    # Select the first private IP address (192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+    IP_ADDR=$(hostname -I 2>/dev/null | tr ' ' '\n' | grep -E '^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)' | head -n 1)
+    # If no private IP found, fall back to the first IP
+    if [ -z "$IP_ADDR" ]; then
+        IP_ADDR=$(hostname -I 2>/dev/null | awk '{print $1}')
+    fi
 fi
 if [ -z "$IP_ADDR" ] && command -v ip &> /dev/null; then
+    # Try getting IP from active interface
+    IP_ADDR=$(ip addr show 2>/dev/null | grep -oP 'inet \K[\d.]+' | grep -v '^127\.' | head -1)
+fi
+if [ -z "$IP_ADDR" ] && command -v ip &> /dev/null; then
+    # Fallback to ip route (requires connectivity)
     IP_ADDR=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'src \K\S+' || true)
+fi
+if [ -z "$IP_ADDR" ] && command -v ifconfig &> /dev/null; then
+    # Additional fallback for systems with ifconfig
+    IP_ADDR=$(ifconfig 2>/dev/null | grep -oE 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -oE '([0-9]*\.){3}[0-9]*' | grep -v '^127\.' | head -1)
 fi
 if [ -z "$IP_ADDR" ]; then
     IP_ADDR="<your-ip-address>"
@@ -206,14 +221,17 @@ upload() {
     cp "$FILE" "$DATA_DIR/uploads/"
     FILENAME=$(basename "$FILE")
     
-    # TODO: Call Rust upload CLI when available
-    # For now, just show what would happen
-    echo "File ready for upload: $DATA_DIR/uploads/$FILENAME"
-    echo "Upload will process file through CES pipeline:"
+    # Note: Upload CLI integration pending. File staged but not yet distributed.
+    # The Rust upload protocol is implemented but CLI wiring is in progress.
+    echo "File staged for upload: $DATA_DIR/uploads/$FILENAME"
+    echo ""
+    echo "When CLI integration is complete, upload will:"
     echo "  1. Compress (zstd)"
     echo "  2. Encrypt (ChaCha20-Poly1305)"
     echo "  3. Shard (Reed-Solomon)"
     echo "  4. Distribute to peers via Go node"
+    echo ""
+    echo "Status: CLI integration in progress"
 }
 
 download() {
@@ -254,8 +272,8 @@ status() {
     
     echo ""
     echo "Directories:"
-    echo "  Cache:     $(du -sh $DATA_DIR/cache 2>/dev/null | cut -f1)"
-    echo "  Uploads:   $(ls $DATA_DIR/uploads 2>/dev/null | wc -l) files"
+    echo "  Cache:     $([ -d "$DATA_DIR/cache" ] && du -sh "$DATA_DIR/cache" 2>/dev/null | cut -f1 || echo "N/A")"
+    echo "  Uploads:   $([ -d "$DATA_DIR/uploads" ] && ls "$DATA_DIR/uploads" 2>/dev/null | wc -l || echo "N/A") files"
     echo "  Downloads: $([ -d "$DATA_DIR/downloads" ] && ls "$DATA_DIR/downloads" 2>/dev/null | wc -l || echo "N/A") files"
 }
 
