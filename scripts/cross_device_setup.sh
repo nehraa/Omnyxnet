@@ -1,6 +1,8 @@
 #!/bin/bash
+# DEPRECATED: Use easy_test.sh instead - it properly handles dynamic ports and peer IDs
 # Simple cross-device setup for Pangea Net
 # Run this script on each device to start a node
+# NOTE: This script uses hardcoded ports and does not extract actual dynamic ports/peer IDs
 
 set -e
 
