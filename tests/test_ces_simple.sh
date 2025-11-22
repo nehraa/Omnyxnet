@@ -56,6 +56,10 @@ if [ ! -f "$PROJECT_ROOT/rust/target/release/libpangea_ces.so" ] && \
     echo -e "${GREEN}Rust library built successfully${NC}"
 fi
 
+# Set library path for Rust FFI
+export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
+export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
+
 # Start Go node in background
 echo "Starting Go node..."
 cd "$PROJECT_ROOT/go"
@@ -75,10 +79,20 @@ fi
 echo -e "${GREEN}Go node started (PID: $GO_NODE_PID)${NC}"
 echo ""
 
-# Run Python test
+# Run Python test with venv
 echo "Running CES wiring test..."
 cd "$PROJECT_ROOT"
-python3 tests/test_ces_wiring.py
+
+# Use venv Python if available
+if [ -f "$PROJECT_ROOT/python/.venv/bin/python" ]; then
+    PYTHON_BIN="$PROJECT_ROOT/python/.venv/bin/python"
+    echo "Using venv Python: $PYTHON_BIN"
+else
+    PYTHON_BIN="python3"
+    echo "Using system Python: $PYTHON_BIN"
+fi
+
+$PYTHON_BIN tests/test_ces_wiring.py
 
 TEST_RESULT=$?
 
