@@ -197,31 +197,44 @@ echo -e "${BLUE}📋 Connection Info${NC}"
 echo -e "${BLUE}═══════════════════════════════════════${NC}"
 echo ""
 
-# Extract Peer ID from logs (wait a bit for it to appear)
-sleep 1
-PEER_ID=$(grep "Node ID:" "$LOG_FILE" | grep -oE '12D3Koo[a-zA-Z0-9]{44}' | head -1)
+# Extract Peer ID and actual port from logs (wait a bit for it to appear)
+# NOTE: Both Peer ID and port change on every restart (no key persistence yet)
+sleep 2
+# Extract from listening addresses line (most reliable source)
+MULTIADDR_LINE=$(grep "Listening addresses:" -A 5 "$LOG_FILE" | grep "/ip4/${IP_ADDR}/" | head -1)
 
-if [ -z "$PEER_ID" ]; then
-    echo -e "${YELLOW}⏳ Waiting for peer ID...${NC}"
-    for i in {1..10}; do
+if [ -z "$MULTIADDR_LINE" ]; then
+    echo -e "${YELLOW}⏳ Waiting for listening addresses...${NC}"
+    for i in {1..15}; do
         sleep 1
-        PEER_ID=$(grep "Node ID:" "$LOG_FILE" | grep -oE '12D3Koo[a-zA-Z0-9]{44}' | head -1)
-        [ -n "$PEER_ID" ] && break
+        MULTIADDR_LINE=$(grep "Listening addresses:" -A 5 "$LOG_FILE" | grep "/ip4/${IP_ADDR}/" | head -1)
+        [ -n "$MULTIADDR_LINE" ] && break
     done
 fi
 
-if [ -n "$PEER_ID" ]; then
+if [ -z "$MULTIADDR_LINE" ]; then
+    # Fallback to any non-localhost address
+    MULTIADDR_LINE=$(grep "Listening addresses:" -A 5 "$LOG_FILE" | grep -v "127.0.0.1" | head -1)
+fi
+
+# Extract port and peer ID from the multiaddr line
+ACTUAL_PORT=$(echo "$MULTIADDR_LINE" | grep -oP '/tcp/\K[0-9]+')
+PEER_ID=$(echo "$MULTIADDR_LINE" | grep -oE '12D3Koo[a-zA-Z0-9]{44}')
+
+if [ -n "$PEER_ID" ] && [ -n "$ACTUAL_PORT" ]; then
     echo -e "${GREEN}✓ Peer ID: ${PEER_ID}${NC}"
+    echo -e "${GREEN}✓ P2P Port: ${ACTUAL_PORT}${NC}"
+    echo -e "${YELLOW}ℹ  Note: Both Peer ID and port change on each restart${NC}"
     echo ""
     echo -e "${CYAN}For other devices to join this network:${NC}"
-    echo -e "${YELLOW}  ./scripts/easy_test.sh <NODE_ID> /ip4/${IP_ADDR}/tcp/${DHT_PORT}/p2p/${PEER_ID}${NC}"
+    echo -e "${YELLOW}  ./scripts/easy_test.sh <NODE_ID> /ip4/${IP_ADDR}/tcp/${ACTUAL_PORT}/p2p/${PEER_ID}${NC}"
     echo ""
     echo -e "Example:"
-    echo -e "  ${YELLOW}./scripts/easy_test.sh 2 /ip4/${IP_ADDR}/tcp/${DHT_PORT}/p2p/${PEER_ID}${NC}"
+    echo -e "  ${YELLOW}./scripts/easy_test.sh 2 /ip4/${IP_ADDR}/tcp/${ACTUAL_PORT}/p2p/${PEER_ID}${NC}"
     echo ""
     
     # Save connection info
-    echo "/ip4/${IP_ADDR}/tcp/${DHT_PORT}/p2p/${PEER_ID}" > "$DATA_DIR/multiaddr.txt"
+    echo "/ip4/${IP_ADDR}/tcp/${ACTUAL_PORT}/p2p/${PEER_ID}" > "$DATA_DIR/multiaddr.txt"
 else
     echo -e "${RED}⚠ Could not extract Peer ID from logs${NC}"
     echo -e "Check logs: tail -f $LOG_FILE"
@@ -405,23 +418,21 @@ if [ -z "$BOOTSTRAP" ]; then
     echo ""
     echo -e "${CYAN}For Ubuntu/Debian (ufw):${NC}"
     echo -e "  ${YELLOW}sudo ufw allow ${CAPNP_PORT}/tcp${NC}  # Cap'n Proto"
-    echo -e "  ${YELLOW}sudo ufw allow ${P2P_PORT}/tcp${NC}   # P2P"
-    echo -e "  ${YELLOW}sudo ufw allow ${DHT_PORT}/tcp${NC}   # DHT/libp2p"
-    echo -e "  ${YELLOW}sudo ufw allow ${DHT_PORT}/udp${NC}   # QUIC"
+    echo -e "  ${YELLOW}sudo ufw allow ${ACTUAL_PORT}/tcp${NC}   # P2P (actual dynamic port)"
+    echo -e "  ${YELLOW}sudo ufw allow ${ACTUAL_PORT}/udp${NC}   # QUIC"
     echo ""
     echo -e "${CYAN}For RHEL/CentOS (firewalld):${NC}"
     echo -e "  ${YELLOW}sudo firewall-cmd --add-port=${CAPNP_PORT}/tcp --permanent${NC}"
-    echo -e "  ${YELLOW}sudo firewall-cmd --add-port=${P2P_PORT}/tcp --permanent${NC}"
-    echo -e "  ${YELLOW}sudo firewall-cmd --add-port=${DHT_PORT}/tcp --permanent${NC}"
-    echo -e "  ${YELLOW}sudo firewall-cmd --add-port=${DHT_PORT}/udp --permanent${NC}"
+    echo -e "  ${YELLOW}sudo firewall-cmd --add-port=${ACTUAL_PORT}/tcp --permanent${NC}"
+    echo -e "  ${YELLOW}sudo firewall-cmd --add-port=${ACTUAL_PORT}/udp --permanent${NC}"
     echo -e "  ${YELLOW}sudo firewall-cmd --reload${NC}"
     echo ""
     echo -e "${CYAN}For iptables:${NC}"
     echo -e "  ${YELLOW}sudo iptables -A INPUT -p tcp --dport ${CAPNP_PORT} -j ACCEPT${NC}"
-    echo -e "  ${YELLOW}sudo iptables -A INPUT -p tcp --dport ${P2P_PORT} -j ACCEPT${NC}"
-    echo -e "  ${YELLOW}sudo iptables -A INPUT -p tcp --dport ${DHT_PORT} -j ACCEPT${NC}"
-    echo -e "  ${YELLOW}sudo iptables -A INPUT -p udp --dport ${DHT_PORT} -j ACCEPT${NC}"
+    echo -e "  ${YELLOW}sudo iptables -A INPUT -p tcp --dport ${ACTUAL_PORT} -j ACCEPT${NC}"
+    echo -e "  ${YELLOW}sudo iptables -A INPUT -p udp --dport ${ACTUAL_PORT} -j ACCEPT${NC}"
     echo ""
+    echo -e "${YELLOW}ℹ  Note: P2P port is dynamically assigned (${ACTUAL_PORT})${NC}"
     echo -e "${RED}💡 Also check your router/cloud firewall settings!${NC}"
     echo ""
 fi
