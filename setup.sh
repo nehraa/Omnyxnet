@@ -113,11 +113,23 @@ setup_python() {
     log_info "Installing Python dependencies..."
     pip install --upgrade pip
     
-    # Install minimal requirements by default (torch is optional and very large)
+    # Prompt user for installation type
     if [ -f "requirements-minimal.txt" ]; then
-        log_info "Installing minimal requirements (for testing)..."
-        pip install -r requirements-minimal.txt
-        log_info "Note: For AI features, install torch separately: pip install torch>=2.0.0"
+        echo ""
+        echo -e "${BLUE}Python Dependency Installation:${NC}"
+        echo "  1) Minimal (testing only, ~200MB, no AI features)"
+        echo "  2) Full (with torch for AI, ~5GB)"
+        echo ""
+        read -p "Select installation type (1 or 2, default: 2): " install_type
+        
+        if [ "$install_type" = "1" ]; then
+            log_info "Installing minimal requirements (for testing)..."
+            pip install -r requirements-minimal.txt
+            log_info "Note: For AI features later, run: cd python && source .venv/bin/activate && pip install torch>=2.0.0"
+        else
+            log_info "Installing full requirements (including torch for AI)..."
+            pip install -r requirements.txt
+        fi
     else
         log_warning "requirements-minimal.txt not found, installing full requirements..."
         pip install -r requirements.txt
