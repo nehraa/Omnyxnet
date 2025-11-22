@@ -147,6 +147,9 @@ else
 fi
 
 # Start in background with nohup for persistence
+# Clear old log to avoid reading stale data
+> "$LOG_FILE"
+
 nohup $CMD > "$LOG_FILE" 2>&1 &
 NODE_PID=$!
 disown
@@ -155,8 +158,8 @@ echo $NODE_PID > "$DATA_DIR/node.pid"
 echo -e "${GREEN}✅ Node started (PID: $NODE_PID)${NC}"
 echo ""
 
-# Wait and verify
-sleep 3
+# Wait for node to initialize and flush logs
+sleep 5
 
 if ! ps -p $NODE_PID > /dev/null 2>&1; then
     echo -e "${RED}❌ Node failed to start!${NC}"
