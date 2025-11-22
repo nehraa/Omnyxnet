@@ -18,6 +18,9 @@ pub mod upload;
 pub mod download;
 pub mod cache;
 pub mod lookup;
+pub mod ffi;
+pub mod auto_heal;
+pub mod file_detector;
 
 // Re-export commonly used types for ease of use
 pub use capabilities::HardwareCaps;

@@ -8,9 +8,11 @@ use rayon::prelude::*;
 use reed_solomon_erasure::ReedSolomon;
 use sha2::{Sha256, Digest};
 use std::io::{Read, Write};
+use std::path::Path;
 use tracing::{debug, info};
 
 use crate::types::CesConfig;
+use crate::file_detector::{FileDetector, FileType};
 
 /// CES Pipeline: Compression, Encryption, Sharding
 pub struct CesPipeline {
@@ -39,9 +41,27 @@ impl CesPipeline {
 
     /// Process data through the CES pipeline
     pub fn process(&self, data: &[u8]) -> Result<Vec<Vec<u8>>> {
-        // Step 1: Compress
-        let compressed = self.compress(data)?;
-        info!("Compressed {} bytes to {} bytes", data.len(), compressed.len());
+        // Step 0: Detect file type (from content)
+        let file_type = FileDetector::detect_from_content(data);
+        debug!("Detected file type: {}", file_type.name());
+        
+        // Step 1: Compress (skip if already compressed)
+        let compressed = if file_type.skip_compression() {
+            info!("Skipping compression for {} type", file_type.name());
+            data.to_vec()
+        } else {
+            let level = file_type.recommended_compression_level();
+            debug!("Using compression level {} for {}", level, file_type.name());
+            self.compress_with_level(data, level)?
+        };
+        
+        if compressed.len() < data.len() {
+            info!("Compressed {} bytes to {} bytes ({:.1}% reduction)", 
+                  data.len(), compressed.len(), 
+                  (1.0 - compressed.len() as f64 / data.len() as f64) * 100.0);
+        } else {
+            info!("Data not compressed ({} bytes)", data.len());
+        }
 
         // Step 2: Encrypt
         let encrypted = self.encrypt(&compressed)?;
@@ -91,8 +111,18 @@ impl CesPipeline {
 
     /// Compress data using zstd
     fn compress(&self, data: &[u8]) -> Result<Vec<u8>> {
+        self.compress_with_level(data, self.config.compression_level)
+    }
+
+    /// Compress data with specific level
+    fn compress_with_level(&self, data: &[u8], level: i32) -> Result<Vec<u8>> {
+        if level == 0 {
+            // No compression
+            return Ok(data.to_vec());
+        }
+        
         let mut compressed = Vec::new();
-        let mut encoder = zstd::Encoder::new(&mut compressed, self.config.compression_level)?;
+        let mut encoder = zstd::Encoder::new(&mut compressed, level)?;
         encoder.write_all(data)?;
         encoder.finish()?;
         Ok(compressed)
