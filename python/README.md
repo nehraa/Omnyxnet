@@ -1,5 +1,11 @@
 # Pangea Net Python AI Component
 
+**Version:** 0.3.0-alpha  
+**Status:** Alpha - Local Testing  
+**Last Updated:** 2025-11-22
+
+> ⚠️ **Development Status:** Core AI features implemented and functional for local testing. Requires validation with real network data before production use.
+
 Python AI component that monitors Go nodes and predicts network threats using 1D CNN.
 
 ## Features

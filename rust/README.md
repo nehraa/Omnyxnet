@@ -1,8 +1,12 @@
 # Pangea Rust Node
 
-**High-performance, production-ready Rust implementation of Pangea Net**
+**Version:** 0.3.0-alpha  
+**Status:** Alpha - Local Testing  
+**Last Updated:** 2025-11-22
 
-This is a complete, feature-rich Rust node implementation with QUIC transport, libp2p DHT, adaptive CES pipeline, Cap'n Proto RPC, and optional eBPF firewall.
+> ⚠️ **Development Status:** This Rust implementation has all planned features coded and working for local testing. It is NOT production-ready and requires integration testing before deployment.
+
+High-performance Rust implementation of Pangea Net with QUIC transport, libp2p DHT, adaptive CES pipeline, Cap'n Proto RPC, and optional eBPF firewall.
 
 ## Features ✅
 

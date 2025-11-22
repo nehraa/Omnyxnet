@@ -1,5 +1,10 @@
 # Python API Guide
 
+**Version:** 0.3.0-alpha  
+**Last Updated:** 2025-11-22
+
+> 📋 This guide describes the Python API for interacting with Pangea Net nodes. For version status, see [../VERSION.md](../VERSION.md).
+
 This document explains how Python can interact with the Go node via Cap'n Proto RPC.
 
 ## Quick Start
