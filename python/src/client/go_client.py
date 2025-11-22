@@ -499,10 +499,11 @@ class GoNodeClient:
             # Build shard locations list
             locs_list = request.init('shardLocations', len(shard_locations))
             for i, loc in enumerate(shard_locations):
+                if 'shardIndex' not in loc or 'peerId' not in loc:
+                    raise ValueError(f"shard_locations[{i}] missing required keys 'shardIndex' or 'peerId'")
                 loc_msg = locs_list[i]
                 loc_msg.shardIndex = loc['shardIndex']
                 loc_msg.peerId = loc['peerId']
-            
             result = await self.service.download(request)
             
             if not result.response.success:
