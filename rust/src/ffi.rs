@@ -163,8 +163,8 @@ pub extern "C" fn ces_reconstruct(
 pub extern "C" fn ces_free_result(result: FFIResult) {
     unsafe {
         if !result.data.is_null() {
-            let slice_ptr = slice::from_raw_parts_mut(result.data, result.data_len) as *mut [u8];
-            drop(Box::from_raw(slice_ptr));
+            // Reconstruct the boxed slice that was created with Box::into_raw
+            let _ = Box::from_raw(slice::from_raw_parts_mut(result.data, result.data_len));
         }
         if !result.error_msg.is_null() {
             drop(CString::from_raw(result.error_msg));
@@ -183,8 +183,8 @@ pub extern "C" fn ces_free_shards(shards: FFIShards) {
         let shards_vec = Vec::from_raw_parts(shards.shards, shards.count, shards.count);
         for shard in shards_vec {
             if !shard.data.is_null() {
-                let slice_ptr = slice::from_raw_parts_mut(shard.data, shard.len) as *mut [u8];
-                drop(Box::from_raw(slice_ptr));
+                // Reconstruct the boxed slice that was created with Box::into_raw
+                let _ = Box::from_raw(slice::from_raw_parts_mut(shard.data, shard.len));
             }
         }
     }
