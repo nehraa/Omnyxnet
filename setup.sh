@@ -2,6 +2,12 @@
 
 # WGT Automated Setup Script
 # This script installs all dependencies and provides a CLI to run the system
+#
+# SECURITY NOTE: Encryption Key Management
+# For production deployments, set the CES_ENCRYPTION_KEY environment variable:
+#   export CES_ENCRYPTION_KEY=$(openssl rand -hex 32)
+# 
+# Or use explicit key management in your code. See SECURITY.md for details.
 
 set -e  # Exit on error
 
@@ -39,6 +45,65 @@ log_warning() {
 # Check if command exists
 command_exists() {
     command -v "$1" >/dev/null 2>&1
+}
+
+# Setup development environment PATH
+setup_dev_env() {
+    # Add Go tools to PATH if they exist
+    if command_exists go; then
+        GOPATH_BIN="$(go env GOPATH)/bin"
+        if [ -d "$GOPATH_BIN" ]; then
+            export PATH="$GOPATH_BIN:$PATH"
+        fi
+    fi
+    
+    # Add Rust tools to PATH if they exist
+    if [ -d "$HOME/.cargo/bin" ]; then
+        export PATH="$HOME/.cargo/bin:$PATH"
+    fi
+    
+    # Add Python local bin to PATH
+    if [ -d "$HOME/.local/bin" ]; then
+        export PATH="$HOME/.local/bin:$PATH"
+    fi
+}
+
+# Check system dependencies
+check_system_dependencies() {
+    log_info "Checking system dependencies..."
+    local missing_deps=""
+    
+    # Check for essential build tools
+    if ! command_exists make; then
+        missing_deps="$missing_deps make"
+    fi
+    
+    if ! command_exists gcc; then
+        missing_deps="$missing_deps build-essential"
+    fi
+    
+    if ! command_exists pkg-config; then
+        missing_deps="$missing_deps pkg-config"
+    fi
+    
+    # Check for Cap'n Proto
+    if ! command_exists capnp; then
+        missing_deps="$missing_deps capnproto"
+    fi
+    
+    # Check for Git
+    if ! command_exists git; then
+        missing_deps="$missing_deps git"
+    fi
+    
+    if [ -n "$missing_deps" ]; then
+        log_error "Missing system dependencies:$missing_deps"
+        log_warning "Please install them with: sudo apt-get install$missing_deps"
+        return 1
+    fi
+    
+    log_success "All system dependencies are satisfied"
+    return 0
 }
 
 # Install system dependencies
@@ -148,6 +213,15 @@ build_go() {
     cd go
     log_info "Installing Go dependencies..."
     go mod download
+    
+    # Ensure GOPATH/bin is in PATH for go tools
+    
+    # Install capnpc-go plugin if needed
+    if [ ! -f "$(go env GOPATH)/bin/capnpc-go" ]; then
+        log_info "Installing capnpc-go plugin..."
+        go install capnproto.org/go/capnp/v3/capnpc-go@latest
+    fi
+    
     log_info "Compiling Go node..."
     make build
     # Also copy to root of go directory for backward compatibility
@@ -175,6 +249,15 @@ build_rust() {
 full_install() {
     log_info "Starting full installation..."
     log_info "==========================================="
+    
+    # Setup development environment PATH first
+    setup_dev_env
+    
+    # Check system dependencies before starting
+    if ! check_system_dependencies; then
+        log_error "Please install missing system dependencies and try again"
+        return 1
+    fi
     
     install_system_deps
     install_go

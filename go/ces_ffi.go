@@ -1,7 +1,6 @@
 package main
 
 /*
-#cgo LDFLAGS: -L../rust/target/release -lpangea_ces
 #include <stdlib.h>
 #include <stdint.h>
 
@@ -27,6 +26,7 @@ typedef struct {
 
 // Forward declarations for Rust FFI functions
 void* ces_new(int compression_level);
+void* ces_new_with_key(int compression_level, const uint8_t* key);
 void ces_free(void* pipeline);
 FFIShards ces_process(void* pipeline, const uint8_t* data, size_t data_len);
 FFIResult ces_reconstruct(void* pipeline, const FFIShard* shards, size_t shard_count, const int* shard_present);
@@ -50,8 +50,21 @@ type ShardData struct {
 }
 
 // NewCESPipeline creates a new CES pipeline with the specified compression level
+// Uses environment variable CES_ENCRYPTION_KEY or generates a random key
+// For production, use NewCESPipelineWithKey for explicit key management
 func NewCESPipeline(compressionLevel int) *CESPipeline {
 	handle := C.ces_new(C.int(compressionLevel))
+	if handle == nil {
+		return nil
+	}
+	return &CESPipeline{handle: handle}
+}
+
+// NewCESPipelineWithKey creates a new CES pipeline with an explicit encryption key
+// The key must be exactly 32 bytes (256 bits) for XChaCha20-Poly1305 encryption
+// This is the recommended function for production use
+func NewCESPipelineWithKey(compressionLevel int, key [32]byte) *CESPipeline {
+	handle := C.ces_new_with_key(C.int(compressionLevel), (*C.uint8_t)(&key[0]))
 	if handle == nil {
 		return nil
 	}

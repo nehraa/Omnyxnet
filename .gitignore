@@ -20,6 +20,14 @@ go.work
 
 # Generated Cap'n Proto files
 *_capnp.go
+schema.capnp.go
+*.capnp.go
+
+# Generated binaries
+go/go-node
+go-node
+go/pangea-go
+pangea-go
 
 # IDE
 .idea/
@@ -53,4 +61,7 @@ go/bin/
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+setup.log
 
