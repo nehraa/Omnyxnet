@@ -209,7 +209,6 @@ build_go() {
     go mod download
     
     # Ensure GOPATH/bin is in PATH for go tools
-    export PATH="$(go env GOPATH)/bin:$PATH"
     
     # Install capnpc-go plugin if needed
     if [ ! -f "$(go env GOPATH)/bin/capnpc-go" ]; then
