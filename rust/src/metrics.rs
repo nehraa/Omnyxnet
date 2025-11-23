@@ -94,7 +94,7 @@ impl MetricsTracker {
             return None;
         }
 
-        matching.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        matching.sort_by(|a, b| a.total_cmp(b));  // Use total_cmp for NaN-safe comparison
         let index = ((matching.len() - 1) as f64 * percentile) as usize;
         Some(matching[index])
     }
@@ -117,8 +117,8 @@ impl MetricsTracker {
         let p99 = self.percentile_latency(operation, 0.99)?;
 
         let measurements = self.get_measurements(operation);
-        let min = measurements.iter().map(|m| m.latency_ms).min_by(|a, b| a.partial_cmp(b).unwrap())?;
-        let max = measurements.iter().map(|m| m.latency_ms).max_by(|a, b| a.partial_cmp(b).unwrap())?;
+        let min = measurements.iter().map(|m| m.latency_ms).min_by(|a, b| a.total_cmp(b))?;  // NaN-safe
+        let max = measurements.iter().map(|m| m.latency_ms).max_by(|a, b| a.total_cmp(b))?;  // NaN-safe
 
         Some(PerformanceReport {
             operation: operation.to_string(),

@@ -96,10 +96,11 @@ impl AudioEncoder {
     /// Output: Compressed Opus packet
     pub fn encode(&mut self, pcm: &[i16]) -> Result<Vec<u8>> {
         let frame_size = self.config.frame_size();
+        let expected_samples = frame_size * self.config.channels as usize;
         
-        if pcm.len() != frame_size * self.config.channels as usize {
+        if pcm.len() != expected_samples {
             anyhow::bail!("Invalid PCM frame size: expected {} samples, got {}",
-                         frame_size * self.config.channels as usize, pcm.len());
+                         expected_samples, pcm.len());
         }
 
         let mut output = vec![0u8; self.config.max_packet_size()];
@@ -220,15 +221,19 @@ mod tests {
 
     #[test]
     fn test_opus_encode_decode() -> Result<()> {
+        const TEST_FREQUENCY_HZ: f32 = 440.0;  // A4 note
+        const SAMPLE_RATE: f32 = 48000.0;
+        const AMPLITUDE_SCALE: f32 = 32767.0;  // Max i16 value
+        
         let config = AudioConfig::low_latency();
         let frame_size = config.frame_size();
         
         let mut encoder = AudioEncoder::new(config.clone())?;
         let mut decoder = AudioDecoder::new(config)?;
 
-        // Generate test audio (sine wave)
+        // Generate test audio (440Hz sine wave for testing)
         let pcm: Vec<i16> = (0..frame_size)
-            .map(|i| (32767.0 * (2.0 * std::f32::consts::PI * 440.0 * i as f32 / 48000.0).sin()) as i16)
+            .map(|i| (AMPLITUDE_SCALE * (2.0 * std::f32::consts::PI * TEST_FREQUENCY_HZ * i as f32 / SAMPLE_RATE).sin()) as i16)
             .collect();
 
         // Encode
