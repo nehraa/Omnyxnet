@@ -64,4 +64,7 @@ Thumbs.db
 
 # Logs
 setup.log
+*/setup.log
+test_log.txt
+*.log
 
