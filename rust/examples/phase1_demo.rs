@@ -20,6 +20,7 @@ fn main() -> anyhow::Result<()> {
     let cfg = AudioConfig::low_latency();
     let mut enc = AudioEncoder::new(cfg.clone())?;
     let mut dec = AudioDecoder::new(cfg.clone())?;
+    // Generate test audio data (simple waveform for demonstration)
     let pcm: Vec<i16> = (0..cfg.frame_size()).map(|i| ((i as f32).sin() * 32767.0) as i16).collect();
     let timer = LatencyTimer::start("opus_encode".to_string(), metrics.clone());
     let encoded = enc.encode(&pcm)?;
