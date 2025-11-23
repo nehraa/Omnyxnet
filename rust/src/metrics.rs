@@ -221,6 +221,7 @@ impl Default for ThroughputTracker {
 
 impl ThroughputTracker {
     /// Create a new throughput tracker
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self::default()
     }
