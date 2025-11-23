@@ -41,8 +41,16 @@ pub extern "C" fn ces_new(compression_level: c_int) -> *mut CesPipeline {
         chunk_size: 1024 * 1024, // 1MB chunks
     };
     
-    // Use a deterministic key to fix the reconstruction bug
-    // In production, this should be derived from a shared secret
+    // SECURITY WARNING: This implementation uses a fixed encryption key for testing only.
+    // All CES pipeline instances created by ces_new() will use the same key, which is insecure for production
+    // and prevents secure multi-user or multi-tenant scenarios.
+    //
+    // In production, key management should be implemented via one of the following approaches:
+    //   1. Passing keys as parameters to ces_new(), or
+    //   2. Using a separate ces_set_key() function, or
+    //   3. Deriving keys from a shared secret management system.
+    //
+    // Failing to do so may result in compromise of all data protected by this pipeline.
     let deterministic_key = [0x42u8; 32]; // Fixed key for testing
     let pipeline = CesPipeline::new(config).with_key(deterministic_key);
     Box::into_raw(Box::new(pipeline))
