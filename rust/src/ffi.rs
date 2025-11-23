@@ -44,6 +44,7 @@ pub struct FFIShards {
 pub extern "C" fn ces_new(compression_level: c_int) -> *mut CesPipeline {
     let config = CesConfig {
         compression_level: compression_level as i32,
+        compression_algorithm: crate::types::CompressionAlgorithm::Zstd,
         shard_count: 8,
         parity_count: 4,
         chunk_size: 1024 * 1024, // 1MB chunks
@@ -98,6 +99,7 @@ pub extern "C" fn ces_new_with_key(compression_level: c_int, key: *const c_uchar
     
     let config = CesConfig {
         compression_level: compression_level as i32,
+        compression_algorithm: crate::types::CompressionAlgorithm::Zstd,
         shard_count: 8,
         parity_count: 4,
         chunk_size: 1024 * 1024, // 1MB chunks
