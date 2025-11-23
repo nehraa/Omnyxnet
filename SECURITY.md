@@ -106,16 +106,34 @@ For multi-tenant deployments where different users/organizations need isolated d
 3. Implement secure key derivation from a master secret if needed
 
 ```go
-// Example: Per-tenant key derivation
-func getTenantKey(tenantID string, masterSecret []byte) [32]byte {
-    // Use HKDF or similar KDF to derive tenant-specific key
-    // This is a simplified example - use proper KDF in production
-    hash := sha256.Sum256(append(masterSecret, []byte(tenantID)...))
-    return hash
+import (
+    "crypto/sha256"
+    "golang.org/x/crypto/hkdf"
+    "io"
+)
+
+// Example: Per-tenant key derivation using HKDF (PROPER IMPLEMENTATION)
+func getTenantKey(tenantID string, masterSecret []byte) ([32]byte, error) {
+    var key [32]byte
+    
+    // Use HKDF (HMAC-based Key Derivation Function) - RFC 5869
+    // This is the CORRECT way to derive keys
+    info := []byte("ces-pipeline-" + tenantID)
+    salt := []byte("wgt-ces-v1") // Use a unique salt per application/version
+    
+    kdf := hkdf.New(sha256.New, masterSecret, salt, info)
+    if _, err := io.ReadFull(kdf, key[:]); err != nil {
+        return key, err
+    }
+    
+    return key, nil
 }
 
 // Create pipeline with tenant-specific key
-tenantKey := getTenantKey(tenantID, masterSecret)
+tenantKey, err := getTenantKey(tenantID, masterSecret)
+if err != nil {
+    panic(err)
+}
 pipeline := NewCESPipelineWithKey(compressionLevel, tenantKey)
 ```
 
