@@ -1,7 +1,6 @@
 package main
 
 /*
-#cgo LDFLAGS: -L../rust/target/release -lpangea_ces
 #include <stdlib.h>
 #include <stdint.h>
 
