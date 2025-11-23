@@ -41,7 +41,10 @@ pub extern "C" fn ces_new(compression_level: c_int) -> *mut CesPipeline {
         chunk_size: 1024 * 1024, // 1MB chunks
     };
     
-    let pipeline = CesPipeline::new(config);
+    // Use a deterministic key to fix the reconstruction bug
+    // In production, this should be derived from a shared secret
+    let deterministic_key = [0x42u8; 32]; // Fixed key for testing
+    let pipeline = CesPipeline::new(config).with_key(deterministic_key);
     Box::into_raw(Box::new(pipeline))
 }
 
