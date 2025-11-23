@@ -13,6 +13,10 @@ use tracing::{debug, info};
 use crate::types::{CesConfig, CompressionAlgorithm};
 use crate::file_detector::FileDetector;
 
+// Brotli compression constants
+const BROTLI_BUFFER_SIZE: usize = 4096;
+const BROTLI_LG_WINDOW_SIZE: u32 = 22;
+
 /// CES Pipeline: Compression, Encryption, Sharding
 pub struct CesPipeline {
     config: CesConfig,
@@ -135,10 +139,14 @@ impl CesPipeline {
             }
             CompressionAlgorithm::Brotli => {
                 // Brotli quality range: 0-11, map from our 1-22 range
-                let quality = ((level as u32).min(11)).max(0);
-                let buffer_size = 4096;
+                let quality = (level.max(0).min(11)) as u32;
                 let mut compressed = Vec::new();
-                let mut compressor = brotli::CompressorReader::new(data, buffer_size, quality, 22);
+                let mut compressor = brotli::CompressorReader::new(
+                    data, 
+                    BROTLI_BUFFER_SIZE, 
+                    quality, 
+                    BROTLI_LG_WINDOW_SIZE
+                );
                 compressor.read_to_end(&mut compressed)?;
                 Ok(compressed)
             }
@@ -157,7 +165,7 @@ impl CesPipeline {
             }
             CompressionAlgorithm::Brotli => {
                 let mut decompressed = Vec::new();
-                let mut decompressor = brotli::Decompressor::new(data, 4096);
+                let mut decompressor = brotli::Decompressor::new(data, BROTLI_BUFFER_SIZE);
                 decompressor.read_to_end(&mut decompressed)?;
                 Ok(decompressed)
             }
