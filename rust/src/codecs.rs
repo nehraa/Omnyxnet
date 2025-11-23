@@ -78,11 +78,14 @@ pub struct AudioEncoder {
 impl AudioEncoder {
     /// Create a new audio encoder with the given configuration
     pub fn new(config: AudioConfig) -> Result<Self> {
-        let encoder = OpusEncoder::new(
+        let mut encoder = OpusEncoder::new(
             config.sample_rate,
             config.channels,
             Application::Voip,  // Optimized for low latency VoIP
         )?;
+        
+        // Set the configured bitrate
+        encoder.set_bitrate(opus::Bitrate::Bits(config.bitrate))?;
         
         info!("Created Opus encoder: {}Hz, {:?}, {}bps, {}ms frames",
               config.sample_rate, config.channels, config.bitrate, config.frame_duration_ms);

@@ -10,6 +10,9 @@ use std::sync::{Arc, RwLock};
 use serde::{Serialize, Deserialize};
 use tracing::{info, warn};
 
+/// Phase 1 latency target in milliseconds
+const PHASE1_LATENCY_TARGET_MS: f64 = 100.0;
+
 /// Latency measurement for a single operation
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LatencyMeasurement {
@@ -59,9 +62,9 @@ impl MetricsTracker {
         latencies.push_back(measurement.clone());
 
         // Log if latency exceeds Phase 1 target
-        if measurement.latency_ms > 100.0 {
-            warn!("⚠️  High latency detected: {} took {:.2}ms (target: <100ms)",
-                  operation, measurement.latency_ms);
+        if measurement.latency_ms > PHASE1_LATENCY_TARGET_MS {
+            warn!("⚠️  High latency detected: {} took {:.2}ms (target: <{}ms)",
+                  operation, measurement.latency_ms, PHASE1_LATENCY_TARGET_MS);
         }
     }
 
@@ -129,7 +132,7 @@ impl MetricsTracker {
             p50_latency_ms: p50,
             p95_latency_ms: p95,
             p99_latency_ms: p99,
-            meets_phase1_target: p95 < 100.0,  // Phase 1: 95th percentile < 100ms
+            meets_phase1_target: p95 < PHASE1_LATENCY_TARGET_MS,  // Phase 1: 95th percentile < 100ms
         })
     }
 }
@@ -207,13 +210,19 @@ pub struct ThroughputTracker {
     bytes_transferred: u64,
 }
 
-impl ThroughputTracker {
-    /// Create a new throughput tracker
-    pub fn new() -> Self {
+impl Default for ThroughputTracker {
+    fn default() -> Self {
         Self {
             start: Instant::now(),
             bytes_transferred: 0,
         }
+    }
+}
+
+impl ThroughputTracker {
+    /// Create a new throughput tracker
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Record bytes transferred
