@@ -313,4 +313,79 @@ mod tests {
         ces_free_shards(shards);
         ces_free(pipeline);
     }
+
+    #[test]
+    fn test_ffi_with_explicit_key() {
+        // Create a deterministic key for testing
+        let key = [0x42u8; 32];
+        
+        // Create first pipeline with explicit key
+        let pipeline1 = ces_new_with_key(3, key.as_ptr());
+        assert!(!pipeline1.is_null());
+
+        // Test data
+        let test_data = b"Testing explicit key management for CES pipeline security.";
+        
+        // Process with first pipeline
+        let shards = ces_process(pipeline1, test_data.as_ptr(), test_data.len());
+        assert!(shards.count > 0);
+        assert!(!shards.shards.is_null());
+
+        // Copy shards for reconstruction test
+        let shard_count = shards.count;
+        let mut shard_copies = Vec::with_capacity(shard_count);
+        unsafe {
+            let shards_slice = slice::from_raw_parts(shards.shards, shard_count);
+            for shard in shards_slice {
+                let shard_data = slice::from_raw_parts(shard.data, shard.len).to_vec();
+                shard_copies.push(shard_data);
+            }
+        }
+        
+        // Clean up first pipeline
+        ces_free_shards(shards);
+        ces_free(pipeline1);
+
+        // Create second pipeline with SAME key
+        let pipeline2 = ces_new_with_key(3, key.as_ptr());
+        assert!(!pipeline2.is_null());
+
+        // Reconstruct using second pipeline
+        let mut ffi_shards = Vec::with_capacity(shard_count);
+        for shard_data in &shard_copies {
+            let data = Box::into_raw(shard_data.clone().into_boxed_slice()) as *mut c_uchar;
+            ffi_shards.push(FFIShard {
+                data,
+                len: shard_data.len(),
+            });
+        }
+        
+        let present = vec![1i32; shard_count];
+        let result = ces_reconstruct(
+            pipeline2,
+            ffi_shards.as_ptr(),
+            shard_count,
+            present.as_ptr(),
+        );
+        
+        assert!(result.success);
+        assert!(!result.data.is_null());
+        
+        // Verify data matches original
+        unsafe {
+            let reconstructed = slice::from_raw_parts(result.data, result.data_len);
+            assert_eq!(reconstructed, test_data);
+        }
+
+        // Cleanup
+        ces_free_result(result);
+        for shard in ffi_shards {
+            unsafe {
+                if !shard.data.is_null() {
+                    let _ = Box::from_raw(slice::from_raw_parts_mut(shard.data, shard.len));
+                }
+            }
+        }
+        ces_free(pipeline2);
+    }
 }
