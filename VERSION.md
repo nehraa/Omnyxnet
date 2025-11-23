@@ -1,16 +1,38 @@
 # Pangea Net - Version Information
 
-**Current Version:** 0.3.0-alpha  
+**Current Version:** 0.4.0-alpha  
 **Last Updated:** 2025-11-22  
-**Status:** Active Development
+**Status:** Cross-Device Validated
 
 ---
 
 ## Version History
 
-### v0.3.0-alpha (Current)
+### v0.4.0-alpha (Current)
 **Release Date:** 2025-11-22  
-**Status:** In Development
+**Status:** Cross-Device Validated
+
+#### Major Breakthrough 🎯
+- **Cross-Device Upload Pipeline PROVEN WORKING**
+- Python CLI → Go RPC → Rust CES → Network Transport → Remote Peer
+- All 3 languages (Python, Go, Rust) cooperating successfully across networks
+- Encrypted shard distribution verified working
+- P2P libp2p connections stable across devices
+
+#### New Features ✅
+- Dynamic capnproto path resolution in Makefile
+- Interactive test functions in setup.sh
+- Comprehensive cross-device test documentation
+- Enhanced CLI user experience for cross-device testing
+
+#### Known Issues 🐛
+- Python 3.14 compatibility issue with pycapnp (CLI parsing fails)
+- Workaround: Use Python 3.12/3.13 for full functionality
+- Backend upload works perfectly, frontend display issue only
+
+### v0.3.0-alpha (Completed)
+**Release Date:** 2025-11-22  
+**Status:** Local Testing Complete
 
 #### Implemented Features ✅
 - Go P2P networking with Noise Protocol
@@ -47,8 +69,8 @@
 
 ## Component Status
 
-### Go Node (v0.3.0)
-**Status:** Functional for local testing  
+### Go Node (v0.4.0)
+**Status:** Cross-device proven working  
 **Last Updated:** 2025-11-22
 
 | Feature | Status | Notes |
@@ -61,8 +83,8 @@
 | Proximity Routing | ✅ Complete | RTT-based peer selection |
 | Metrics Collection | ✅ Complete | Network statistics |
 
-### Rust Node (v0.3.0)
-**Status:** Functional for local testing  
+### Rust Node (v0.4.0)
+**Status:** Cross-device CES pipeline validated  
 **Last Updated:** 2025-11-22
 
 | Feature | Status | Notes |
@@ -79,8 +101,8 @@
 | libp2p DHT | 🚧 Partial | Kademlia implementation |
 | eBPF Firewall | 🚧 Optional | Linux + root only |
 
-### Python AI (v0.3.0)
-**Status:** Functional for local testing  
+### Python AI (v0.4.0)
+**Status:** Backend functional, Python 3.14 parsing issue  
 **Last Updated:** 2025-11-22
 
 | Feature | Status | Notes |

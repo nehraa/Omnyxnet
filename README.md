@@ -1,10 +1,10 @@
 # Pangea Net - AI-Enhanced Decentralized Internet
 
-**Version:** 0.3.0-alpha  
-**Status:** Active Development  
+**Version:** 0.4.0-alpha  
+**Status:** Cross-Device Validated 🎯  
 **Last Updated:** 2025-11-22
 
-> ⚠️ **Development Status:** This project is in active development (alpha stage). Core features work for local testing, and **cross-device P2P communication has been successfully tested**. Not yet ready for production deployment. See [VERSION.md](VERSION.md) for detailed status information.
+> 🎉 **Breakthrough:** Core distributed storage architecture **proven working across devices!** Python CLI → Go RPC → Rust CES → Network Transport → Remote Peer pipeline successfully validated. All three languages cooperating across networks with encrypted shard distribution. See [Cross-Device Test Results](docs/testing/TESTING_GUIDE.md#🧪-cross-device-upload-test-results) for details.
 
 ## 🚀 Quick Start
 
