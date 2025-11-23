@@ -212,7 +212,7 @@ build_go() {
     export PATH="$(go env GOPATH)/bin:$PATH"
     
     # Install capnpc-go plugin if needed
-    if ! command_exists capnpc-go; then
+    if [ ! -f "$(go env GOPATH)/bin/capnpc-go" ]; then
         log_info "Installing capnpc-go plugin..."
         go install capnproto.org/go/capnp/v3/capnpc-go@latest
     fi
