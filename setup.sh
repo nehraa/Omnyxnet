@@ -2,6 +2,12 @@
 
 # WGT Automated Setup Script
 # This script installs all dependencies and provides a CLI to run the system
+#
+# SECURITY NOTE: Encryption Key Management
+# For production deployments, set the CES_ENCRYPTION_KEY environment variable:
+#   export CES_ENCRYPTION_KEY=$(openssl rand -hex 32)
+# 
+# Or use explicit key management in your code. See SECURITY.md for details.
 
 set -e  # Exit on error
 
