@@ -55,23 +55,23 @@ pub extern "C" fn ces_new(compression_level: c_int) -> *mut CesPipeline {
         if key_hex.len() == 64 {
             let mut key = [0u8; 32];
             if hex::decode_to_slice(&key_hex, &mut key).is_ok() {
-                eprintln!("WARNING: Using encryption key from CES_ENCRYPTION_KEY environment variable");
+                eprintln!("INFO: Using encryption key from CES_ENCRYPTION_KEY environment variable (suitable for development/testing)");
                 key
             } else {
-                eprintln!("WARNING: Invalid CES_ENCRYPTION_KEY format, using random key");
+                eprintln!("WARNING: Invalid CES_ENCRYPTION_KEY format, using random key (DEVELOPMENT/TESTING ONLY - NOT for production)");
                 let mut key = [0u8; 32];
                 rand::thread_rng().fill_bytes(&mut key);
                 key
             }
         } else {
-            eprintln!("WARNING: CES_ENCRYPTION_KEY must be 64 hex characters (32 bytes), using random key");
+            eprintln!("WARNING: CES_ENCRYPTION_KEY must be 64 hex characters (32 bytes), using random key (DEVELOPMENT/TESTING ONLY - NOT for production)");
             let mut key = [0u8; 32];
             rand::thread_rng().fill_bytes(&mut key);
             key
         }
     } else {
         // No environment variable set, use random key
-        eprintln!("WARNING: No CES_ENCRYPTION_KEY set, using random key. Data cannot be reconstructed across process restarts.");
+        eprintln!("WARNING: No CES_ENCRYPTION_KEY set, using random key. EPHEMERAL TESTING ONLY - data cannot be reconstructed across process restarts. Use ces_new_with_key() for production.");
         let mut key = [0u8; 32];
         rand::thread_rng().fill_bytes(&mut key);
         key
