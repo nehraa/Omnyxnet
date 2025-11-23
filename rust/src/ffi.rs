@@ -3,6 +3,7 @@
 use std::ffi::CString;
 use std::os::raw::{c_char, c_int, c_uchar};
 use std::slice;
+use rand::RngCore;
 
 use crate::ces::CesPipeline;
 use crate::types::CesConfig;
@@ -30,8 +31,15 @@ pub struct FFIShards {
     pub count: usize,
 }
 
-/// Create a new CES pipeline instance
+/// Create a new CES pipeline instance with key from environment or random key
 /// Returns an opaque handle that must be freed with ces_free()
+/// 
+/// SECURITY WARNING: For production use, prefer ces_new_with_key() to explicitly manage keys.
+/// This function will:
+/// 1. Check CES_ENCRYPTION_KEY environment variable (hex-encoded 64 characters)
+/// 2. Fall back to a random key if not set (insecure for reconstruction across processes)
+/// 
+/// For proper key management in production, use ces_new_with_key() instead.
 #[no_mangle]
 pub extern "C" fn ces_new(compression_level: c_int) -> *mut CesPipeline {
     let config = CesConfig {
@@ -41,18 +49,67 @@ pub extern "C" fn ces_new(compression_level: c_int) -> *mut CesPipeline {
         chunk_size: 1024 * 1024, // 1MB chunks
     };
     
-    // SECURITY WARNING: This implementation uses a fixed encryption key for testing only.
-    // All CES pipeline instances created by ces_new() will use the same key, which is insecure for production
-    // and prevents secure multi-user or multi-tenant scenarios.
-    //
-    // In production, key management should be implemented via one of the following approaches:
-    //   1. Passing keys as parameters to ces_new(), or
-    //   2. Using a separate ces_set_key() function, or
-    //   3. Deriving keys from a shared secret management system.
-    //
-    // Failing to do so may result in compromise of all data protected by this pipeline.
-    let deterministic_key = [0x42u8; 32]; // Fixed key for testing
-    let pipeline = CesPipeline::new(config).with_key(deterministic_key);
+    // Try to get key from environment variable
+    let encryption_key = if let Ok(key_hex) = std::env::var("CES_ENCRYPTION_KEY") {
+        // Parse hex string to bytes
+        if key_hex.len() == 64 {
+            let mut key = [0u8; 32];
+            if hex::decode_to_slice(&key_hex, &mut key).is_ok() {
+                eprintln!("INFO: Using encryption key from CES_ENCRYPTION_KEY environment variable (suitable for development/testing)");
+                key
+            } else {
+                eprintln!("WARNING: Invalid CES_ENCRYPTION_KEY format, using random key (DEVELOPMENT/TESTING ONLY - NOT for production)");
+                let mut key = [0u8; 32];
+                rand::thread_rng().fill_bytes(&mut key);
+                key
+            }
+        } else {
+            eprintln!("WARNING: CES_ENCRYPTION_KEY must be 64 hex characters (32 bytes), using random key (DEVELOPMENT/TESTING ONLY - NOT for production)");
+            let mut key = [0u8; 32];
+            rand::thread_rng().fill_bytes(&mut key);
+            key
+        }
+    } else {
+        // No environment variable set, use random key
+        eprintln!("WARNING: No CES_ENCRYPTION_KEY set, using random key. EPHEMERAL TESTING ONLY - data cannot be reconstructed across process restarts. Use ces_new_with_key() for production.");
+        let mut key = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut key);
+        key
+    };
+    
+    let pipeline = CesPipeline::new(config).with_key(encryption_key);
+    Box::into_raw(Box::new(pipeline))
+}
+
+/// Create a new CES pipeline instance with an explicit encryption key
+/// Returns an opaque handle that must be freed with ces_free()
+/// 
+/// This is the recommended function for production use as it allows explicit key management.
+/// The key must be 32 bytes (256 bits) for XChaCha20-Poly1305 encryption.
+/// 
+/// # Safety
+/// The caller must ensure the key pointer is valid and points to exactly 32 bytes.
+#[no_mangle]
+pub extern "C" fn ces_new_with_key(compression_level: c_int, key: *const c_uchar) -> *mut CesPipeline {
+    if key.is_null() {
+        eprintln!("ERROR: Null key pointer provided to ces_new_with_key");
+        return std::ptr::null_mut();
+    }
+    
+    let config = CesConfig {
+        compression_level: compression_level as i32,
+        shard_count: 8,
+        parity_count: 4,
+        chunk_size: 1024 * 1024, // 1MB chunks
+    };
+    
+    // Copy the key from the provided pointer
+    let mut encryption_key = [0u8; 32];
+    unsafe {
+        std::ptr::copy_nonoverlapping(key, encryption_key.as_mut_ptr(), 32);
+    }
+    
+    let pipeline = CesPipeline::new(config).with_key(encryption_key);
     Box::into_raw(Box::new(pipeline))
 }
 
@@ -255,5 +312,80 @@ mod tests {
         ces_free_result(result);
         ces_free_shards(shards);
         ces_free(pipeline);
+    }
+
+    #[test]
+    fn test_ffi_with_explicit_key() {
+        // Create a deterministic key for testing
+        let key = [0x42u8; 32];
+        
+        // Create first pipeline with explicit key
+        let pipeline1 = ces_new_with_key(3, key.as_ptr());
+        assert!(!pipeline1.is_null());
+
+        // Test data
+        let test_data = b"Testing explicit key management for CES pipeline security.";
+        
+        // Process with first pipeline
+        let shards = ces_process(pipeline1, test_data.as_ptr(), test_data.len());
+        assert!(shards.count > 0);
+        assert!(!shards.shards.is_null());
+
+        // Copy shards for reconstruction test
+        let shard_count = shards.count;
+        let mut shard_copies = Vec::with_capacity(shard_count);
+        unsafe {
+            let shards_slice = slice::from_raw_parts(shards.shards, shard_count);
+            for shard in shards_slice {
+                let shard_data = slice::from_raw_parts(shard.data, shard.len).to_vec();
+                shard_copies.push(shard_data);
+            }
+        }
+        
+        // Clean up first pipeline
+        ces_free_shards(shards);
+        ces_free(pipeline1);
+
+        // Create second pipeline with SAME key
+        let pipeline2 = ces_new_with_key(3, key.as_ptr());
+        assert!(!pipeline2.is_null());
+
+        // Reconstruct using second pipeline
+        let mut ffi_shards = Vec::with_capacity(shard_count);
+        for shard_data in &shard_copies {
+            let data = Box::into_raw(shard_data.clone().into_boxed_slice()) as *mut c_uchar;
+            ffi_shards.push(FFIShard {
+                data,
+                len: shard_data.len(),
+            });
+        }
+        
+        let present = vec![1i32; shard_count];
+        let result = ces_reconstruct(
+            pipeline2,
+            ffi_shards.as_ptr(),
+            shard_count,
+            present.as_ptr(),
+        );
+        
+        assert!(result.success);
+        assert!(!result.data.is_null());
+        
+        // Verify data matches original
+        unsafe {
+            let reconstructed = slice::from_raw_parts(result.data, result.data_len);
+            assert_eq!(reconstructed, test_data);
+        }
+
+        // Cleanup
+        ces_free_result(result);
+        for shard in ffi_shards {
+            unsafe {
+                if !shard.data.is_null() {
+                    let _ = Box::from_raw(slice::from_raw_parts_mut(shard.data, shard.len));
+                }
+            }
+        }
+        ces_free(pipeline2);
     }
 }
