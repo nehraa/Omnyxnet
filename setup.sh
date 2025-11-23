@@ -281,6 +281,33 @@ full_install() {
     log_info "You can now run tests or start nodes using this CLI"
 }
 
+# Run interactive test (shows output to user)
+run_interactive_test() {
+    local test_name=$1
+    local test_script=$2
+   
+    log_info "Running $test_name (Interactive)..."
+    echo "========================================" >> "$TEST_LOG_FILE"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Running: $test_name" >> "$TEST_LOG_FILE"
+    echo "========================================" >> "$TEST_LOG_FILE"
+   
+    # Run with tee to show output and log it
+    # We use pipefail to capture the exit code of the script, not tee
+    set -o pipefail
+    if bash "$test_script" 2>&1 | tee -a "$TEST_LOG_FILE"; then
+        log_success "$test_name passed"
+        echo "[PASSED] $test_name" >> "$TEST_LOG_FILE"
+    else
+        log_error "$test_name failed"
+        echo "[FAILED] $test_name" >> "$TEST_LOG_FILE"
+        set +o pipefail
+        return 1
+    fi
+    set +o pipefail
+   
+    echo "" >> "$TEST_LOG_FILE"
+}
+
 # Run tests with logging
 run_test() {
     local test_name=$1
@@ -466,7 +493,7 @@ main() {
                         ./scripts/easy_test.sh
                         ;;
                     3)
-                        run_test "Cross-Device Upload/Download Test" "tests/test_upload_download_cross_device.sh"
+                        run_interactive_test "Cross-Device Upload/Download Test" "tests/test_upload_download_cross_device.sh"
                         ;;
                     *)
                         echo -e "${RED}Invalid option${NC}"
@@ -488,7 +515,7 @@ main() {
                 echo "Have you set up nodes on multiple devices? (y/n)"
                 read -p "> " setup_done
                 if [ "$setup_done" = "y" ]; then
-                    run_test "Cross-Device Upload/Download Test" "tests/test_upload_download_cross_device.sh"
+                    run_interactive_test "Cross-Device Upload/Download Test" "tests/test_upload_download_cross_device.sh"
                 else
                     echo "Please use option 9 to setup cross-device testing first."
                 fi

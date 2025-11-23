@@ -7,7 +7,8 @@ generate:
 	else \
 		echo "Generating Cap'n Proto bindings..."; \
 		export PATH="$$(go env GOPATH)/bin:$$PATH" && \
-		capnp compile -I/usr/include -I$$(go env GOMODCACHE)/capnproto.org/go/capnp/v3@v3.1.0-alpha.2/std -ogo schema/schema.capnp && \
+		CAPNP_STD_PATH=$$(find $$(go env GOMODCACHE) -path "*capnproto.org/go/capnp/v3*/std" | head -1) && \
+		capnp compile -I/usr/include -I$$CAPNP_STD_PATH -ogo schema/schema.capnp && \
 		mv schema/schema.capnp.go .; \
 	fi
 
