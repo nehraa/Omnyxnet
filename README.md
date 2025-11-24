@@ -1,8 +1,8 @@
 # Pangea Net - AI-Enhanced Decentralized Internet
 
 **Version:** 0.4.0-alpha  
-**Status:** Cross-Device Validated 🎯  
-**Last Updated:** 2025-11-22
+**Status:** Cross-Device Validated + Voice Streaming 🎯  
+**Last Updated:** 2025-11-24
 
 > 🎉 **Breakthrough:** Core distributed storage architecture **proven working across devices!** Python CLI → Go RPC → Rust CES → Network Transport → Remote Peer pipeline successfully validated. All three languages cooperating across networks with encrypted shard distribution. See [Cross-Device Test Results](docs/testing/TESTING_GUIDE.md#🧪-cross-device-upload-test-results) for details.
 
@@ -314,6 +314,8 @@ python tools/load-testing/network_monitor.py --stress
 - **Caching**: LRU cache for shards with persistent manifest storage
 - **Lookup**: Multi-source file discovery (cache, DHT, peers)
 - **CES Pipeline**: Adaptive compression, encryption, and Reed-Solomon sharding
+- **Voice Streaming**: UDP-based real-time audio with Opus codec (NEW!)
+- **Low Latency**: 10-20ms frame duration for real-time communication
 
 ### **Integration Layer**
 
@@ -331,6 +333,7 @@ python tools/load-testing/network_monitor.py --stress
 - **AI Integration**: CNN-powered peer health prediction
 - **RPC Communication**: Go ↔ Python ↔ Rust via Cap'n Proto
 - **CES Pipeline**: Compression, Encryption, Sharding in Rust
+- **Voice Streaming**: UDP-based real-time audio with Opus codec (NEW!)
 - **Test Framework**: Comprehensive test scripts included
 
 **In Development** 🚧
