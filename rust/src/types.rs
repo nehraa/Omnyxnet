@@ -131,10 +131,28 @@ pub fn current_timestamp() -> u64 {
         .as_secs()
 }
 
+/// Compression algorithm selection (Phase 1 requirement)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CompressionAlgorithm {
+    /// Zstandard - fast, good compression ratio (default)
+    Zstd,
+    /// Brotli - better compression for text, slower
+    Brotli,
+    /// No compression
+    None,
+}
+
+impl Default for CompressionAlgorithm {
+    fn default() -> Self {
+        CompressionAlgorithm::Zstd
+    }
+}
+
 /// Configuration for CES pipeline
 #[derive(Debug, Clone)]
 pub struct CesConfig {
     pub compression_level: i32,
+    pub compression_algorithm: CompressionAlgorithm,
     pub shard_count: usize,
     pub parity_count: usize,
     pub chunk_size: usize,
@@ -159,6 +177,7 @@ impl CesConfig {
 
         Self {
             compression_level,
+            compression_algorithm: CompressionAlgorithm::default(),
             shard_count,
             parity_count,
             chunk_size,
@@ -168,6 +187,7 @@ impl CesConfig {
     pub fn default() -> Self {
         Self {
             compression_level: 3,
+            compression_algorithm: CompressionAlgorithm::default(),
             shard_count: 8,
             parity_count: 4,
             chunk_size: 1024 * 1024, // 1 MB
