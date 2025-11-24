@@ -143,6 +143,15 @@ impl CesPipeline {
                 let quality = (level.max(0).min(11)) as u32;
                 let mut compressed = Vec::new();
                 let mut compressor = brotli::CompressorReader::new(data, BROTLI_BUFFER_SIZE, quality, BROTLI_LG_WINDOW_SIZE);
+                // Brotli quality range: 0-11, map from our 1-22 range
+                let quality = (level.max(0).min(11)) as u32;
+                let mut compressed = Vec::new();
+                let mut compressor = brotli::CompressorReader::new(
+                    data, 
+                    BROTLI_BUFFER_SIZE, 
+                    quality, 
+                    BROTLI_LG_WINDOW_SIZE
+                );
                 compressor.read_to_end(&mut compressed)?;
                 Ok(compressed)
             }

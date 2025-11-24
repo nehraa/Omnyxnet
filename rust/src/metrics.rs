@@ -11,6 +11,7 @@ use serde::{Serialize, Deserialize};
 use tracing::{info, warn};
 
 /// Phase 1 latency target in milliseconds
+/// Phase 1 success metric: maximum acceptable latency in milliseconds
 const PHASE1_LATENCY_TARGET_MS: f64 = 100.0;
 
 /// Latency measurement for a single operation
