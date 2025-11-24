@@ -1,7 +1,9 @@
 # 📚 Pangea Net - Documentation Index
 
-**Last Updated**: November 22, 2025  
-**Version**: 0.1.0
+**Last Updated**: November 24, 2025  
+**Version**: 0.4.0
+
+**NEW:** [Voice/Video Streaming Guide](docs/STREAMING_GUIDE.md) - UDP-based real-time streaming 🎤
 
 ## 🚀 Getting Started
 
@@ -37,6 +39,16 @@
   - Cross-device testing instructions
   - Known issues and workarounds
   - Test results summary
+
+### Streaming
+
+- **[Voice/Video Streaming Guide](docs/STREAMING_GUIDE.md)** ⭐ NEW (Nov 24)
+  - UDP-based real-time audio streaming
+  - Opus codec integration for low-latency voice
+  - Stream configuration (voice, high-quality)
+  - Packet format and serialization
+  - Usage examples and API reference
+  - 12 tests (all passing)
 
 ## 🗂️ Directory Structure
 
