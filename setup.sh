@@ -350,9 +350,12 @@ show_menu() {
     echo "11) Run Upload/Download Tests (Cross-Device)"
     echo "12) Run FFI Integration Test"
     echo "13) Run CES Wiring Test"
-    echo "14) View Setup Log"
-    echo "15) View Test Log"
-    echo "16) Clean Build Artifacts"
+    echo "14) Run Phase 1 Features Test (Brotli, Opus, Metrics)"
+    echo "15) Run Phase 1 Audio Integration Test"
+    echo "16) Run Phase 1 Performance Benchmarks"
+    echo "17) View Setup Log"
+    echo "18) View Test Log"
+    echo "19) Clean Build Artifacts"
     echo "0) Exit"
     echo ""
     echo -n "Select an option: "
@@ -535,14 +538,32 @@ main() {
                 read -p "Press Enter to continue..."
                 ;;
             14)
+                log_info "User selected: Run Phase 1 Features Test"
+                run_test "Phase 1 Features Test" "tests/test_phase1_features.sh"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            15)
+                log_info "User selected: Run Phase 1 Audio Integration Test"
+                run_interactive_test "Phase 1 Audio Integration Test" "tests/test_phase1_audio.py"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            16)
+                log_info "User selected: Run Phase 1 Performance Benchmarks"
+                run_interactive_test "Phase 1 Performance Benchmarks" "tests/test_phase1_benchmarks.sh"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            17)
                 log_info "User selected: View Setup Log"
                 less "$LOG_FILE"
                 ;;
-            15)
+            18)
                 log_info "User selected: View Test Log"
                 less "$TEST_LOG_FILE"
                 ;;
-            16)
+            19)
                 log_info "User selected: Clean Build Artifacts"
                 clean_builds
                 echo ""

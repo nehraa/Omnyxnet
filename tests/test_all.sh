@@ -76,9 +76,12 @@ run_test "8" "Upload/Download (Local)" "tests/test_upload_download_local.sh" "/t
 # Test 9: Compilation Check
 run_test "9" "Compilation Verification" "tests/test_compilation.sh" "/tmp/test_compilation.log"
 
-# Test 10: Multi-node startup test (inline test)
+# Test 10: Phase 1 Features (NEW)
+run_test "🔟" "Phase 1 Features (Brotli, Opus, Metrics)" "tests/test_phase1_features.sh" "/tmp/test_phase1.log"
+
+# Test 11: Multi-node startup test (inline test)
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "🔟  Testing Multi-Node Startup"
+echo "1️⃣1️⃣  Testing Multi-Node Startup"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
@@ -173,6 +176,7 @@ if [ $FAILED_TESTS -eq 0 ]; then
     echo "  • Streaming:   Shared memory and updates working"
     echo "  • CES:         Compression/Encryption/Sharding pipeline"
     echo "  • Upload/Download: Local file operations"
+    echo "  • Phase 1:     Brotli compression, Opus codec, Metrics tracking"
     echo "  • Multi-node:  Both Go and Rust nodes can start"
     echo ""
     echo "Next steps:"
