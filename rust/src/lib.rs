@@ -10,6 +10,8 @@ pub mod types;
 pub mod network;
 pub mod dht;
 pub mod ces;
+pub mod codecs;  // Phase 1: Media codecs
+pub mod metrics; // Phase 1: Performance metrics
 pub mod store;
 pub mod rpc;
 pub mod firewall;
@@ -26,10 +28,12 @@ pub mod automated;
 // Re-export commonly used types for ease of use
 pub use capabilities::HardwareCaps;
 pub use storage::StorageEngine;
-pub use types::{Node, NodeStatus, PeerAddress, Message, ConnectionQuality, CesConfig};
+pub use types::{Node, NodeStatus, PeerAddress, Message, ConnectionQuality, CesConfig, CompressionAlgorithm};
 pub use network::QuicNode;
 pub use dht::DhtNode;
 pub use ces::CesPipeline;
+pub use codecs::{AudioConfig, AudioEncoder, AudioDecoder, VideoConfig};  // Phase 1: Media codecs
+pub use metrics::{MetricsTracker, LatencyTimer, ThroughputTracker, PerformanceReport};  // Phase 1: Metrics
 pub use store::NodeStore;
 pub use firewall::Firewall;
 pub use cache::{Cache, FileManifest, CacheStats};
