@@ -68,4 +68,31 @@ setup.log
 */setup.log
 test_log.txt
 *.log
+node.log
+node.pid
+bootstrap_peer.txt
+
+# Test files and media - DO NOT COMMIT
+test_media/
+test_results/
+test_streams/
+benchmarks/
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.npy
+*.npz
+*.wav
+*.mp3
+*.flac
+big_*.mp4
+sample_*.wav
+video_frames.*
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
 
