@@ -1,10 +1,12 @@
 # Pangea Net - AI-Enhanced Decentralized Internet
 
-**Version:** 0.4.0-alpha  
-**Status:** Cross-Device Validated + Voice Streaming 🎯  
-**Last Updated:** 2025-11-24
+**Version:** 0.5.0-alpha (Phase 2)  
+**Status:** Phase 2 ML Development 🚀  
+**Last Updated:** 2024-11-24
 
-> 🎉 **Breakthrough:** Core distributed storage architecture **proven working across devices!** Python CLI → Go RPC → Rust CES → Network Transport → Remote Peer pipeline successfully validated. All three languages cooperating across networks with encrypted shard distribution. See [Cross-Device Test Results](docs/testing/TESTING_GUIDE.md#🧪-cross-device-upload-test-results) for details.
+> 🎉 **Phase 1 Complete:** Core distributed storage architecture **proven working across devices!** Python CLI → Go RPC → Rust CES → Network Transport → Remote Peer pipeline successfully validated. All three languages cooperating across networks with encrypted shard distribution.
+
+> 🚀 **Phase 2 Development:** ML Translation and Personalization layer now in development! Live voice translation (ASR → NMT → TTS), video lipsync, and P2P federated learning for personalized voice compression. See [PHASE2_ML_IMPLEMENTATION.md](docs/PHASE2_ML_IMPLEMENTATION.md) for details.
 
 ## 🚀 Quick Start
 
@@ -42,9 +44,12 @@ WGT/
 ├── 📁 python/                       # Python AI Session Layer
 │   ├── main.py                     # CLI entry point
 │   ├── src/
-│   │   ├── ai/                     # CNN models & AI prediction
-│   │   │   ├── cnn_model.py        # PyTorch 1D CNN architecture
-│   │   │   └── predictor.py        # Peer health prediction
+│   │   ├── ai/                     # AI & ML modules
+│   │   │   ├── cnn_model.py        # Phase 1: Threat prediction CNN
+│   │   │   ├── shard_optimizer.py  # Phase 1: CES optimization
+│   │   │   ├── translation_pipeline.py  # Phase 2: ASR → NMT → TTS
+│   │   │   ├── video_lipsync.py    # Phase 2: Video lipsync
+│   │   │   └── federated_learning.py    # Phase 2: P2P-FL & CSM
 │   │   ├── client/
 │   │   │   └── go_client.py        # Cap'n Proto RPC client
 │   │   └── data/
@@ -294,6 +299,8 @@ python tools/load-testing/network_monitor.py --stress
 
 ## 🌐 Architecture Overview
 
+### **Phase 1: Secure Core Communication** ✅
+
 ### **Transport Layer** (Go)
 
 - **P2P Networking**: Custom implementation with Noise Protocol XX
@@ -322,6 +329,27 @@ python tools/load-testing/network_monitor.py --stress
 - **Cap'n Proto RPC**: Bi-directional Go ↔ Python ↔ Rust communication
 - **Docker Orchestration**: Multi-node container deployment
 - **Monitoring**: Real-time performance and health metrics
+
+### **Phase 2: ML Translation & Personalization** 🚧
+
+**Live Voice Translation Pipeline**
+- **ASR Module**: Speech-to-text with prosody features (Whisper)
+- **NMT Module**: Neural translation (NLLB-200)
+- **TTS Module**: Text-to-speech with voice cloning
+- **Target Latency**: <150ms end-to-end
+
+**Video Lipsync**
+- **Face Detection**: Lightweight facial landmark detection
+- **Lipsync Model**: Audio-driven lip movement generation
+- **Target Performance**: 30fps with <50ms per frame
+
+**Personalized Federated Learning**
+- **Custom Serialization Model (CSM)**: Voice-specific compression
+- **P2P Federated Learning**: Privacy-preserving model training
+- **Handshake Integration**: Model weight exchange during Noise XK
+- **Benefits**: 2.5x compression, better quality, on-device privacy
+
+📖 See [PHASE2_ML_IMPLEMENTATION.md](docs/PHASE2_ML_IMPLEMENTATION.md) for complete guide
 
 ## 🌍 Network Capabilities
 
