@@ -113,11 +113,11 @@ install_system_deps() {
     if command_exists apt-get; then
         log_info "Detected apt-get (Debian/Ubuntu)"
         sudo apt-get update
-        sudo apt-get install -y build-essential pkg-config libssl-dev capnproto python3 python3-pip python3-venv
+        sudo apt-get install -y build-essential pkg-config libssl-dev capnproto libopus-dev python3 python3-pip python3-venv
         log_success "System dependencies installed"
     elif command_exists brew; then
         log_info "Detected Homebrew (macOS)"
-        brew install capnp openssl pkg-config python3
+        brew install capnp openssl pkg-config opus python3
         log_success "System dependencies installed"
     else
         log_error "Unsupported package manager. Please install dependencies manually:"
@@ -125,6 +125,7 @@ install_system_deps() {
         log_error "  - pkg-config"
         log_error "  - libssl-dev / openssl"
         log_error "  - capnproto"
+        log_error "  - libopus-dev / opus"
         log_error "  - python3, python3-pip, python3-venv"
         exit 1
     fi

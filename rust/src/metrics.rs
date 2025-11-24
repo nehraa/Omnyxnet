@@ -10,6 +10,7 @@ use std::sync::{Arc, RwLock};
 use serde::{Serialize, Deserialize};
 use tracing::{info, warn};
 
+/// Phase 1 latency target in milliseconds
 /// Phase 1 success metric: maximum acceptable latency in milliseconds
 const PHASE1_LATENCY_TARGET_MS: f64 = 100.0;
 
@@ -221,6 +222,7 @@ impl Default for ThroughputTracker {
 
 impl ThroughputTracker {
     /// Create a new throughput tracker
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self::default()
     }
