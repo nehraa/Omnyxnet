@@ -8,11 +8,14 @@ use rayon::prelude::*;
 use reed_solomon_erasure::ReedSolomon;
 use sha2::{Sha256, Digest};
 use std::io::{Read, Write};
-use std::path::Path;
 use tracing::{debug, info};
 
-use crate::types::CesConfig;
+use crate::types::{CesConfig, CompressionAlgorithm};
 use crate::file_detector::FileDetector;
+
+// Brotli compression constants
+const BROTLI_BUFFER_SIZE: usize = 4096;
+const BROTLI_LG_WINDOW_SIZE: u32 = 22;
 
 /// CES Pipeline: Compression, Encryption, Sharding
 pub struct CesPipeline {
@@ -126,19 +129,48 @@ impl CesPipeline {
             return Ok(data.to_vec());
         }
         
-        let mut compressed = Vec::new();
-        let mut encoder = zstd::Encoder::new(&mut compressed, level)?;
-        encoder.write_all(data)?;
-        encoder.finish()?;
-        Ok(compressed)
+        match self.config.compression_algorithm {
+            CompressionAlgorithm::Zstd => {
+                let mut compressed = Vec::new();
+                let mut encoder = zstd::Encoder::new(&mut compressed, level)?;
+                encoder.write_all(data)?;
+                encoder.finish()?;
+                Ok(compressed)
+            }
+            CompressionAlgorithm::Brotli => {
+                // Brotli quality range: 0-11, map from our 1-22 range
+                let quality = (level.max(0).min(11)) as u32;
+                let mut compressed = Vec::new();
+                let mut compressor = brotli::CompressorReader::new(
+                    data, 
+                    BROTLI_BUFFER_SIZE, 
+                    quality, 
+                    BROTLI_LG_WINDOW_SIZE
+                );
+                compressor.read_to_end(&mut compressed)?;
+                Ok(compressed)
+            }
+            CompressionAlgorithm::None => Ok(data.to_vec()),
+        }
     }
 
-    /// Decompress data using zstd
+    /// Decompress data using configured algorithm
     fn decompress(&self, data: &[u8]) -> Result<Vec<u8>> {
-        let mut decompressed = Vec::new();
-        let mut decoder = zstd::Decoder::new(data)?;
-        decoder.read_to_end(&mut decompressed)?;
-        Ok(decompressed)
+        match self.config.compression_algorithm {
+            CompressionAlgorithm::Zstd => {
+                let mut decompressed = Vec::new();
+                let mut decoder = zstd::Decoder::new(data)?;
+                decoder.read_to_end(&mut decompressed)?;
+                Ok(decompressed)
+            }
+            CompressionAlgorithm::Brotli => {
+                let mut decompressed = Vec::new();
+                let mut decompressor = brotli::Decompressor::new(data, BROTLI_BUFFER_SIZE);
+                decompressor.read_to_end(&mut decompressed)?;
+                Ok(decompressed)
+            }
+            CompressionAlgorithm::None => Ok(data.to_vec()),
+        }
     }
 
     /// Encrypt data using XChaCha20-Poly1305
@@ -293,6 +325,7 @@ mod tests {
     fn test_sharding() {
         let config = CesConfig {
             compression_level: 3,
+            compression_algorithm: CompressionAlgorithm::Zstd,
             shard_count: 4,
             parity_count: 2,
             chunk_size: 1024,

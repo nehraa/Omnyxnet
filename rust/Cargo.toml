@@ -30,10 +30,15 @@ libp2p = { version = "0.54", features = ["kad", "identify", "ping", "noise", "tc
 
 # CES Pipeline
 zstd = "0.13"
+brotli = "7.0"  # Phase 1: Alternative compression
 chacha20poly1305 = { version = "0.10", features = ["std"] }
 reed-solomon-erasure = "6.0"
 sha2 = "0.10"
 blake2 = "0.10"
+
+# Phase 1: Media Codecs for low-latency streaming
+opus = "0.3"  # Opus audio codec (low latency)
+# Note: VP9/AV1 video codecs via rav1e and dav1d (optional, heavy dependencies)
 
 # Cap'n Proto RPC
 capnp = "0.20"
