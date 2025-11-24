@@ -12,6 +12,7 @@ pub mod dht;
 pub mod ces;
 pub mod codecs;  // Phase 1: Media codecs
 pub mod metrics; // Phase 1: Performance metrics
+pub mod streaming; // Phase 2: Real-time voice/video streaming
 pub mod store;
 pub mod rpc;
 pub mod firewall;
@@ -34,6 +35,7 @@ pub use dht::DhtNode;
 pub use ces::CesPipeline;
 pub use codecs::{AudioConfig, AudioEncoder, AudioDecoder, VideoConfig};  // Phase 1: Media codecs
 pub use metrics::{MetricsTracker, LatencyTimer, ThroughputTracker, PerformanceReport};  // Phase 1: Metrics
+pub use streaming::{StreamConfig, StreamType, StreamingSession, AudioStreamSender, AudioStreamReceiver, StreamPacket, StreamStats};  // Phase 2: Streaming
 pub use store::NodeStore;
 pub use firewall::Firewall;
 pub use cache::{Cache, FileManifest, CacheStats};
