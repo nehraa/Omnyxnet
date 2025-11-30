@@ -1,0 +1,160 @@
+{
+  "timestamp": 1763945825.1519742,
+  "results": [
+    {
+      "algorithm": "Zstd",
+      "file_type": "JSON data (highly compressible)",
+      "original_size": 3486,
+      "compressed_size": 354,
+      "compression_ratio": 9.85,
+      "latency_ms": 2.0,
+      "effectiveness": "\ud83d\udfe2 Excellent"
+    },
+    {
+      "algorithm": "Zstd",
+      "file_type": "Random binary (not compressible)",
+      "original_size": 50000,
+      "compressed_size": 75072,
+      "compression_ratio": 0.67,
+      "latency_ms": 1.0,
+      "effectiveness": "\ud83d\udd34 Ineffective"
+    },
+    {
+      "algorithm": "Zstd",
+      "file_type": "Repetitive text (very compressible)",
+      "original_size": 53890,
+      "compressed_size": 1704,
+      "compression_ratio": 31.63,
+      "latency_ms": 6.0,
+      "effectiveness": "\ud83d\udfe2 Excellent"
+    },
+    {
+      "algorithm": "Zstd",
+      "file_type": "Mixed data (medium compressibility)",
+      "original_size": 15725,
+      "compressed_size": 2262,
+      "compression_ratio": 6.95,
+      "latency_ms": 8.0,
+      "effectiveness": "\ud83d\udfe2 Excellent"
+    },
+    {
+      "algorithm": "Brotli",
+      "file_type": "JSON data (highly compressible)",
+      "original_size": 3486,
+      "compressed_size": 354,
+      "compression_ratio": 9.85,
+      "latency_ms": 2.0,
+      "effectiveness": "\ud83d\udfe2 Excellent"
+    },
+    {
+      "algorithm": "Brotli",
+      "file_type": "Random binary (not compressible)",
+      "original_size": 50000,
+      "compressed_size": 75072,
+      "compression_ratio": 0.67,
+      "latency_ms": 1.0,
+      "effectiveness": "\ud83d\udd34 Ineffective"
+    },
+    {
+      "algorithm": "Brotli",
+      "file_type": "Repetitive text (very compressible)",
+      "original_size": 53890,
+      "compressed_size": 1704,
+      "compression_ratio": 31.63,
+      "latency_ms": 6.0,
+      "effectiveness": "\ud83d\udfe2 Excellent"
+    },
+    {
+      "algorithm": "Brotli",
+      "file_type": "Mixed data (medium compressibility)",
+      "original_size": 15725,
+      "compressed_size": 2262,
+      "compression_ratio": 6.95,
+      "latency_ms": 8.0,
+      "effectiveness": "\ud83d\udfe2 Excellent"
+    },
+    {
+      "algorithm": "None",
+      "file_type": "JSON data (highly compressible)",
+      "original_size": 3486,
+      "compressed_size": 354,
+      "compression_ratio": 9.85,
+      "latency_ms": 1.0,
+      "effectiveness": "\ud83d\udfe2 Excellent"
+    },
+    {
+      "algorithm": "None",
+      "file_type": "Random binary (not compressible)",
+      "original_size": 50000,
+      "compressed_size": 75072,
+      "compression_ratio": 0.67,
+      "latency_ms": 1.0,
+      "effectiveness": "\ud83d\udd34 Ineffective"
+    },
+    {
+      "algorithm": "None",
+      "file_type": "Repetitive text (very compressible)",
+      "original_size": 53890,
+      "compressed_size": 1704,
+      "compression_ratio": 31.63,
+      "latency_ms": 6.0,
+      "effectiveness": "\ud83d\udfe2 Excellent"
+    },
+    {
+      "algorithm": "None",
+      "file_type": "Mixed data (medium compressibility)",
+      "original_size": 15725,
+      "compressed_size": 2262,
+      "compression_ratio": 6.95,
+      "latency_ms": 6.0,
+      "effectiveness": "\ud83d\udfe2 Excellent"
+    }
+  ],
+  "algorithm_stats": {
+    "Zstd": {
+      "ratios": [
+        9.85,
+        0.67,
+        31.63,
+        6.95
+      ],
+      "latencies": [
+        2.0,
+        1.0,
+        6.0,
+        8.0
+      ],
+      "count": 4
+    },
+    "Brotli": {
+      "ratios": [
+        9.85,
+        0.67,
+        31.63,
+        6.95
+      ],
+      "latencies": [
+        2.0,
+        1.0,
+        6.0,
+        8.0
+      ],
+      "count": 4
+    },
+    "None": {
+      "ratios": [
+        9.85,
+        0.67,
+        31.63,
+        6.95
+      ],
+      "latencies": [
+        1.0,
+        1.0,
+        6.0,
+        6.0
+      ],
+      "count": 4
+    }
+  }
+}

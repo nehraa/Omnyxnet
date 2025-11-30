@@ -214,13 +214,34 @@ async def simulate_streaming_network():
     
     await asyncio.sleep(1)  # Let connections establish
     
-    # Load real media files
+    # Load real media files (prioritize larger files for comprehensive testing)
     media_files = []
+    
+    # Try large video files first
+    large_video_candidates = [
+        'big_buck_bunny_trailer.mp4',  # 60MB Big Buck Bunny trailer
+        'ed_hd.mp4',  # Internet Archive large video (65MB)
+        'large_video.mp4',  # Backup large video
+        'big_test_video.mp4'  # Previous download
+    ]
+    
+    for filename in large_video_candidates:
+        filepath = f'test_media/samples/{filename}'
+        if os.path.exists(filepath) and os.path.getsize(filepath) > 1000000:  # > 1MB
+            with open(filepath, 'rb') as f:
+                data = f.read()
+                media_files.append((filename, data))
+                print(f"📹 Using large video: {filename} ({len(data)/1024/1024:.1f}MB)")
+                break
+    
+    # Load other media files
     for filename in ['sample_audio.wav', 'test_video.mp4', 'test_audio.mp3']:
         filepath = f'test_media/samples/{filename}'
         if os.path.exists(filepath):
             with open(filepath, 'rb') as f:
-                media_files.append((filename, f.read()))
+                data = f.read()
+                media_files.append((filename, data))
+                print(f"📁 Loaded: {filename} ({len(data)/1024:.1f}KB)")
     
     print(f"\n📁 Loaded {len(media_files)} media files for streaming")
     
@@ -234,10 +255,14 @@ async def simulate_streaming_network():
         audio_file = media_files[0] if 'audio' in media_files[0][0] else media_files[0]
         streaming_tasks.append(stream_media_chunks(nodes[0], audio_file[1], "audio", chunk_size=8192))
     
-    # Bob streams video  
+    # Bob streams video (use larger chunks for big videos)
     if len(media_files) > 1:
-        video_file = next((f for f in media_files if 'video' in f[0]), media_files[1])
-        streaming_tasks.append(stream_media_chunks(nodes[1], video_file[1], "video", chunk_size=16384))
+        # Find video file (either contains 'video' in name or is .mp4)
+        video_file = next((f for f in media_files if 'video' in f[0] or f[0].endswith('.mp4')), media_files[1])
+        # Use larger chunk size for big video files to test streaming performance
+        chunk_size = 65536 if len(video_file[1]) > 5000000 else 16384  # 64KB for >5MB files
+        streaming_tasks.append(stream_media_chunks(nodes[1], video_file[1], "video", chunk_size=chunk_size))
+        print(f"🎬 Streaming {video_file[0]} ({len(video_file[1])/1024/1024:.1f}MB) with {chunk_size/1024:.0f}KB chunks")
     
     # Charlie streams messages
     streaming_tasks.append(stream_test_messages(nodes[2]))

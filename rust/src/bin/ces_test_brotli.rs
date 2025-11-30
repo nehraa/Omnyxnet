@@ -24,19 +24,29 @@ fn main() -> Result<()> {
     println!("📂 Input file: {} ({} bytes)", input_file, input_data.len());
     
     // Configure CES pipeline for BROTLI ONLY (Phase 1 Addition)
+    // Optimize for large video files (>1MB)
+    let is_large_file = input_data.len() > 1_000_000;
+    let optimal_chunk_size = if is_large_file {
+        // For large files like HD video, use bigger chunks for better compression
+        std::cmp::min(input_data.len() / 8, 256 * 1024) // Up to 256KB chunks
+    } else {
+        std::cmp::min(input_data.len() / 4, 64 * 1024)   // Original 64KB chunks
+    };
+    
     let config = CesConfig {
         compression_algorithm: CompressionAlgorithm::Brotli, // BROTLI Phase 1 feature
-        compression_level: 6,
-        shard_count: 4,
+        compression_level: if is_large_file { 4 } else { 6 }, // Faster compression for large files
+        shard_count: if is_large_file { 8 } else { 4 },       // More shards for large files
         parity_count: 2,
-        chunk_size: std::cmp::min(input_data.len() / 4, 64 * 1024),
+        chunk_size: optimal_chunk_size,
     };
     
     println!("🔧 CES Config - BROTLI ALGORITHM (Phase 1):");
     println!("  Algorithm: {:?} 🆕", config.compression_algorithm);
-    println!("  Level: {}", config.compression_level);
-    println!("  Shards: {} data + {} parity", config.shard_count, config.parity_count);
-    println!("  Chunk size: {} bytes", config.chunk_size);
+    println!("  Level: {} {}", config.compression_level, if is_large_file { "(optimized for large files)" } else { "" });
+    println!("  Shards: {} data + {} parity {}", config.shard_count, config.parity_count, if is_large_file { "(scaled for HD video)" } else { "" });
+    println!("  Chunk size: {} bytes ({:.1}KB)", config.chunk_size, config.chunk_size as f64 / 1024.0);
+    println!("  File type: {}", if is_large_file { "Large video file (>1MB)" } else { "Standard test file" });
     
     // Process through CES pipeline
     let start_time = Instant::now();

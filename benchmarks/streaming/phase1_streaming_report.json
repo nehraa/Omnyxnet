@@ -1,0 +1,24 @@
+{
+  "timestamp": 1763946869.4724927,
+  "latency_measurements": [
+    10.0,
+    92.65
+  ],
+  "compression_ratios": [
+    0.685368664087967,
+    19.142675662505656
+  ],
+  "throughput_measurements": [
+    0.01786711334450028,
+    0.12717337307501242,
+    1.0477713116326661,
+    8.57296095231866,
+    50.301064952508874
+  ],
+  "summary": {
+    "avg_latency_ms": 51.325,
+    "avg_compression_ratio": 9.914022163296812,
+    "avg_throughput_mbps": 12.013367540575942,
+    "phase1_target_met": true
+  }
+}

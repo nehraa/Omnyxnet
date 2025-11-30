@@ -99,34 +99,106 @@ class StreamingTestSuite:
         print(f"✅ Audio stream saved: {wav_path} ({len(audio_int)} samples)")
         return wav_path, audio_int
 
-    def generate_video_frame_data(self, frame_count=300, frame_size=(640, 480)):
-        """Generate synthetic video frame data for testing"""
-        print(f"\n📹 Generating {frame_count} video frames ({frame_size[0]}x{frame_size[1]})...")
+    def generate_video_frame_data(self, frame_count=300, frame_size=(1280, 720)):
+        """Generate HD video frame data for testing or load from real video files"""
+        
+        # Try to use real large video files first
+        large_video_files = [
+            "test_media/samples/ed_hd.mp4",  # Internet Archive Elephant's Dream (65MB)
+            "test_media/samples/large_video.mp4",  # Backup large file
+            "test_media/samples/big_test_video.mp4"  # Previous download
+        ]
+        
+        for video_file in large_video_files:
+            if os.path.exists(video_file) and os.path.getsize(video_file) > 1000000:  # > 1MB
+                print(f"🎬 Using real video file: {video_file} ({os.path.getsize(video_file)/1024/1024:.1f}MB)")
+                return self.process_real_video_file(video_file, frame_count)
+        
+        # Fallback to larger synthetic video generation
+        print(f"🎬 Generating {frame_count} HD video frames at {frame_size}...")
         
         frames = []
         width, height = frame_size
         
         for i in range(frame_count):
-            # Create a dynamic pattern that changes over time
-            x = np.linspace(0, 4*np.pi, width)
-            y = np.linspace(0, 4*np.pi, height)
-            X, Y = np.meshgrid(x, y)
+            # Create more complex HD test frame with animation
+            frame = np.zeros((height, width, 3), dtype=np.uint8)
             
-            # Animated pattern
-            t = i * 0.1
-            pattern = (np.sin(X + t) * np.cos(Y + t) * 127 + 128).astype(np.uint8)
+            # Animated gradient background
+            x_grad = np.linspace(0, 255, width) * (1 + 0.3 * np.sin(i * 0.1))
+            y_grad = np.linspace(0, 255, height) * (1 + 0.3 * np.cos(i * 0.05))
             
-            # Convert to RGB (grayscale repeated)
-            frame = np.stack([pattern, pattern, pattern], axis=2)
+            frame[:, :, 0] = np.clip(x_grad[np.newaxis, :], 0, 255)  # Red channel
+            frame[:, :, 1] = np.clip(y_grad[:, np.newaxis], 0, 255)  # Green channel
+            frame[:, :, 2] = (i * 3) % 256  # Blue animation
+            
+            # Add moving shapes for more complex compression
+            center_x = width // 2 + int(200 * np.sin(i * 0.05))
+            center_y = height // 2 + int(100 * np.cos(i * 0.08))
+            
+            # Draw circle
+            y_indices, x_indices = np.ogrid[:height, :width]
+            circle_mask = (x_indices - center_x) ** 2 + (y_indices - center_y) ** 2 <= 80**2
+            frame[circle_mask] = [255, 255, 255]
+            
+            # Add rectangle
+            rect_x = width // 4 + int(100 * np.cos(i * 0.03))
+            rect_y = height // 4 + int(50 * np.sin(i * 0.07))
+            frame[rect_y:rect_y+100, rect_x:rect_x+150] = [255, 0, 0]
+            
             frames.append(frame)
         
-        # Save frame data
-        frames_path = "test_media/video_frames.npy"
-        np.save(frames_path, np.array(frames))
+        frames_array = np.array(frames, dtype=np.uint8)
         
-        total_size = sum(frame.nbytes for frame in frames)
-        print(f"✅ Video frames saved: {frames_path} ({total_size / 1024 / 1024:.1f} MB)")
-        return frames_path, frames
+        # Save frames for CES processing
+        frames_path = "test_media/video_frames.npy"
+        np.save(frames_path, frames_array)
+        
+        print(f"  💾 HD Video frames saved: {frames_array.nbytes / 1024 / 1024:.1f} MB")
+        print(f"  📏 Frame dimensions: {frame_size} x {frame_count} frames")
+        print(f"  🎯 Data size suitable for comprehensive CES testing")
+        
+        return frames_path, frames_array
+
+    def process_real_video_file(self, video_path, max_frames=300):
+        """Process real video file for CES testing"""
+        try:
+            # For MP4 files, we'll read them as binary and create chunks
+            # This simulates video frame processing without needing video libraries
+            with open(video_path, 'rb') as f:
+                video_data = f.read()
+            
+            # Create frame-like chunks from video data
+            chunk_size = len(video_data) // max_frames if len(video_data) > max_frames else len(video_data)
+            frames = []
+            
+            for i in range(0, len(video_data), chunk_size):
+                chunk = video_data[i:i+chunk_size]
+                if len(chunk) < chunk_size and i > 0:
+                    # Pad the last chunk to maintain consistency
+                    chunk = chunk + b'\x00' * (chunk_size - len(chunk))
+                frames.append(chunk)
+                
+                if len(frames) >= max_frames:
+                    break
+            
+            # Convert to numpy array for consistency with synthetic frames
+            frames_array = np.array(frames, dtype=object)
+            
+            # Save processed video data
+            frames_path = f"test_media/real_video_frames_{int(time.time())}.npy"
+            np.save(frames_path, frames_array, allow_pickle=True)
+            
+            print(f"  📹 Processed {len(frames)} chunks from real video")
+            print(f"  💾 Real video data: {len(video_data) / 1024 / 1024:.1f} MB")
+            print(f"  📦 Average chunk size: {chunk_size / 1024:.1f} KB")
+            
+            return frames_path, frames_array
+            
+        except Exception as e:
+            print(f"❌ Error processing video file: {e}")
+            # Fall back to synthetic generation
+            return self.generate_video_frame_data(max_frames, (1280, 720))
 
     async def test_ces_audio_processing(self, audio_path):
         """Test CES pipeline processing on audio data"""
@@ -424,9 +496,9 @@ class StreamingTestSuite:
         # Setup
         await self.setup_test_environment()
         
-        # Generate test media
-        audio_path, audio_data = self.generate_audio_stream(duration_seconds=5)
-        video_path, video_frames = self.generate_video_frame_data(frame_count=150)
+        # Generate test media (larger for comprehensive testing)
+        audio_path, audio_data = self.generate_audio_stream(duration_seconds=10)
+        video_path, video_frames = self.generate_video_frame_data(frame_count=200, frame_size=(1280, 720))
         
         # Run CES pipeline tests
         print("\n" + "="*50)
