@@ -63,9 +63,12 @@ WGT/
 ├── 📁 python/                       # Python AI Session Layer
 │   ├── main.py                     # CLI entry point
 │   ├── src/
-│   │   ├── ai/                     # CNN models & AI prediction
-│   │   │   ├── cnn_model.py        # PyTorch 1D CNN architecture
-│   │   │   └── predictor.py        # Peer health prediction
+│   │   ├── ai/                     # AI & ML modules
+│   │   │   ├── cnn_model.py        # Phase 1: Threat prediction CNN
+│   │   │   ├── shard_optimizer.py  # Phase 1: CES optimization
+│   │   │   ├── translation_pipeline.py  # Phase 2: ASR → NMT → TTS
+│   │   │   ├── video_lipsync.py    # Phase 2: Video lipsync
+│   │   │   └── federated_learning.py    # Phase 2: P2P-FL & CSM
 │   │   ├── client/
 │   │   │   └── go_client.py        # Cap'n Proto RPC client
 │   │   └── data/
@@ -314,6 +317,8 @@ python tools/load-testing/network_monitor.py --stress
 ```
 
 ## 🌐 Architecture Overview
+
+### **Phase 1: Secure Core Communication** ✅
 
 ### **Transport Layer** (Go)
 
