@@ -76,15 +76,15 @@ warning: field `go_client` is never read
    |     ^^^^^^^^^
 
 warning: `pangea-rust-node` (lib) generated 7 warnings
-    Finished `release` profile [optimized] target(s) in 0.17s
+    Finished `release` profile [optimized] target(s) in 0.18s
      Running `target/release/examples/phase1_demo`
 🚀 Phase 1: Brotli, Opus, Metrics Demo
 
 ✅ Compression: Zstd & Brotli tested
 
-✅ Opus: 0.225312ms latency
+✅ Opus: 0.20813ms latency
 
-📊 Metrics: P95=0.23ms ✅
+📊 Metrics: P95=0.21ms ✅
 warning: pangea-rust-node@0.1.0: Cap'n Proto schema compiled successfully
 warning: type `HealingStatus` is more private than the item `AutoHealer::get_healing_status`
    --> src/auto_heal.rs:321:5
@@ -172,8 +172,7 @@ warning: unused import: `std::path::Path`
   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
 warning: `pangea-rust-node` (bin "ces_test") generated 1 warning (run `cargo fix --bin "ces_test"` to apply 1 suggestion)
-   Compiling pangea-rust-node v0.1.0 (/home/runner/work/WGT/WGT/rust)
-    Finished `release` profile [optimized] target(s) in 0.50s
+    Finished `release` profile [optimized] target(s) in 0.17s
      Running tests/phase1_features_test.rs (target/release/deps/phase1_features_test-848ef2f1446c29d4)
 
 running 1 test
@@ -268,7 +267,7 @@ warning: unused import: `std::path::Path`
   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
 warning: `pangea-rust-node` (bin "ces_test") generated 1 warning (run `cargo fix --bin "ces_test"` to apply 1 suggestion)
-    Finished `release` profile [optimized] target(s) in 0.18s
+    Finished `release` profile [optimized] target(s) in 0.17s
      Running tests/phase1_features_test.rs (target/release/deps/phase1_features_test-848ef2f1446c29d4)
 
 running 1 test
@@ -363,7 +362,7 @@ warning: unused import: `std::path::Path`
   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
 warning: `pangea-rust-node` (bin "ces_test") generated 1 warning (run `cargo fix --bin "ces_test"` to apply 1 suggestion)
-    Finished `release` profile [optimized] target(s) in 0.18s
+    Finished `release` profile [optimized] target(s) in 0.17s
      Running tests/phase1_features_test.rs (target/release/deps/phase1_features_test-848ef2f1446c29d4)
 
 running 1 test
@@ -458,7 +457,7 @@ warning: unused import: `std::path::Path`
   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
 
 warning: `pangea-rust-node` (bin "ces_test") generated 1 warning (run `cargo fix --bin "ces_test"` to apply 1 suggestion)
-    Finished `release` profile [optimized] target(s) in 0.18s
+    Finished `release` profile [optimized] target(s) in 0.17s
      Running tests/phase1_features_test.rs (target/release/deps/phase1_features_test-848ef2f1446c29d4)
 
 running 1 test

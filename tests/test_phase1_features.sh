@@ -24,7 +24,7 @@ fi
 # Test 2: Brotli compression performance
 echo ""
 echo "2. Testing Brotli compression performance..."
-if cargo test --release --test phase1_features_test test_brotli_compression_implemented 2>&1 | tee -a ../test_results.log; then
+if cargo test --release --test phase1_features_test -- --exact test_brotli_compression_implemented 2>&1 | tee -a ../test_results.log; then
     echo "✅ Brotli compression tests passed"
 else
     echo "❌ Brotli compression tests failed"
@@ -34,7 +34,7 @@ fi
 # Test 3: Opus audio codec latency
 echo ""
 echo "3. Testing Opus codec latency (target: <100ms)..."
-if cargo test --release --test phase1_features_test test_opus_codec_latency_target 2>&1 | tee -a ../test_results.log; then
+if cargo test --release --test phase1_features_test -- --exact test_opus_codec_latency_target 2>&1 | tee -a ../test_results.log; then
     echo "✅ Opus latency tests passed"
 else
     echo "❌ Opus latency tests failed"
@@ -44,7 +44,7 @@ fi
 # Test 4: Metrics tracking validation
 echo ""
 echo "4. Testing performance metrics tracking..."
-if cargo test --release --test phase1_features_test test_performance_metrics_available 2>&1 | tee -a ../test_results.log; then
+if cargo test --release --test phase1_features_test -- --exact test_performance_metrics_available 2>&1 | tee -a ../test_results.log; then
     echo "✅ Metrics tracking tests passed"
 else
     echo "❌ Metrics tracking tests failed"
@@ -54,7 +54,7 @@ fi
 # Test 5: Phase 1 success criteria validation
 echo ""
 echo "5. Validating Phase 1 success criteria..."
-if cargo test --release --test phase1_features_test test_phase1_success_criteria 2>&1 | tee -a ../test_results.log; then
+if cargo test --release --test phase1_features_test -- --exact test_phase1_success_criteria 2>&1 | tee -a ../test_results.log; then
     echo "✅ Phase 1 requirements validation passed"
 else
     echo "❌ Phase 1 requirements validation failed"
