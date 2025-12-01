@@ -27,9 +27,9 @@ docs/
 
 ### New to Pangea Net?
 
-1. **Main Index**: `../DOCUMENTATION_INDEX.md` (in root directory)
-2. **Quick Start**: `../QUICK_START.md`
-3. **Status**: `../STATUS_SUMMARY.md`
+1. **Main Index**: `DOCUMENTATION_INDEX.md` (in docs directory)
+2. **Quick Start**: `QUICK_START.md`
+3. **Status**: `STATUS_SUMMARY.md`
 
 ### Core Technical Docs
 
