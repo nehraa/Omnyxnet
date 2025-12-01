@@ -449,4 +449,4 @@ cd ../rust && cargo test
 
 - Network Adapter: `docs/networking/NETWORK_ADAPTER.md`
 - Cap'n Proto Service: `docs/api/CAPNP_SERVICE.md`
-- Quick Start: `QUICK_START.md` (root directory)
+- Quick Start: `docs/QUICK_START.md`

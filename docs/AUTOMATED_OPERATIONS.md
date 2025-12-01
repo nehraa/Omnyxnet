@@ -377,8 +377,8 @@ netstat -tulpn | grep 8080
 
 ## Next Steps
 
-- [Testing Guide](../TESTING_QUICK_START.md)
-- [Cross-Device Setup](../CROSS_DEVICE_TESTING.md)
+- [Testing Guide](TESTING_QUICK_START.md)
+- [Cross-Device Setup](CROSS_DEVICE_TESTING.md)
 - [Architecture Overview](ARCHITECTURE.md)
 - [API Documentation](PYTHON_API.md)
 
