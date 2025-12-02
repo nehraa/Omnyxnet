@@ -104,20 +104,37 @@ def main():
     # Connect
     if is_server:
         print(f"🟢 Waiting for voice peer on port {port}...")
-        server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server.bind(('0.0.0.0', port))
-        server.listen(1)
-        sock, addr = server.accept()
-        print(f"🔗 Voice peer connected from {addr}")
+        try:
+            server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server.bind(('0.0.0.0', port))
+            server.listen(1)
+            server.settimeout(60)  # 60 second timeout
+            print(f"✅ Listening on 0.0.0.0:{port}")
+            sock, addr = server.accept()
+            print(f"🔗 Voice peer connected from {addr}")
+        except socket.timeout:
+            print("❌ Timeout waiting for peer to connect")
+            sys.exit(1)
+        except Exception as e:
+            print(f"❌ Bind/listen failed: {e}")
+            sys.exit(1)
     else:
         if not peer_ip:
             print("❌ No peer IP found")
             sys.exit(1)
         print(f"🔗 Connecting to voice peer at {peer_ip}:{port}...")
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((peer_ip, port))
-        print("🔗 Connected!")
+        sock.settimeout(10)
+        try:
+            sock.connect((peer_ip, port))
+            print("✅ Connected!")
+        except socket.timeout:
+            print(f"❌ Connection timeout after 10s")
+            sys.exit(1)
+        except Exception as e:
+            print(f"❌ Connection failed: {e}")
+            sys.exit(1)
 
     # Start threads
     sender_thread = threading.Thread(target=audio_sender, args=(sock,), daemon=True)
