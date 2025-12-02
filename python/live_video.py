@@ -24,6 +24,7 @@ def receiver_thread(sock):
     """Receive video frames from peer and put them in queue."""
     global running
     frame_count = 0
+    start_time = time.time()
     print("📺 Receiver thread started")
     
     try:
@@ -88,6 +89,12 @@ def receiver_thread(sock):
                             received_frames.put_nowait(frame)
                         except:
                             pass
+                    
+                    # Print stats every 100 frames
+                    if frame_count % 100 == 0:
+                        elapsed = time.time() - start_time
+                        fps = frame_count / elapsed if elapsed > 0 else 0
+                        print(f"[Receiver] {frame_count} frames at {fps:.1f} FPS")
             except Exception as e:
                 # Silent fail on decode - don't spam
                 pass
@@ -95,7 +102,9 @@ def receiver_thread(sock):
         if running:
             print(f"[Receiver] Error: {e}")
     finally:
-        print(f"📺 Receiver stopped after {frame_count} frames")
+        elapsed = time.time() - start_time
+        fps = frame_count / elapsed if elapsed > 0 else 0
+        print(f"📺 Receiver stopped. {frame_count} frames at {fps:.1f} FPS")
 
 
 def sender_thread(sock):
@@ -113,16 +122,24 @@ def sender_thread(sock):
         
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        cap.set(cv2.CAP_PROP_FPS, 15)
+        # Request max FPS from camera (don't hard-code 15)
+        cap.set(cv2.CAP_PROP_FPS, 30)
+        cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
         
         start_time = time.time()
+        frame_times = []
         
         while running:
             ret, frame = cap.read()
             if not ret:
                 print("[Sender] Failed to read from webcam")
-                time.sleep(0.1)
+                time.sleep(0.01)
                 continue
+            
+            # Track FPS
+            frame_times.append(time.time())
+            if len(frame_times) > 100:
+                frame_times.pop(0)
             
             # Put frame in queue for local display
             try:
@@ -134,26 +151,30 @@ def sender_thread(sock):
                 except:
                     pass
             
-            # Encode and send
+            # Encode and send (lower JPEG quality for higher FPS)
             try:
-                _, encoded = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+                _, encoded = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
                 data = encoded.tobytes()
                 header = struct.pack('>I', len(data))
                 sock.sendall(header)
                 sock.sendall(data)
                 frame_count += 1
                 
-                if frame_count % 50 == 0:
+                if frame_count % 100 == 0:
                     elapsed = time.time() - start_time
-                    fps = frame_count / elapsed if elapsed > 0 else 0
-                    print(f"[Sender] {frame_count} frames at {fps:.1f} FPS")
+                    actual_fps = frame_count / elapsed if elapsed > 0 else 0
+                    # Estimate capture FPS
+                    if len(frame_times) > 10:
+                        capture_fps = len(frame_times) / (frame_times[-1] - frame_times[0]) if frame_times[-1] != frame_times[0] else 0
+                    else:
+                        capture_fps = 0
+                    print(f"[Sender] {frame_count} frames | Capture: {capture_fps:.1f} FPS | Total: {actual_fps:.1f} FPS")
             except Exception as e:
                 if running:
                     print(f"[Sender] Send error: {e}")
                 break
             
-            # Small delay to control frame rate
-            time.sleep(0.033)  # ~30 FPS max
+            # No artificial delay - let camera dictate frame rate
             
     except Exception as e:
         if running:
