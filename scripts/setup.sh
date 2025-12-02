@@ -191,15 +191,15 @@ setup_python() {
         echo "  1) Minimal (testing only, ~200MB, no AI features)"
         echo "  2) Full (with torch for AI, ~5GB)"
         echo ""
-        read -p "Select installation type (1 or 2, default: 2): " install_type
+        read -t 10 -p "Select installation type (1 or 2, default: 1): " install_type || install_type="1"
         
-        if [ "$install_type" = "1" ]; then
+        if [ "$install_type" = "2" ]; then
+            log_info "Installing full requirements (including torch for AI)..."
+            pip install -r requirements.txt
+        else
             log_info "Installing minimal requirements (for testing)..."
             pip install -r requirements-minimal.txt
             log_info "Note: For AI features later, run: cd python && source .venv/bin/activate && pip install torch>=2.0.0"
-        else
-            log_info "Installing full requirements (including torch for AI)..."
-            pip install -r requirements.txt
         fi
     else
         log_warning "requirements-minimal.txt not found, installing full requirements..."
@@ -220,16 +220,51 @@ build_go() {
     log_info "Installing Go dependencies..."
     go mod download
     
-    # Ensure GOPATH/bin is in PATH for go tools
+    # Ensure GOPATH/bin is in PATH for go tools (including capnpc-go)
+    GOPATH_BIN="$(go env GOPATH)/bin"
+    export PATH="$GOPATH_BIN:$PATH"
     
     # Install capnpc-go plugin if needed
-    if [ ! -f "$(go env GOPATH)/bin/capnpc-go" ]; then
+    if [ ! -f "$GOPATH_BIN/capnpc-go" ]; then
         log_info "Installing capnpc-go plugin..."
         go install capnproto.org/go/capnp/v3/capnpc-go@latest
     fi
     
+    # Find the go.capnp import path from the installed module
+    CAPNP_GO_MOD=$(go list -m -f '{{.Dir}}' capnproto.org/go/capnp/v3 2>/dev/null || echo "")
+    if [ -z "$CAPNP_GO_MOD" ]; then
+        log_warning "capnproto.org/go/capnp/v3 module not found, downloading..."
+        go get capnproto.org/go/capnp/v3
+        CAPNP_GO_MOD=$(go list -m -f '{{.Dir}}' capnproto.org/go/capnp/v3)
+    fi
+    
+    # Compile Cap'n Proto schema to generate Go bindings
+    log_info "Compiling Cap'n Proto schema..."
+    if [ -f "schema/schema.capnp" ]; then
+        # Remove old generated files
+        rm -f schema.capnp.go
+        rm -f schema/schema.capnp.go
+        rm -rf schema/schema
+        # Generate Go bindings - output to current directory (go/) for package main
+        PATH="$GOPATH_BIN:$PATH" capnp compile -I"$CAPNP_GO_MOD/std" -ogo schema/schema.capnp
+        # Move generated file to go/ root since it's package main
+        if [ -f "schema/schema/schema.capnp.go" ]; then
+            mv schema/schema/schema.capnp.go schema.capnp.go
+            rmdir schema/schema 2>/dev/null || true
+        elif [ -f "schema/schema.capnp.go" ]; then
+            mv schema/schema.capnp.go schema.capnp.go
+        fi
+    fi
+    
+    # Set library path for Rust shared library (needed for CGO linking)
+    export CGO_LDFLAGS="-L$PROJECT_ROOT/rust/target/release"
+    export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
+    export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
+    
     log_info "Compiling Go node..."
-    make build
+    mkdir -p bin
+    go build -o bin/go-node .
+    
     # Also copy to root of go directory for backward compatibility
     if [ -f "bin/go-node" ]; then
         cp bin/go-node go-node

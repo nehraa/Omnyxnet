@@ -8,3 +8,6 @@ pyyaml>=6.0
 # These are small additions to enable live audio/video demos
 sounddevice>=0.4.8
 opencv-python>=4.8.0
+
+## Minimal addition for QUIC support
+aioquic>=0.9.19

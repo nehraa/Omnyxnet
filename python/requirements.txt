@@ -12,3 +12,5 @@ opencv-python>=4.8.0
 # pyaudio is optional (requires system portaudio): install if you prefer it over sounddevice
 # pyaudio>=0.2.11
 
+## Addition for QUIC support
+aioquic>=0.9.19
