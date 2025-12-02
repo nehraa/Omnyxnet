@@ -332,13 +332,19 @@ run_live_chat() {
         peer_ip=$(grep -oP '/ip4/\K[0-9.]+' "$REMOTE_PEER_FILE" | head -1)
     fi
     
+        # Convert bash bool to Python True/False
+        if [ "$is_server" = true ]; then
+            py_is_server=True
+        else
+            py_is_server=False
+        fi
+
     # Simple socket-based chat
     python3 << PYTHON_CHAT
 import socket
 import threading
 import sys
-
-is_server = ${is_server,,}  # Convert bash bool to python bool
+    is_server = ${py_is_server}
 peer_ip = "${peer_ip}"
 port = 9999
 
