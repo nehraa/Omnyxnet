@@ -451,6 +451,41 @@ print('✅ Video streaming simulation complete')
     python3 "$PROJECT_ROOT/python/live_video.py" "$is_server_lower" "$peer_ip"
 }
 
+run_live_video_udp() {
+    echo -e "\n${BOLD}${MAGENTA}🎥 LIVE VIDEO MODE (UDP - Low Latency)${NC}"
+    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    
+    # Check for OpenCV
+    python3 -c "import cv2" 2>/dev/null && HAS_CV2=true || HAS_CV2=false
+    
+    if [ "$HAS_CV2" = false ]; then
+        echo -e "${YELLOW}⚠️  OpenCV not found.${NC}"
+        echo -e "${CYAN}Install for live webcam support:${NC}"
+        echo -e "  ${GREEN}pip install opencv-python${NC}"
+        return
+    fi
+    
+    # Determine role and get peer IP
+    local is_server=false
+    local peer_ip=""
+    
+    if [ -f "$PEER_FILE" ] && [ ! -f "$REMOTE_PEER_FILE" ]; then
+        is_server=true
+    elif [ -f "$REMOTE_PEER_FILE" ]; then
+        peer_ip=$(grep -oP '/ip4/\K[0-9.]+' "$REMOTE_PEER_FILE" | head -1)
+    fi
+    
+    echo -e "${GREEN}🎥 Starting UDP video streaming (low-latency, best effort)...${NC}"
+    echo -e "${YELLOW}UDP trades reliability for speed - a few dropped frames is normal${NC}"
+    echo -e "${YELLOW}Press 'q' in video window or Ctrl+C to stop${NC}\n"
+    
+    # Convert bash bool to lowercase for Python (sh/zsh compatible)
+    local is_server_lower=$([ "$is_server" = true ] && echo "true" || echo "false")
+    
+    # Call the UDP video Python script
+    python3 "$PROJECT_ROOT/python/live_video_udp.py" "$is_server_lower" "$peer_ip"
+}
+
 # ============================================================
 # MAIN MENU
 # ============================================================
@@ -474,7 +509,8 @@ show_test_menu() {
     
     echo -e "  ${GREEN}${BOLD}1${NC} - 💬 ${CYAN}Live Chat${NC}      (text messaging)"
     echo -e "  ${GREEN}${BOLD}2${NC} - 🎤 ${CYAN}Live Voice${NC}     (audio call)"
-    echo -e "  ${GREEN}${BOLD}3${NC} - 🎥 ${CYAN}Live Video${NC}     (video call)"
+    echo -e "  ${GREEN}${BOLD}3${NC} - 🎥 ${CYAN}Live Video${NC}     (video call, TCP)"
+    echo -e "  ${GREEN}${BOLD}4${NC} - 🎥 ${CYAN}Live Video UDP${NC}  (video call, low-latency)"
     echo -e ""
     echo -e "  ${YELLOW}Q${NC} - Quit"
     echo ""
@@ -541,7 +577,7 @@ main() {
     while true; do
         show_test_menu
         
-        read -p "Select test [1-3, Q]: " CHOICE
+        read -p "Select test [1-4, Q]: " CHOICE
         
         case $CHOICE in
             1)
@@ -553,6 +589,9 @@ main() {
             3)
                 run_live_video
                 ;;
+            4)
+                run_live_video_udp
+                ;;
             [Qq])
                 echo -e "\n${CYAN}Stopping node...${NC}"
                 cleanup
@@ -560,7 +599,7 @@ main() {
                 exit 0
                 ;;
             *)
-                echo -e "${RED}Invalid choice. Please select 1, 2, 3, or Q.${NC}"
+                echo -e "${RED}Invalid choice. Please select 1, 2, 3, 4, or Q.${NC}"
                 ;;
         esac
         
