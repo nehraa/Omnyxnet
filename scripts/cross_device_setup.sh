@@ -153,3 +153,47 @@ else
     echo "Check the log file for errors: $LOG_FILE"
     exit 1
 fi
+
+# --- Keep printing logs in background and present interactive test menu ---
+tail -f "$LOG_FILE" &
+TAIL_PID=$!
+
+cleanup_on_exit() {
+    if ps -p $TAIL_PID > /dev/null 2>&1; then
+        kill $TAIL_PID >/dev/null 2>&1 || true
+    fi
+}
+
+trap cleanup_on_exit EXIT INT TERM
+
+while true; do
+    echo ""
+    echo "Select test to run (log will continue printing):"
+    echo "  1) Live Chat"
+    echo "  2) Live Voice"
+    echo "  3) Live Video"
+    echo "  q) Quit (stop tail and exit)"
+    read -p "Choice: " CHOICE
+    case "$CHOICE" in
+        1)
+            echo "Launching live chat helper (may prompt for join/bootstrap)..."
+            bash ./scripts/live_test.sh || echo "live_test.sh exited"
+            ;;
+        2)
+            echo "Launching live voice helper..."
+            bash ./scripts/live_test.sh || echo "live_test.sh exited"
+            ;;
+        3)
+            echo "Launching live video helper..."
+            bash ./scripts/live_test.sh || echo "live_test.sh exited"
+            ;;
+        q|Q)
+            echo "Stopping background log tail and exiting..."
+            cleanup_on_exit
+            exit 0
+            ;;
+        *)
+            echo "Invalid choice"
+            ;;
+    esac
+done
