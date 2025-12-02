@@ -389,7 +389,6 @@ run_live_voice() {
     # Call the voice Python script
     python3 "$PROJECT_ROOT/python/live_voice.py" "${is_server,,}" "$peer_ip"
 }
-}
 
 # ============================================================
 # LIVE VIDEO (Option 3)
@@ -444,7 +443,6 @@ print('✅ Video streaming simulation complete')
     
     # Call the video Python script
     python3 "$PROJECT_ROOT/python/live_video.py" "${is_server,,}" "$peer_ip"
-}
 }
 
 # ============================================================
