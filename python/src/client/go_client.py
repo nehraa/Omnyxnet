@@ -519,4 +519,205 @@ class GoNodeClient:
         except Exception as e:
             logger.error(f"Error in download: {e}")
             return None
+    
+    # ========================================================================
+    # Streaming Methods (Go handles all networking per Golden Rule)
+    # ========================================================================
+    
+    def start_streaming(self, port: int, peer_host: str = "", peer_port: int = 9996, stream_type: int = 0) -> bool:
+        """
+        Start streaming service.
+        
+        Args:
+            port: Local port to start streaming on
+            peer_host: Remote peer host (if connecting to a peer)
+            peer_port: Remote peer port
+            stream_type: 0=video, 1=audio, 2=chat
+            
+        Returns:
+            True if successful
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_start_streaming():
+            config = self.schema.StreamConfig.new_message()
+            config.port = port
+            config.peerHost = peer_host
+            config.peerPort = peer_port
+            config.streamType = stream_type
+            result = await self.service.startStreaming(config)
+            return result.success
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_start_streaming(), self._loop)
+            return future.result(timeout=10.0)
+        except Exception as e:
+            logger.error(f"Error starting streaming: {e}")
+            return False
+    
+    def stop_streaming(self) -> bool:
+        """Stop streaming service."""
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_stop_streaming():
+            result = await self.service.stopStreaming()
+            return result.success
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_stop_streaming(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error stopping streaming: {e}")
+            return False
+    
+    def send_video_frame(self, frame_id: int, data: bytes, width: int = 640, height: int = 480, quality: int = 60) -> bool:
+        """
+        Send a video frame to the connected peer.
+        Go handles the actual UDP networking and fragmentation.
+        
+        Args:
+            frame_id: Unique frame identifier
+            data: JPEG encoded frame data
+            width: Frame width
+            height: Frame height
+            quality: JPEG quality (0-100)
+            
+        Returns:
+            True if successful
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_send_frame():
+            frame = self.schema.VideoFrame.new_message()
+            frame.frameId = frame_id
+            frame.data = data
+            frame.width = width
+            frame.height = height
+            frame.quality = quality
+            result = await self.service.sendVideoFrame(frame)
+            return result.success
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_send_frame(), self._loop)
+            return future.result(timeout=1.0)  # Short timeout for real-time
+        except Exception as e:
+            logger.error(f"Error sending video frame: {e}")
+            return False
+    
+    def send_audio_chunk(self, data: bytes, sample_rate: int = 48000, channels: int = 1) -> bool:
+        """
+        Send an audio chunk to the connected peer.
+        Go handles the actual UDP networking.
+        
+        Args:
+            data: Audio samples (16-bit PCM)
+            sample_rate: Sample rate in Hz
+            channels: Number of audio channels
+            
+        Returns:
+            True if successful
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_send_audio():
+            chunk = self.schema.AudioChunk.new_message()
+            chunk.data = data
+            chunk.sampleRate = sample_rate
+            chunk.channels = channels
+            result = await self.service.sendAudioChunk(chunk)
+            return result.success
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_send_audio(), self._loop)
+            return future.result(timeout=1.0)
+        except Exception as e:
+            logger.error(f"Error sending audio chunk: {e}")
+            return False
+    
+    def send_chat_message(self, peer_addr: str, message: str) -> bool:
+        """
+        Send a chat message to a peer.
+        Go handles the actual TCP networking.
+        
+        Args:
+            peer_addr: Peer address (host:port)
+            message: Text message
+            
+        Returns:
+            True if successful
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_send_chat():
+            chat_msg = self.schema.ChatMessage.new_message()
+            chat_msg.peerAddr = peer_addr
+            chat_msg.message_ = message  # Note: 'message' might be reserved
+            chat_msg.timestamp = int(time.time() * 1000)
+            result = await self.service.sendChatMessage(chat_msg)
+            return result.success
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_send_chat(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error sending chat message: {e}")
+            return False
+    
+    def connect_stream_peer(self, host: str, port: int) -> Tuple[bool, str]:
+        """
+        Connect to a streaming peer.
+        
+        Args:
+            host: Peer host
+            port: Peer port
+            
+        Returns:
+            Tuple of (success, peer_address_string)
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_connect_stream():
+            result = await self.service.connectStreamPeer(host, port)
+            return result.success, result.peerAddr
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_connect_stream(), self._loop)
+            return future.result(timeout=10.0)
+        except Exception as e:
+            logger.error(f"Error connecting to stream peer: {e}")
+            return False, ""
+    
+    def get_stream_stats(self) -> Optional[Dict]:
+        """
+        Get streaming statistics.
+        
+        Returns:
+            Dict with streaming stats or None
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_get_stats():
+            result = await self.service.getStreamStats()
+            stats = result.stats
+            return {
+                'framesSent': stats.framesSent,
+                'framesReceived': stats.framesReceived,
+                'bytesSent': stats.bytesSent,
+                'bytesReceived': stats.bytesReceived,
+                'avgLatencyMs': stats.avgLatencyMs
+            }
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_get_stats(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error getting stream stats: {e}")
+            return None
 

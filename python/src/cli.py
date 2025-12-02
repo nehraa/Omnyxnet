@@ -185,6 +185,234 @@ def health_status(host, port, schema):
     client.disconnect()
 
 
+# ============================================================================
+# Streaming Commands (Uses Go networking per Golden Rule)
+# ============================================================================
+
+@cli.group()
+def streaming():
+    """
+    Streaming commands for video/audio/chat.
+    
+    All networking is handled by Go. Python manages the high-level operations
+    and captures/displays media. This follows the Golden Rule:
+    - Rust: Files and memory operations
+    - Go: All networking (UDP, TCP, QUIC)
+    - Python: AI and high-level management
+    """
+    pass
+
+
+@streaming.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--stream-port', default=9996, type=int, help='Streaming port')
+@click.option('--type', 'stream_type', type=click.Choice(['video', 'audio', 'chat']), 
+              default='video', help='Stream type')
+@click.option('--peer-host', default='', help='Peer host to connect to')
+@click.option('--peer-port', default=9996, type=int, help='Peer streaming port')
+@click.option('--schema', default=None, help='Path to schema.capnp')
+def start(host, port, stream_port, stream_type, peer_host, peer_port, schema):
+    """
+    Start streaming service.
+    
+    This command starts Go's streaming service and connects to a peer.
+    The actual network I/O is handled by Go, not Python.
+    
+    Example:
+        # Start as server (waits for peer)
+        python main.py streaming start --stream-port 9996
+        
+        # Start and connect to peer
+        python main.py streaming start --peer-host 192.168.1.100 --peer-port 9996
+    """
+    schema_path = schema or get_go_schema_path()
+    client = GoNodeClient(host, port, schema_path)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect to Go node at {host}:{port}", err=True)
+        sys.exit(1)
+    
+    type_map = {'video': 0, 'audio': 1, 'chat': 2}
+    type_code = type_map[stream_type]
+    
+    click.echo(f"🎥 Starting {stream_type} streaming on port {stream_port}...")
+    
+    success = client.start_streaming(stream_port, peer_host, peer_port, type_code)
+    if success:
+        click.echo(f"✅ Streaming service started")
+        if peer_host:
+            click.echo(f"   Connected to {peer_host}:{peer_port}")
+        else:
+            click.echo(f"   Waiting for peer connections on port {stream_port}")
+    else:
+        click.echo(f"❌ Failed to start streaming", err=True)
+        client.disconnect()
+        sys.exit(1)
+    
+    client.disconnect()
+
+
+@streaming.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--schema', default=None, help='Path to schema.capnp')
+def stop(host, port, schema):
+    """Stop streaming service."""
+    schema_path = schema or get_go_schema_path()
+    client = GoNodeClient(host, port, schema_path)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect", err=True)
+        sys.exit(1)
+    
+    success = client.stop_streaming()
+    if success:
+        click.echo(f"✅ Streaming stopped")
+    else:
+        click.echo(f"❌ Failed to stop streaming", err=True)
+    
+    client.disconnect()
+
+
+@streaming.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--schema', default=None, help='Path to schema.capnp')
+def stats(host, port, schema):
+    """Show streaming statistics."""
+    schema_path = schema or get_go_schema_path()
+    client = GoNodeClient(host, port, schema_path)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect", err=True)
+        sys.exit(1)
+    
+    stream_stats = client.get_stream_stats()
+    if stream_stats:
+        click.echo("\n📊 Streaming Statistics:")
+        click.echo(f"   Frames Sent:     {stream_stats.get('framesSent', 0)}")
+        click.echo(f"   Frames Received: {stream_stats.get('framesReceived', 0)}")
+        click.echo(f"   Bytes Sent:      {stream_stats.get('bytesSent', 0)}")
+        click.echo(f"   Bytes Received:  {stream_stats.get('bytesReceived', 0)}")
+        click.echo(f"   Avg Latency:     {stream_stats.get('avgLatencyMs', 0):.2f}ms")
+    else:
+        click.echo("No streaming statistics available")
+    
+    client.disconnect()
+
+
+@streaming.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.argument('peer_host')
+@click.argument('peer_port', type=int)
+@click.option('--schema', default=None, help='Path to schema.capnp')
+def connect_peer(host, port, peer_host, peer_port, schema):
+    """Connect to a streaming peer."""
+    schema_path = schema or get_go_schema_path()
+    client = GoNodeClient(host, port, schema_path)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect", err=True)
+        sys.exit(1)
+    
+    success, peer_addr = client.connect_stream_peer(peer_host, peer_port)
+    if success:
+        click.echo(f"✅ Connected to streaming peer at {peer_addr}")
+    else:
+        click.echo(f"❌ Failed to connect to {peer_host}:{peer_port}", err=True)
+    
+    client.disconnect()
+
+
+# ============================================================================
+# AI Commands (Phase 2)
+# ============================================================================
+
+@cli.group()
+def ai():
+    """AI/ML commands for translation, lipsync, and federated learning."""
+    pass
+
+
+@ai.command()
+@click.option('--source-lang', default='eng_Latn', help='Source language code')
+@click.option('--target-lang', default='spa_Latn', help='Target language code')
+@click.option('--gpu/--no-gpu', default=True, help='Use GPU if available')
+def translate_test(source_lang, target_lang, gpu):
+    """
+    Test the translation pipeline (bypass mode).
+    
+    This tests the AI translation wiring without actual model inference.
+    Models are loaded in placeholder mode for testing.
+    """
+    try:
+        from src.ai.translation_pipeline import TranslationPipeline, TranslationConfig
+        
+        config = TranslationConfig(
+            source_lang=source_lang,
+            target_lang=target_lang,
+            use_gpu=gpu
+        )
+        
+        pipeline = TranslationPipeline(config)
+        click.echo("✅ Translation pipeline initialized (placeholder mode)")
+        click.echo(f"   Source: {source_lang}")
+        click.echo(f"   Target: {target_lang}")
+        click.echo(f"   GPU: {'enabled' if gpu else 'disabled'}")
+        
+        # Get latency stats
+        stats = pipeline.get_latency_stats()
+        click.echo(f"   Target latency: {stats['target_latency_ms']}ms")
+        
+    except ImportError as e:
+        click.echo(f"⚠️  Translation pipeline not fully available: {e}")
+        click.echo("   This is expected if torch is not installed (minimal mode)")
+
+
+@ai.command()
+def lipsync_test():
+    """
+    Test the video lipsync pipeline (bypass mode).
+    
+    This tests the AI lipsync wiring without actual model inference.
+    """
+    try:
+        from src.ai.video_lipsync import VideoLipsync, LipsyncConfig
+        
+        config = LipsyncConfig()
+        lipsync = VideoLipsync(config)
+        click.echo("✅ Video lipsync module initialized (placeholder mode)")
+        
+        stats = lipsync.get_latency_stats()
+        click.echo(f"   Target latency: {stats.get('target_latency_ms', 'N/A')}ms")
+        
+    except ImportError as e:
+        click.echo(f"⚠️  Lipsync module not fully available: {e}")
+
+
+@ai.command()
+def federated_test():
+    """
+    Test the federated learning pipeline (bypass mode).
+    
+    This tests the P2P-FL wiring without actual training.
+    """
+    try:
+        from src.ai.federated_learning import P2PFederatedLearning, FederatedConfig
+        
+        config = FederatedConfig()
+        fl = P2PFederatedLearning(config)
+        click.echo("✅ Federated learning module initialized")
+        
+        # Get model size
+        model_size = fl.get_model_size()
+        click.echo(f"   Model size: {model_size / 1024:.2f}KB")
+        
+        stats = fl.get_statistics()
+        click.echo(f"   Rounds completed: {stats.get('rounds_completed', 0)}")
+        
+    except ImportError as e:
+        click.echo(f"⚠️  Federated learning not fully available: {e}")
+
+
 if __name__ == '__main__':
     import time
     cli()
