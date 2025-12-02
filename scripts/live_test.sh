@@ -386,8 +386,11 @@ run_live_voice() {
     echo -e "${GREEN}🎤 Starting live voice streaming...${NC}"
     echo -e "${YELLOW}Press Ctrl+C to stop${NC}\n"
     
+    # Convert bash bool to lowercase for Python (sh/zsh compatible)
+    local is_server_lower=$([ "$is_server" = true ] && echo "true" || echo "false")
+    
     # Call the voice Python script
-    python3 "$PROJECT_ROOT/python/live_voice.py" "${is_server,,}" "$peer_ip"
+    python3 "$PROJECT_ROOT/python/live_voice.py" "$is_server_lower" "$peer_ip"
 }
 
 # ============================================================
@@ -441,8 +444,11 @@ print('✅ Video streaming simulation complete')
     echo -e "${GREEN}🎥 Starting live video streaming...${NC}"
     echo -e "${YELLOW}Press 'q' in video window or Ctrl+C to stop${NC}\n"
     
+    # Convert bash bool to lowercase for Python (sh/zsh compatible)
+    local is_server_lower=$([ "$is_server" = true ] && echo "true" || echo "false")
+    
     # Call the video Python script
-    python3 "$PROJECT_ROOT/python/live_video.py" "${is_server,,}" "$peer_ip"
+    python3 "$PROJECT_ROOT/python/live_video.py" "$is_server_lower" "$peer_ip"
 }
 
 # ============================================================
