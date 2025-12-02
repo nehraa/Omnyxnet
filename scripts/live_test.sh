@@ -344,7 +344,7 @@ run_live_chat() {
 import socket
 import threading
 import sys
-    is_server = ${py_is_server}
+is_server = ${py_is_server}
 peer_ip = "${peer_ip}"
 port = 9999
 
