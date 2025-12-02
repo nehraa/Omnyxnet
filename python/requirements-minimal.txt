@@ -3,3 +3,8 @@ pycapnp>=1.0.0
 numpy>=1.24.0
 click>=8.1.0
 pyyaml>=6.0
+
+## Minimal extras for live testing
+# These are small additions to enable live audio/video demos
+sounddevice>=0.4.8
+opencv-python>=4.8.0

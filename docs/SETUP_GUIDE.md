@@ -88,6 +88,27 @@ pip install -r requirements.txt
 
 The setup script will prompt you to choose. Option 2 (full) is the default.
 
+#### Optional packages for live audio / video testing
+
+If you plan to run the live voice/video demos (for example `./scripts/live_test.sh`) install the following extras. `sounddevice` is recommended for microphone I/O; `opencv-python` enables webcam capture and display.
+
+On Ubuntu/Debian install the system dependencies first:
+
+```bash
+sudo apt-get install -y libportaudio2 libportaudiocpp0 portaudio19-dev libopencv-dev
+```
+
+Then install the Python packages (inside the project's Python venv):
+
+```bash
+pip install sounddevice opencv-python
+# Optional: if you prefer pyaudio (requires portaudio headers):
+# sudo apt-get install -y portaudio19-dev && pip install pyaudio
+```
+
+The `python/requirements.txt` and `python/requirements-minimal.txt` files have been updated to include `sounddevice` and `opencv-python` so you can also install them via `pip install -r requirements.txt`.
+
+
 ## Testing
 
 ### Automated Testing

@@ -118,7 +118,8 @@ install_system_deps() {
     if command_exists apt-get; then
         log_info "Detected apt-get (Debian/Ubuntu)"
         sudo apt-get update
-        sudo apt-get install -y build-essential pkg-config libssl-dev capnproto python3 python3-pip python3-venv
+        sudo apt-get install -y build-essential pkg-config libssl-dev capnproto python3 python3-pip python3-venv \
+            portaudio19-dev libportaudio2 libportaudiocpp0 libopencv-dev
         log_success "System dependencies installed"
     elif command_exists brew; then
         log_info "Detected Homebrew (macOS)"
