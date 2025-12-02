@@ -79,9 +79,12 @@ run_test "9" "Compilation Verification" "tests/test_compilation.sh" "/tmp/test_c
 # Test 10: Phase 1 Features (NEW)
 run_test "🔟" "Phase 1 Features (Brotli, Opus, Metrics)" "tests/test_phase1_features.sh" "/tmp/test_phase1.log"
 
-# Test 11: Multi-node startup test (inline test)
+# Test 11: Streaming & AI Wiring Test
+run_test "1️⃣1️⃣" "Streaming & AI Wiring (Phase 1&2)" "tests/test_streaming.sh" "/tmp/test_streaming.log"
+
+# Test 12: Multi-node startup test (inline test)
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "1️⃣1️⃣  Testing Multi-Node Startup"
+echo "1️⃣2️⃣  Testing Multi-Node Startup"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
@@ -177,6 +180,8 @@ if [ $FAILED_TESTS -eq 0 ]; then
     echo "  • CES:         Compression/Encryption/Sharding pipeline"
     echo "  • Upload/Download: Local file operations"
     echo "  • Phase 1:     Brotli compression, Opus codec, Metrics tracking"
+    echo "  • Phase 2:     AI modules wired (translation, lipsync, federated learning)"
+    echo "  • Streaming:   Go handles networking (UDP/TCP per Golden Rule)"
     echo "  • Multi-node:  Both Go and Rust nodes can start"
     echo ""
     echo "Next steps:"

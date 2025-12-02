@@ -12,9 +12,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.client.go_client import GoNodeClient
-from src.ai.predictor import ThreatPredictor
-from src.data.peer_health import PeerHealthManager
 from src.utils.paths import get_go_schema_path
+
+# Conditional AI imports - torch may not be installed
+try:
+    from src.ai.predictor import ThreatPredictor
+    _AI_AVAILABLE = True
+except ImportError:
+    ThreatPredictor = None
+    _AI_AVAILABLE = False
 
 # Setup logging
 logging.basicConfig(
@@ -127,6 +133,11 @@ def update_threat(host, port, schema, node_id, threat_score):
 @click.option('--window-size', default=100, help='Time series window size')
 def predict(host, port, schema, poll_interval, window_size):
     """Start threat prediction loop."""
+    if not _AI_AVAILABLE or ThreatPredictor is None:
+        click.echo("❌ AI features not available. Install torch for full AI support:", err=True)
+        click.echo("   pip install torch>=2.0.0", err=True)
+        sys.exit(1)
+    
     click.echo("Starting threat predictor...")
     
     schema_path = schema or get_go_schema_path()

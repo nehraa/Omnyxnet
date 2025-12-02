@@ -394,9 +394,10 @@ show_menu() {
     echo "14) Run Phase 1 Features Test (Brotli, Opus, Metrics)"
     echo "15) Run Phase 1 Audio Integration Test"
     echo "16) Run Phase 1 Performance Benchmarks"
-    echo "17) View Setup Log"
-    echo "18) View Test Log"
-    echo "19) Clean Build Artifacts"
+    echo "17) Run Streaming & AI Wiring Test (Phase 1&2)"
+    echo "18) View Setup Log"
+    echo "19) View Test Log"
+    echo "20) Clean Build Artifacts"
     echo "0) Exit"
     echo ""
     echo -n "Select an option: "
@@ -597,14 +598,20 @@ main() {
                 read -p "Press Enter to continue..."
                 ;;
             17)
+                log_info "User selected: Run Streaming & AI Wiring Test"
+                run_test "Streaming & AI Wiring Test" "tests/test_streaming.sh"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            18)
                 log_info "User selected: View Setup Log"
                 less "$LOG_FILE"
                 ;;
-            18)
+            19)
                 log_info "User selected: View Test Log"
                 less "$TEST_LOG_FILE"
                 ;;
-            19)
+            20)
                 log_info "User selected: Clean Build Artifacts"
                 clean_builds
                 echo ""
