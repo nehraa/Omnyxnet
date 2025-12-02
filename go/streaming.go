@@ -148,6 +148,10 @@ func (s *StreamingService) StartTCP(port int) error {
 func (s *StreamingService) receiveUDP() {
 	buffer := make([]byte, s.config.MaxPacketSize+100) // Extra for headers
 
+	// Set a longer read deadline (5 seconds) to reduce syscall overhead
+	// This is still short enough to detect shutdown reasonably quickly
+	readTimeout := 5 * time.Second
+
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -156,7 +160,7 @@ func (s *StreamingService) receiveUDP() {
 		}
 
 		// Set read deadline for graceful shutdown
-		s.udpConn.SetReadDeadline(time.Now().Add(1 * time.Second))
+		s.udpConn.SetReadDeadline(time.Now().Add(readTimeout))
 
 		n, remoteAddr, err := s.udpConn.ReadFromUDP(buffer)
 		if err != nil {
