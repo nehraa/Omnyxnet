@@ -338,23 +338,13 @@ async def run_quic_client(peer_ip, port=9995):
         config = QuicConfiguration(is_client=True)
         config.verify_mode = False  # Allow self-signed certs for LAN
         
-        def create_protocol():
-            global active_protocol
-            active_protocol = VideoStreamProtocol(config)
-            return active_protocol
-        
         async with connect(
             peer_ip,
             port,
             configuration=config,
-            create_protocol=create_protocol,
         ) as protocol:
             active_protocol = protocol
             print("✅ QUIC Connected")
-            
-            # Wait for handshake
-            while running and not protocol.connected:
-                await asyncio.sleep(0.1)
             
             # Start sender task
             sender = asyncio.create_task(sender_task(protocol))
