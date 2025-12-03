@@ -8,7 +8,7 @@ including chunking strategies and data encoding.
 import hashlib
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Tuple, Optional, Iterator
+from typing import List, Tuple, Iterator
 import logging
 
 logger = logging.getLogger(__name__)
