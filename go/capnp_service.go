@@ -18,17 +18,21 @@ import (
 // nodeServiceServer implements the Cap'n Proto NodeService interface
 // Note: NodeService_Server interface is generated in schema.capnp.go
 type nodeServiceServer struct {
-	store   *NodeStore
-	network NetworkAdapter
-	shmMgr  *SharedMemoryManager
+	store           *NodeStore
+	network         NetworkAdapter
+	shmMgr          *SharedMemoryManager
+	streamingService *StreamingService
+	streamStats     *StreamingStats
+	peerAddr        *net.UDPAddr // Current streaming peer address
 }
 
 // NewNodeServiceServer creates a new NodeService server
 func NewNodeServiceServer(store *NodeStore, network NetworkAdapter, shmMgr *SharedMemoryManager) NodeService_Server {
 	return &nodeServiceServer{
-		store:   store,
-		network: network,
-		shmMgr:  shmMgr,
+		store:       store,
+		network:     network,
+		shmMgr:      shmMgr,
+		streamStats: &StreamingStats{},
 	}
 }
 
@@ -783,6 +787,274 @@ func (s *nodeServiceServer) Download(ctx context.Context, call NodeService_downl
 	response.SetBytesDownloaded(uint64(len(reconstructed)))
 
 	log.Printf("Successfully reconstructed %d bytes from %d shards", len(reconstructed), presentCount)
+
+	return nil
+}
+
+// ============================================================================
+// Streaming Services (Go handles all networking per Golden Rule)
+// ============================================================================
+
+// StartStreaming implements the startStreaming method
+func (s *nodeServiceServer) StartStreaming(ctx context.Context, call NodeService_startStreaming) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	config, err := args.Config()
+	if err != nil {
+		return err
+	}
+
+	port := config.Port()
+	peerHost, err := config.PeerHost()
+	if err != nil {
+		return err
+	}
+	peerPort := config.PeerPort()
+	streamType := config.StreamType()
+
+	// Create streaming service if not exists
+	if s.streamingService == nil {
+		streamConfig := DefaultGoStreamConfig()
+		s.streamingService = NewStreamingService(streamConfig)
+	}
+
+	// Start UDP for video/audio
+	if streamType == 0 || streamType == 1 { // video or audio
+		err = s.streamingService.StartUDP(int(port))
+		if err != nil {
+			results.SetSuccess(false)
+			results.SetErrorMsg(fmt.Sprintf("Failed to start UDP: %v", err))
+			return nil
+		}
+	}
+
+	// Start TCP for chat
+	if streamType == 2 { // chat
+		err = s.streamingService.StartTCP(int(port))
+		if err != nil {
+			results.SetSuccess(false)
+			results.SetErrorMsg(fmt.Sprintf("Failed to start TCP: %v", err))
+			return nil
+		}
+	}
+
+	// Store peer address if provided
+	if peerHost != "" && peerPort > 0 {
+		s.peerAddr, err = s.streamingService.GetPeerAddress(peerHost, int(peerPort))
+		if err != nil {
+			log.Printf("Warning: Failed to resolve peer address: %v", err)
+		}
+	}
+
+	log.Printf("🎥 Streaming started on port %d for type %d", port, streamType)
+	results.SetSuccess(true)
+	results.SetErrorMsg("")
+	return nil
+}
+
+// StopStreaming implements the stopStreaming method
+func (s *nodeServiceServer) StopStreaming(ctx context.Context, call NodeService_stopStreaming) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	if s.streamingService != nil {
+		s.streamingService.Stop()
+		s.streamingService = nil
+	}
+
+	log.Printf("🛑 Streaming stopped")
+	results.SetSuccess(true)
+	return nil
+}
+
+// SendVideoFrame implements the sendVideoFrame method
+func (s *nodeServiceServer) SendVideoFrame(ctx context.Context, call NodeService_sendVideoFrame) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	if s.streamingService == nil || s.peerAddr == nil {
+		results.SetSuccess(false)
+		return nil
+	}
+
+	args := call.Args()
+	frame, err := args.Frame()
+	if err != nil {
+		results.SetSuccess(false)
+		return nil
+	}
+
+	frameID := frame.FrameId()
+	data, err := frame.Data()
+	if err != nil {
+		results.SetSuccess(false)
+		return nil
+	}
+
+	// Send via Go's UDP (handles fragmentation for large frames)
+	err = s.streamingService.SendVideoFrame(s.peerAddr, frameID, data)
+	if err != nil {
+		log.Printf("Failed to send video frame: %v", err)
+		results.SetSuccess(false)
+		return nil
+	}
+
+	s.streamStats.RecordSent(len(data))
+	results.SetSuccess(true)
+	return nil
+}
+
+// SendAudioChunk implements the sendAudioChunk method
+func (s *nodeServiceServer) SendAudioChunk(ctx context.Context, call NodeService_sendAudioChunk) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	if s.streamingService == nil || s.peerAddr == nil {
+		results.SetSuccess(false)
+		return nil
+	}
+
+	args := call.Args()
+	chunk, err := args.Chunk()
+	if err != nil {
+		results.SetSuccess(false)
+		return nil
+	}
+
+	data, err := chunk.Data()
+	if err != nil {
+		results.SetSuccess(false)
+		return nil
+	}
+
+	// Send via Go's UDP
+	err = s.streamingService.SendAudioChunk(s.peerAddr, data)
+	if err != nil {
+		log.Printf("Failed to send audio chunk: %v", err)
+		results.SetSuccess(false)
+		return nil
+	}
+
+	s.streamStats.RecordSent(len(data))
+	results.SetSuccess(true)
+	return nil
+}
+
+// SendChatMessage implements the sendChatMessage method
+func (s *nodeServiceServer) SendChatMessage(ctx context.Context, call NodeService_sendChatMessage) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	if s.streamingService == nil {
+		results.SetSuccess(false)
+		return nil
+	}
+
+	args := call.Args()
+	chatMsg, err := args.Message_()
+	if err != nil {
+		results.SetSuccess(false)
+		return nil
+	}
+
+	peerAddr, err := chatMsg.PeerAddr()
+	if err != nil {
+		results.SetSuccess(false)
+		return nil
+	}
+
+	message, err := chatMsg.Message_()
+	if err != nil {
+		results.SetSuccess(false)
+		return nil
+	}
+
+	// Send via Go's TCP
+	err = s.streamingService.SendChatMessage(peerAddr, message)
+	if err != nil {
+		log.Printf("Failed to send chat message: %v", err)
+		results.SetSuccess(false)
+		return nil
+	}
+
+	results.SetSuccess(true)
+	return nil
+}
+
+// ConnectStreamPeer implements the connectStreamPeer method
+func (s *nodeServiceServer) ConnectStreamPeer(ctx context.Context, call NodeService_connectStreamPeer) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	if s.streamingService == nil {
+		results.SetSuccess(false)
+		results.SetPeerAddr("")
+		return nil
+	}
+
+	args := call.Args()
+	host, err := args.Host()
+	if err != nil {
+		results.SetSuccess(false)
+		return nil
+	}
+	port := args.Port()
+
+	// Connect via TCP for chat
+	err = s.streamingService.ConnectTCPPeer(host, int(port))
+	if err != nil {
+		log.Printf("Failed to connect to stream peer: %v", err)
+		results.SetSuccess(false)
+		results.SetPeerAddr("")
+		return nil
+	}
+
+	// Also store UDP address for video/audio
+	s.peerAddr, err = s.streamingService.GetPeerAddress(host, int(port))
+	if err != nil {
+		log.Printf("Warning: Failed to resolve UDP peer address: %v", err)
+	}
+
+	peerAddrStr := fmt.Sprintf("%s:%d", host, port)
+	results.SetSuccess(true)
+	results.SetPeerAddr(peerAddrStr)
+	return nil
+}
+
+// GetStreamStats implements the getStreamStats method
+func (s *nodeServiceServer) GetStreamStats(ctx context.Context, call NodeService_getStreamStats) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	stats, err := results.NewStats()
+	if err != nil {
+		return err
+	}
+
+	if s.streamStats != nil {
+		framesSent, framesRecv, bytesSent, bytesRecv := s.streamStats.GetStats()
+		stats.SetFramesSent(framesSent)
+		stats.SetFramesReceived(framesRecv)
+		stats.SetBytesSent(bytesSent)
+		stats.SetBytesReceived(bytesRecv)
+		stats.SetAvgLatencyMs(0.0) // TODO: Calculate actual latency
+	}
 
 	return nil
 }

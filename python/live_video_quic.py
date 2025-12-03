@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Live video streaming with QUIC - low latency, multiplexing, no head-of-line blocking.
-
-QUIC advantages over TCP:
-- Connection setup in 0-RTT (initial RTT, then instant for resumption)
-- Multiple streams without head-of-line blocking
-- Stream-level reliability (drop frames without affecting other streams)
-- Congestion control + selective retransmit
-- UDP-fast but with TCP-reliability where it matters
-
-QUIC advantages over raw UDP:
-- Built-in congestion control and flow control
-- Multiplexed streams (video + control channel separate)
-- Automatic packet loss detection and retransmit
-- Connection migration (WiFi→4G seamless)
 """
+DEPRECATED: This file uses direct Python networking which violates the Golden Rule.
+The Golden Rule: Go handles all networking, Python handles AI and CLI.
+
+Use the new Go-based streaming service instead via Cap'n Proto RPC:
+  1. Start Go node: ./go/bin/go-node -node-id 1
+  2. Use Python CLI: python3 -m main.py streaming start --type video
+
+This file is kept for reference only. For actual video streaming, the networking
+is now handled by Go's streaming.go and exposed via RPC.
+"""
+
+# NOTE: aioquic module renamed 'asynch' to 'asyncio' in newer versions
+# Old import (broken): from aioquic.asynch import connect
+# Correct import: from aioquic.asyncio import connect
 
 import cv2
 import asyncio
@@ -22,9 +22,8 @@ import numpy as np
 import sys
 import time
 from queue import Queue, Empty
-from aioquic.asynch import connect
+from aioquic.asyncio import connect
 from aioquic.quic.configuration import QuicConfiguration
-from aioquic.quic.connection import QuicConnectionIdGenerator
 import ssl
 
 # Global state

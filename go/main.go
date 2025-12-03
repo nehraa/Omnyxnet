@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 )
 
 func main() {
@@ -97,12 +98,14 @@ func main() {
 
 		if *testMode {
 			go func() {
+				ticker := time.NewTicker(5 * time.Second)
+				defer ticker.Stop()
 				// In test mode, periodically report status
 				for {
 					select {
 					case <-sigChan:
 						return
-					default:
+					case <-ticker.C:
 						peers := libp2pNode.GetConnectedPeers()
 						log.Printf("📊 Connected peers: %d", len(peers))
 						for i, peer := range peers {

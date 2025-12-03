@@ -121,6 +121,43 @@ struct DownloadResponse {
     bytesDownloaded @3 :UInt64;
 }
 
+# Streaming structures for real-time video/audio/chat
+# Go handles the actual networking; Python manages high-level operations
+struct StreamConfig {
+    port @0 :UInt16;
+    peerHost @1 :Text;
+    peerPort @2 :UInt16;
+    streamType @3 :UInt8;  # 0=video, 1=audio, 2=chat
+}
+
+struct StreamStats {
+    framesSent @0 :UInt64;
+    framesReceived @1 :UInt64;
+    bytesSent @2 :UInt64;
+    bytesReceived @3 :UInt64;
+    avgLatencyMs @4 :Float32;
+}
+
+struct VideoFrame {
+    frameId @0 :UInt32;
+    data @1 :Data;
+    width @2 :UInt16;
+    height @3 :UInt16;
+    quality @4 :UInt8;
+}
+
+struct AudioChunk {
+    data @0 :Data;
+    sampleRate @1 :UInt32;
+    channels @2 :UInt8;
+}
+
+struct ChatMessage {
+    peerAddr @0 :Text;
+    message @1 :Text;
+    timestamp @2 :Int64;
+}
+
 interface NodeService {
     # Get a specific node by ID
     getNode @0 (query :NodeQuery) -> (node :Node);
@@ -167,5 +204,28 @@ interface NodeService {
     
     # High-level download: fetch shards + CES reconstruct
     download @14 (request :DownloadRequest) -> (response :DownloadResponse);
+    
+    # === Streaming Services (Go handles all networking) ===
+    
+    # Start UDP streaming service for video/audio
+    startStreaming @15 (config :StreamConfig) -> (success :Bool, errorMsg :Text);
+    
+    # Stop streaming service
+    stopStreaming @16 () -> (success :Bool);
+    
+    # Send a video frame to a peer (Go handles UDP)
+    sendVideoFrame @17 (frame :VideoFrame) -> (success :Bool);
+    
+    # Send an audio chunk to a peer (Go handles UDP)
+    sendAudioChunk @18 (chunk :AudioChunk) -> (success :Bool);
+    
+    # Send a chat message to a peer (Go handles TCP)
+    sendChatMessage @19 (message :ChatMessage) -> (success :Bool);
+    
+    # Connect to a streaming peer
+    connectStreamPeer @20 (host :Text, port :UInt16) -> (success :Bool, peerAddr :Text);
+    
+    # Get streaming statistics
+    getStreamStats @21 () -> (stats :StreamStats);
 }
 

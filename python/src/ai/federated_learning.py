@@ -615,6 +615,7 @@ class P2PFederatedLearning:
         """
         return {
             'num_rounds': len(self.round_history),
+            'rounds_completed': len(self.round_history),
             'num_peers': len(self.peer_models),
             'compression_ratio': self.trainer.model.get_compression_ratio(),
             'last_loss': self.round_history[-1]['avg_loss'] if self.round_history else None,
@@ -623,6 +624,16 @@ class P2PFederatedLearning:
                 'aggregation_method': self.config.aggregation_method
             }
         }
+    
+    def get_model_size(self) -> int:
+        """
+        Get the size of the model in bytes.
+        
+        Returns:
+            Model size in bytes
+        """
+        weights = self.trainer.get_model_weights()
+        return len(weights)
 
 
 # Example usage
