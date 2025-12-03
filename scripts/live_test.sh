@@ -513,12 +513,14 @@ main() {
     
     while true; do
         show_test_menu
-        read -p "Select test [1-3, Q]: " CHOICE
+        read -p "Select test [1-5, Q]: " CHOICE
         
         case $CHOICE in
             1) run_live_chat ;;
             2) run_live_voice ;;
             3) run_live_video ;;
+            4) run_live_video_udp ;;
+            5) run_live_video_quic ;;
             [Qq])
                 echo -e "\n${CYAN}Stopping node...${NC}"
                 cleanup
@@ -526,7 +528,7 @@ main() {
                 exit 0
                 ;;
             *)
-                echo -e "${RED}Invalid choice. Please select 1, 2, 3, or Q.${NC}"
+                echo -e "${RED}Invalid choice. Please select 1, 2, 3, 4, 5, or Q.${NC}"
                 ;;
         esac
         
