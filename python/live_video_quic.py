@@ -123,17 +123,26 @@ class DynamicFrameRateAdapter:
 class VideoStreamProtocol(QuicConnectionProtocol):
     """Custom QUIC protocol for bidirectional video streaming."""
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, is_server=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.receive_buffer = b''
         self.connected = False
+        self.is_server = is_server
+        self.send_stream_id = None  # Will be set after connection
         
     def quic_event_received(self, event):
         global running
         
         if isinstance(event, HandshakeCompleted):
             self.connected = True
-            print("✅ QUIC Handshake completed")
+            # Server uses stream 1 (odd), client uses stream 0 (even)
+            # In QUIC: client-initiated bidirectional streams are 0, 4, 8...
+            # Server-initiated bidirectional streams are 1, 5, 9...
+            if self.is_server:
+                self.send_stream_id = self._quic.get_next_available_stream_id(is_unidirectional=False)
+            else:
+                self.send_stream_id = self._quic.get_next_available_stream_id(is_unidirectional=False)
+            print(f"✅ QUIC Handshake completed (using stream {self.send_stream_id})")
             
         elif isinstance(event, StreamDataReceived):
             self.receive_buffer += event.data
@@ -191,9 +200,11 @@ class VideoStreamProtocol(QuicConnectionProtocol):
     
     def send_frame(self, frame_id, frame_data):
         """Send a video frame over QUIC stream."""
+        if self.send_stream_id is None:
+            return  # Not connected yet
         header = struct.pack('>II', frame_id, len(frame_data))
         packet = header + frame_data
-        self._quic.send_stream_data(STREAM_ID, packet)
+        self._quic.send_stream_data(self.send_stream_id, packet)
         self.transmit()
 
 
@@ -341,7 +352,7 @@ async def run_quic_server(port=9995):
             
             def create_protocol(*args, **kwargs):
                 global active_protocol
-                active_protocol = VideoStreamProtocol(*args, **kwargs)
+                active_protocol = VideoStreamProtocol(*args, is_server=True, **kwargs)
                 return active_protocol
             
             # Start server
