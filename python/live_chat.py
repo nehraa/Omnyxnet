@@ -1,5 +1,24 @@
 #!/usr/bin/env python3
-"""Simple socket-based chat for peer-to-peer communication."""
+"""
+DEPRECATED: This file uses direct Python networking which violates the Golden Rule.
+
+The Golden Rule:
+  - Go: All networking (libp2p, TCP, UDP)
+  - Rust: Files, memory, CES pipeline  
+  - Python: AI and CLI management
+
+This file is kept as a REFERENCE ONLY for understanding the chat protocol.
+For actual P2P chat, use the Go-based communication service:
+
+    # Start Go node with libp2p (auto-discovers peers via mDNS)
+    ./go/bin/go-node -node-id 1 -libp2p -local
+    
+    # Use Python CLI for high-level management
+    python main.py chat send <peer_id> "Hello!"
+    python main.py chat history
+
+See docs/COMMUNICATION.md for full documentation.
+"""
 
 import socket
 import threading
