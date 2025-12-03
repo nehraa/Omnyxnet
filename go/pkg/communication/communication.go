@@ -561,9 +561,7 @@ func (cs *CommunicationService) handleVideoStream(stream network.Stream) {
 		}
 
 		// Set read deadline for context-aware reads
-		if conn, ok := stream.Conn().(interface{ SetReadDeadline(time.Time) error }); ok {
-			conn.SetReadDeadline(time.Now().Add(StreamReadTimeout))
-		}
+		stream.SetReadDeadline(time.Now().Add(StreamReadTimeout))
 
 		// Read frame header (12 bytes): frameID(4) + width(2) + height(2) + quality(1) + reserved(3)
 		header := make([]byte, 12)
