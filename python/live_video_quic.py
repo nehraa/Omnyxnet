@@ -34,6 +34,13 @@ running = True
 active_protocol = None
 STREAM_ID = 0
 
+# Maximum frame size limit (10MB should handle even 4K frames)
+MAX_FRAME_SIZE = 10 * 1024 * 1024
+
+# Target resolution for sending
+TARGET_WIDTH = 640
+TARGET_HEIGHT = 480
+
 
 class DynamicFrameRateAdapter:
     """Dynamically adjust frame rate and quality based on network conditions."""
@@ -138,6 +145,17 @@ class VideoStreamProtocol(QuicConnectionProtocol):
             # Parse header
             frame_id, frame_size = struct.unpack('>II', self.receive_buffer[:8])
             
+            # Validate frame size
+            if frame_size == 0:
+                print("[QUIC Receiver] Empty frame, skipping")
+                self.receive_buffer = self.receive_buffer[8:]
+                continue
+            if frame_size > MAX_FRAME_SIZE:
+                print(f"[QUIC Receiver] Frame too large ({frame_size / 1024 / 1024:.1f}MB), skipping")
+                # Try to skip this frame's header and continue
+                self.receive_buffer = self.receive_buffer[8:]
+                continue
+            
             # Check if we have complete frame
             total_size = 8 + frame_size
             if len(self.receive_buffer) < total_size:
@@ -151,6 +169,13 @@ class VideoStreamProtocol(QuicConnectionProtocol):
             try:
                 frame = cv2.imdecode(np.frombuffer(frame_data, np.uint8), cv2.IMREAD_COLOR)
                 if frame is not None:
+                    # Resize very large frames for display
+                    h, w = frame.shape[:2]
+                    if w > 1920 or h > 1080:
+                        scale = min(1920 / w, 1080 / h)
+                        new_w, new_h = int(w * scale), int(h * scale)
+                        frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
+                    
                     try:
                         received_frames.put_nowait(frame)
                     except:
@@ -159,8 +184,10 @@ class VideoStreamProtocol(QuicConnectionProtocol):
                             received_frames.put_nowait(frame)
                         except:
                             pass
+                else:
+                    print(f"[QUIC Receiver] Failed to decode frame ({len(frame_data)} bytes)")
             except Exception as e:
-                pass
+                print(f"[QUIC Receiver] Decode error: {e}")
     
     def send_frame(self, frame_id, frame_data):
         """Send a video frame over QUIC stream."""
@@ -186,10 +213,21 @@ async def sender_task(protocol):
             running = False
             return
         
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        # Request desired resolution (may not be honored by all cameras)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, TARGET_WIDTH)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, TARGET_HEIGHT)
         cap.set(cv2.CAP_PROP_FPS, 30)
         cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
+        
+        # Check actual resolution from camera
+        actual_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        actual_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        needs_resize = (actual_width != TARGET_WIDTH or actual_height != TARGET_HEIGHT)
+        
+        if needs_resize:
+            print(f"📷 Camera provides {actual_width}x{actual_height}, will resize to {TARGET_WIDTH}x{TARGET_HEIGHT} for sending")
+        else:
+            print(f"📷 Camera set to {actual_width}x{actual_height}")
         
         frame_times = []
         
@@ -207,22 +245,39 @@ async def sender_task(protocol):
             if len(frame_times) > 100:
                 frame_times.pop(0)
             
-            # Queue for local display
+            # Queue for local display (resize if too large for display)
             try:
-                local_frames.put_nowait(frame.copy())
+                display_frame = frame.copy()
+                h, w = display_frame.shape[:2]
+                if w > 1280 or h > 720:
+                    scale = min(1280 / w, 720 / h)
+                    display_frame = cv2.resize(display_frame, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+                local_frames.put_nowait(display_frame)
             except:
                 try:
                     local_frames.get_nowait()
-                    local_frames.put_nowait(frame.copy())
+                    local_frames.put_nowait(display_frame)
                 except:
                     pass
+            
+            # Resize frame for sending if needed (important for high-quality cameras)
+            if needs_resize:
+                send_frame = cv2.resize(frame, (TARGET_WIDTH, TARGET_HEIGHT), interpolation=cv2.INTER_AREA)
+            else:
+                send_frame = frame
             
             # Encode and send
             if adapter.should_send_frame(frame_count):
                 try:
                     send_start = time.time()
-                    _, encoded = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, adapter.get_jpeg_quality()])
+                    _, encoded = cv2.imencode('.jpg', send_frame, [cv2.IMWRITE_JPEG_QUALITY, adapter.get_jpeg_quality()])
                     frame_data = encoded.tobytes()
+                    
+                    # Sanity check on frame size
+                    if len(frame_data) > MAX_FRAME_SIZE:
+                        print(f"[QUIC Sender] Frame too large ({len(frame_data)/1024/1024:.1f}MB), reducing quality")
+                        _, encoded = cv2.imencode('.jpg', send_frame, [cv2.IMWRITE_JPEG_QUALITY, 30])
+                        frame_data = encoded.tobytes()
                     
                     protocol.send_frame(frame_count, frame_data)
                     
@@ -238,7 +293,7 @@ async def sender_task(protocol):
                     if frame_count % 100 == 0:
                         elapsed = time.time() - start_time
                         total_fps = frame_count / elapsed if elapsed > 0 else 0
-                        print(f"[QUIC Sender] {frame_count} frames | Send: {total_fps:.1f} FPS | Quality: {adapter.get_jpeg_quality()}")
+                        print(f"[QUIC Sender] {frame_count} frames | Send: {total_fps:.1f} FPS | Quality: {adapter.get_jpeg_quality()} | Size: {len(frame_data)/1024:.1f}KB")
                     
                 except Exception as e:
                     if running:
@@ -284,9 +339,9 @@ async def run_quic_server(port=9995):
             config = QuicConfiguration(is_client=False)
             config.load_cert_chain(cert_file, key_file)
             
-            def create_protocol():
+            def create_protocol(*args, **kwargs):
                 global active_protocol
-                active_protocol = VideoStreamProtocol(config)
+                active_protocol = VideoStreamProtocol(*args, **kwargs)
                 return active_protocol
             
             # Start server

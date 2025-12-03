@@ -100,17 +100,22 @@ class DynamicFrameRateAdapter:
         return self.jpeg_quality
 
 
+# Maximum frame size limit (10MB should handle even 4K frames)
+MAX_FRAME_SIZE = 10 * 1024 * 1024
+
 def receiver_thread(sock):
     """Receive video frames from peer and put them in queue."""
     global running
     frame_count = 0
     start_time = time.time()
+    failed_decodes = 0
     print("📺 Receiver thread started")
     
     try:
         while running:
-            # Read frame size header
+            # Read frame size header (4 bytes)
             header = b''
+            header_start = time.time()
             while len(header) < 4 and running:
                 try:
                     chunk = sock.recv(4 - len(header))
@@ -119,6 +124,10 @@ def receiver_thread(sock):
                         return
                     header += chunk
                 except socket.timeout:
+                    # Check if we've been waiting too long for header
+                    if time.time() - header_start > 5.0:
+                        print("[Receiver] Timeout waiting for frame header")
+                        continue
                     continue
                 except Exception as e:
                     if running:
@@ -134,22 +143,49 @@ def receiver_thread(sock):
                 print("[Receiver] Invalid header")
                 break
             
-            # Read frame data
+            # Validate frame size - prevent memory issues with corrupted headers
+            if length == 0:
+                print("[Receiver] Empty frame, skipping")
+                continue
+            if length > MAX_FRAME_SIZE:
+                print(f"[Receiver] Frame too large ({length / 1024 / 1024:.1f}MB), max is {MAX_FRAME_SIZE / 1024 / 1024:.0f}MB - skipping")
+                # Try to drain the socket to resync
+                try:
+                    sock.settimeout(0.1)
+                    sock.recv(min(length, 65536))
+                    sock.settimeout(1.0)
+                except:
+                    pass
+                continue
+            
+            # Read frame data with larger buffer for high-quality frames
             data = b''
+            recv_start = time.time()
+            # Use larger buffer for better performance with large frames
+            buffer_size = min(262144, length)  # 256KB chunks for large frames
+            
             while len(data) < length and running:
                 try:
                     remaining = length - len(data)
-                    chunk = sock.recv(min(65536, remaining))
+                    chunk = sock.recv(min(buffer_size, remaining))
                     if not chunk:
-                        print(f"[Receiver] Connection closed mid-frame")
+                        print(f"[Receiver] Connection closed mid-frame ({len(data)}/{length} bytes)")
                         return
                     data += chunk
                 except socket.timeout:
+                    # Check for stalled transfer
+                    if time.time() - recv_start > 10.0:
+                        print(f"[Receiver] Timeout receiving frame data ({len(data)}/{length} bytes)")
+                        break
                     continue
                 except Exception as e:
                     if running:
                         print(f"[Receiver] Recv error: {e}")
                     return
+            
+            if len(data) != length:
+                print(f"[Receiver] Incomplete frame: got {len(data)}/{length} bytes")
+                continue
             
             if not running:
                 break
@@ -159,6 +195,15 @@ def receiver_thread(sock):
                 frame = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
                 if frame is not None:
                     frame_count += 1
+                    failed_decodes = 0  # Reset on success
+                    
+                    # Resize very large frames for display to avoid memory issues
+                    h, w = frame.shape[:2]
+                    if w > 1920 or h > 1080:
+                        scale = min(1920 / w, 1080 / h)
+                        new_w, new_h = int(w * scale), int(h * scale)
+                        frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
+                    
                     # Put in queue (drop if full to avoid lag)
                     try:
                         received_frames.put_nowait(frame)
@@ -174,10 +219,15 @@ def receiver_thread(sock):
                     if frame_count % 100 == 0:
                         elapsed = time.time() - start_time
                         fps = frame_count / elapsed if elapsed > 0 else 0
-                        print(f"[Receiver] {frame_count} frames at {fps:.1f} FPS")
+                        print(f"[Receiver] {frame_count} frames at {fps:.1f} FPS | Last frame: {len(data)/1024:.1f}KB, {w}x{h}")
+                else:
+                    failed_decodes += 1
+                    if failed_decodes % 10 == 1:
+                        print(f"[Receiver] Failed to decode frame (size: {len(data)} bytes)")
             except Exception as e:
-                # Silent fail on decode - don't spam
-                pass
+                failed_decodes += 1
+                if failed_decodes % 10 == 1:
+                    print(f"[Receiver] Decode error: {e}")
     except Exception as e:
         if running:
             print(f"[Receiver] Error: {e}")
@@ -194,6 +244,10 @@ def sender_thread(sock):
     print("📹 Sender thread started")
     adapter = DynamicFrameRateAdapter()
     
+    # Target resolution for sending (can be adjusted for quality vs bandwidth)
+    TARGET_WIDTH = 640
+    TARGET_HEIGHT = 480
+    
     try:
         cap = cv2.VideoCapture(0)
         if not cap.isOpened():
@@ -201,10 +255,21 @@ def sender_thread(sock):
             running = False
             return
         
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        # Request desired resolution (may not be honored by all cameras)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, TARGET_WIDTH)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, TARGET_HEIGHT)
         cap.set(cv2.CAP_PROP_FPS, 30)
         cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
+        
+        # Check actual resolution from camera
+        actual_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        actual_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        needs_resize = (actual_width != TARGET_WIDTH or actual_height != TARGET_HEIGHT)
+        
+        if needs_resize:
+            print(f"📷 Camera provides {actual_width}x{actual_height}, will resize to {TARGET_WIDTH}x{TARGET_HEIGHT} for sending")
+        else:
+            print(f"📷 Camera set to {actual_width}x{actual_height}")
         
         start_time = time.time()
         frame_times = []
@@ -221,22 +286,41 @@ def sender_thread(sock):
             if len(frame_times) > 100:
                 frame_times.pop(0)
             
-            # Put frame in queue for local display
+            # Put original frame in queue for local display (show what camera sees)
             try:
-                local_frames.put_nowait(frame.copy())
+                # For local display, resize if too large for display
+                display_frame = frame.copy()
+                h, w = display_frame.shape[:2]
+                if w > 1280 or h > 720:
+                    scale = min(1280 / w, 720 / h)
+                    display_frame = cv2.resize(display_frame, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+                local_frames.put_nowait(display_frame)
             except:
                 try:
                     local_frames.get_nowait()
-                    local_frames.put_nowait(frame.copy())
+                    local_frames.put_nowait(display_frame)
                 except:
                     pass
+            
+            # Resize frame for sending if needed (important for high-quality cameras)
+            if needs_resize:
+                send_frame = cv2.resize(frame, (TARGET_WIDTH, TARGET_HEIGHT), interpolation=cv2.INTER_AREA)
+            else:
+                send_frame = frame
             
             # Encode and send with dynamic quality
             if adapter.should_send_frame(frame_count):
                 try:
                     send_start = time.time()
-                    _, encoded = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, adapter.get_jpeg_quality()])
+                    _, encoded = cv2.imencode('.jpg', send_frame, [cv2.IMWRITE_JPEG_QUALITY, adapter.get_jpeg_quality()])
                     data = encoded.tobytes()
+                    
+                    # Sanity check on frame size
+                    if len(data) > MAX_FRAME_SIZE:
+                        print(f"[Sender] Frame too large ({len(data)/1024/1024:.1f}MB), reducing quality")
+                        _, encoded = cv2.imencode('.jpg', send_frame, [cv2.IMWRITE_JPEG_QUALITY, 30])
+                        data = encoded.tobytes()
+                    
                     header = struct.pack('>I', len(data))
                     sock.sendall(header)
                     sock.sendall(data)
@@ -257,7 +341,7 @@ def sender_thread(sock):
                             capture_fps = len(frame_times) / (frame_times[-1] - frame_times[0]) if frame_times[-1] != frame_times[0] else 0
                         else:
                             capture_fps = 0
-                        print(f"[Sender] {frame_count} frames | Capture: {capture_fps:.1f} FPS | Send: {actual_fps:.1f} FPS | Quality: {adapter.get_jpeg_quality()}")
+                        print(f"[Sender] {frame_count} frames | Capture: {capture_fps:.1f} FPS | Send: {actual_fps:.1f} FPS | Quality: {adapter.get_jpeg_quality()} | Size: {len(data)/1024:.1f}KB")
                 except Exception as e:
                     if running:
                         print(f"[Sender] Send error: {e}")
@@ -314,11 +398,12 @@ def main():
             print(f"❌ Connection failed: {e}")
             sys.exit(1)
     
-    # Configure socket
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 1024 * 1024)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024 * 1024)
+    # Configure socket for high-quality video streams
+    # Larger buffers help with bursty high-resolution frame data
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 4 * 1024 * 1024)  # 4MB send buffer
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4 * 1024 * 1024)  # 4MB receive buffer
     sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-    sock.settimeout(1.0)  # Short timeout for responsive shutdown
+    sock.settimeout(2.0)  # Longer timeout for large frames
     
     # Start worker threads
     recv_t = threading.Thread(target=receiver_thread, args=(sock,), daemon=True)
