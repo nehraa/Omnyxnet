@@ -1,14 +1,25 @@
 #!/usr/bin/env python3
 """
 DEPRECATED: This file uses direct Python networking which violates the Golden Rule.
-The Golden Rule: Go handles all networking, Python handles AI and CLI.
 
-Use the new Go-based streaming service instead via Cap'n Proto RPC:
-  1. Start Go node: ./go/bin/go-node -node-id 1
-  2. Use Python CLI: python3 -m main.py streaming start --type video
+The Golden Rule:
+  - Go: All networking (libp2p, TCP, UDP)
+  - Rust: Files, memory, CES pipeline  
+  - Python: AI and CLI management
 
-This file is kept for reference only. For actual video streaming, the networking
-is now handled by Go's streaming.go and exposed via RPC.
+This file is kept as a REFERENCE ONLY for understanding the UDP video streaming protocol.
+For actual P2P video streaming, use the Go-based communication service:
+
+    # Start Go node with libp2p (auto-discovers peers via mDNS)
+    ./go/bin/go-node -node-id 1 -libp2p -local
+    
+    # Use Python CLI for high-level management
+    python main.py video start
+    python main.py video stop
+
+This file shows legacy UDP-based video streaming for reference only.
+
+See docs/COMMUNICATION.md for full documentation.
 """
 
 import cv2

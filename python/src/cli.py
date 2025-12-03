@@ -7,7 +7,6 @@ import logging
 import sys
 import time
 from pathlib import Path
-
 # Add parent directory for relative imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -28,6 +27,14 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# Stream Type Constants (for clarity in RPC calls)
+# These match the Go service's expected values
+# ============================================================================
+STREAM_TYPE_VIDEO = 0  # Video streaming
+STREAM_TYPE_AUDIO = 1  # Audio/voice streaming
+STREAM_TYPE_CHAT = 2   # Chat messaging
 
 
 @click.group()
@@ -424,7 +431,365 @@ def federated_test():
         click.echo(f"⚠️  Federated learning not fully available: {e}")
 
 
+# ============================================================================
+# Chat Commands (P2P Communication)
+# ============================================================================
+
+@cli.group()
+def chat():
+    """
+    P2P Chat commands.
+    
+    Chat functionality is handled by Go's communication service using libp2p.
+    Python provides high-level commands while Go handles all networking.
+    
+    Usage:
+        python main.py chat send <peer_id> "Hello!"
+        python main.py chat history
+        python main.py chat peers
+    """
+    pass
+
+
+@chat.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--schema', default=None, help='Path to schema.capnp')
+@click.argument('peer_id')
+@click.argument('message')
+def send(host, port, schema, peer_id, message):
+    """
+    Send a chat message to a peer.
+    
+    The message is sent via Go's P2P communication service using libp2p streams.
+    Chat history is automatically saved by the Go service.
+    
+    Example:
+        python main.py chat send 12D3KooW... "Hello, peer!"
+        
+    Note: Full chat functionality requires the Go communication service RPC methods
+    to be implemented. Currently uses the existing sendChatMessage RPC.
+    
+    Args:
+        peer_id: The libp2p peer ID or address to send the message to.
+                 The Go service handles mapping peer IDs to addresses if needed.
+        message: The text message to send.
+    """
+    schema_path = schema or get_go_schema_path()
+    client = GoNodeClient(host, port, schema_path)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect to Go node at {host}:{port}", err=True)
+        sys.exit(1)
+    
+    click.echo(f"💬 Sending message to {peer_id[:12] if len(peer_id) > 12 else peer_id}...")
+    
+    # Send chat message via RPC
+    # Note: peer_id is passed to send_chat_message; the Go service handles
+    # mapping peer IDs to addresses if needed
+    success = client.send_chat_message(peer_id, message)
+    if success:
+        click.echo(f"✅ Message sent!")
+    else:
+        click.echo(f"❌ Failed to send message", err=True)
+    
+    client.disconnect()
+
+
+@chat.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--peer', default=None, help='Filter by peer ID')
+@click.option('--limit', default=20, help='Maximum messages to show')
+@click.option('--schema', default=None, help='Path to schema.capnp')
+def history(host, port, peer, limit, schema):
+    """
+    View chat history.
+    
+    Shows recent chat messages from all peers or a specific peer.
+    Chat history is stored by Go's communication service at:
+    ~/.pangea/communication/chat_history.json
+    
+    Example:
+        python main.py chat history
+        python main.py chat history --peer 12D3KooW...
+        python main.py chat history --limit 50
+    """
+    schema_path = schema or get_go_schema_path()
+    client = GoNodeClient(host, port, schema_path)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect to Go node at {host}:{port}", err=True)
+        sys.exit(1)
+    
+    click.echo(f"\n💬 Chat History")
+    click.echo("=" * 60)
+    
+    # Get chat history via RPC or local file
+    messages = client.get_chat_history(peer)
+    
+    if not messages:
+        click.echo("No messages found.")
+        click.echo("\nNote: Chat history is stored at ~/.pangea/communication/chat_history.json")
+    else:
+        # Show last N messages
+        for msg in messages[-limit:]:
+            from_id = msg.get('from', 'Unknown')[:12]
+            content = msg.get('content', '')
+            timestamp = msg.get('timestamp', '')
+            click.echo(f"[{timestamp}] {from_id}: {content}")
+    
+    click.echo("")
+    client.disconnect()
+
+
+@chat.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--schema', default=None, help='Path to schema.capnp')
+def peers(host, port, schema):
+    """
+    List peers with active chat connections.
+    
+    Shows peers that have active connections via libp2p.
+    
+    Note: Returns node IDs from the Go node. The RPC currently returns
+    integer node IDs; future versions will return full libp2p peer IDs
+    when the communication service RPC is fully integrated.
+    """
+    schema_path = schema or get_go_schema_path()
+    client = GoNodeClient(host, port, schema_path)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect to Go node at {host}:{port}", err=True)
+        sys.exit(1)
+    
+    click.echo(f"\n💬 Connected Peers")
+    click.echo("=" * 60)
+    
+    # Get connected peers via RPC (returns node IDs as integers)
+    peers_list = client.get_connected_peers()
+    
+    if not peers_list:
+        click.echo("No connected peers.")
+    else:
+        for i, peer_id in enumerate(peers_list, 1):
+            # Handle both int (node ID) and string (libp2p peer ID) types
+            # The current RPC returns node IDs as integers, but future versions
+            # may return libp2p peer ID strings
+            if isinstance(peer_id, int):
+                click.echo(f"  {i}. Node {peer_id}")
+            else:
+                peer_str = str(peer_id)
+                click.echo(f"  {i}. {peer_str[:16]}...")
+    
+    click.echo("")
+    client.disconnect()
+
+
+# ============================================================================
+# Voice Commands (P2P Communication)
+# ============================================================================
+
+@cli.group()
+def voice():
+    """
+    P2P Voice commands.
+    
+    Voice functionality is handled by Go's communication service using libp2p.
+    Python provides high-level commands while Go handles all networking.
+    
+    Usage:
+        python main.py voice start
+        python main.py voice stop
+        python main.py voice stats
+    """
+    pass
+
+
+@voice.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--peer-host', default='', help='Peer host to connect to')
+@click.option('--peer-port', default=0, type=int, help='Peer port')
+@click.option('--schema', default=None, help='Path to schema.capnp')
+def start(host, port, peer_host, peer_port, schema):
+    """
+    Start voice streaming.
+    
+    Starts the Go voice streaming service using libp2p.
+    If peer-host is provided, connects to that peer.
+    Otherwise, waits for incoming connections.
+    """
+    schema_path = schema or get_go_schema_path()
+    client = GoNodeClient(host, port, schema_path)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect to Go node at {host}:{port}", err=True)
+        sys.exit(1)
+    
+    click.echo("🎤 Starting voice streaming...")
+    
+    # Start streaming with STREAM_TYPE_AUDIO
+    # Parameters: (stream_port=0 for auto, peer_host, peer_port, stream_type=AUDIO)
+    success = client.start_streaming(0, peer_host, peer_port, STREAM_TYPE_AUDIO)
+    if success:
+        click.echo("✅ Voice streaming started")
+        if peer_host:
+            click.echo(f"   Connected to {peer_host}:{peer_port}")
+        else:
+            click.echo("   Waiting for peer connections...")
+    else:
+        click.echo("❌ Failed to start voice streaming", err=True)
+    
+    client.disconnect()
+
+
+@voice.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--schema', default=None, help='Path to schema.capnp')
+def stop(host, port, schema):
+    """Stop voice streaming."""
+    schema_path = schema or get_go_schema_path()
+    client = GoNodeClient(host, port, schema_path)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect", err=True)
+        sys.exit(1)
+    
+    success = client.stop_streaming()
+    if success:
+        click.echo("✅ Voice streaming stopped")
+    else:
+        click.echo("❌ Failed to stop voice streaming", err=True)
+    
+    client.disconnect()
+
+
+@voice.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--schema', default=None, help='Path to schema.capnp')
+def stats(host, port, schema):
+    """Show voice streaming statistics."""
+    schema_path = schema or get_go_schema_path()
+    client = GoNodeClient(host, port, schema_path)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect", err=True)
+        sys.exit(1)
+    
+    stream_stats = client.get_stream_stats()
+    if stream_stats:
+        click.echo("\n🎤 Voice Streaming Statistics:")
+        click.echo(f"   Bytes Sent:      {stream_stats.get('bytesSent', 0)}")
+        click.echo(f"   Bytes Received:  {stream_stats.get('bytesReceived', 0)}")
+        click.echo(f"   Avg Latency:     {stream_stats.get('avgLatencyMs', 0):.2f}ms")
+    else:
+        click.echo("No voice streaming statistics available")
+    
+    client.disconnect()
+
+
+# ============================================================================
+# Video Commands (P2P Communication)
+# ============================================================================
+
+@cli.group()
+def video():
+    """
+    P2P Video commands.
+    
+    Video functionality is handled by Go's communication service using libp2p.
+    Python provides high-level commands while Go handles all networking.
+    
+    Usage:
+        python main.py video start
+        python main.py video stop
+        python main.py video stats
+    """
+    pass
+
+
+@video.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--peer-host', default='', help='Peer host to connect to')
+@click.option('--peer-port', default=0, type=int, help='Peer port')
+@click.option('--schema', default=None, help='Path to schema.capnp')
+def start(host, port, peer_host, peer_port, schema):
+    """
+    Start video streaming.
+    
+    Starts the Go video streaming service using libp2p.
+    If peer-host is provided, connects to that peer.
+    Otherwise, waits for incoming connections.
+    """
+    schema_path = schema or get_go_schema_path()
+    client = GoNodeClient(host, port, schema_path)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect to Go node at {host}:{port}", err=True)
+        sys.exit(1)
+    
+    click.echo("🎥 Starting video streaming...")
+    
+    # Start streaming with STREAM_TYPE_VIDEO
+    # Parameters: (stream_port=0 for auto, peer_host, peer_port, stream_type=VIDEO)
+    success = client.start_streaming(0, peer_host, peer_port, STREAM_TYPE_VIDEO)
+    if success:
+        click.echo("✅ Video streaming started")
+        if peer_host:
+            click.echo(f"   Connected to {peer_host}:{peer_port}")
+        else:
+            click.echo("   Waiting for peer connections...")
+    else:
+        click.echo("❌ Failed to start video streaming", err=True)
+    
+    client.disconnect()
+
+
+@video.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--schema', default=None, help='Path to schema.capnp')
+def stop(host, port, schema):
+    """Stop video streaming."""
+    schema_path = schema or get_go_schema_path()
+    client = GoNodeClient(host, port, schema_path)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect", err=True)
+        sys.exit(1)
+    
+    success = client.stop_streaming()
+    if success:
+        click.echo("✅ Video streaming stopped")
+    else:
+        click.echo("❌ Failed to stop video streaming", err=True)
+    
+    client.disconnect()
+
+
+@video.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--schema', default=None, help='Path to schema.capnp')
+def stats(host, port, schema):
+    """Show video streaming statistics."""
+    schema_path = schema or get_go_schema_path()
+    client = GoNodeClient(host, port, schema_path)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect", err=True)
+        sys.exit(1)
+    
+    stream_stats = client.get_stream_stats()
+    if stream_stats:
+        click.echo("\n🎥 Video Streaming Statistics:")
+        click.echo(f"   Frames Sent:     {stream_stats.get('framesSent', 0)}")
+        click.echo(f"   Frames Received: {stream_stats.get('framesReceived', 0)}")
+        click.echo(f"   Bytes Sent:      {stream_stats.get('bytesSent', 0)}")
+        click.echo(f"   Bytes Received:  {stream_stats.get('bytesReceived', 0)}")
+        click.echo(f"   Avg Latency:     {stream_stats.get('avgLatencyMs', 0):.2f}ms")
+    else:
+        click.echo("No video streaming statistics available")
+    
+    client.disconnect()
+
+
 if __name__ == '__main__':
-    import time
     cli()
 
