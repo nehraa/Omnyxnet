@@ -299,10 +299,8 @@ func (cs *CommunicationService) handleChatStream(stream network.Stream) {
 
 		// Set read deadline to ensure we can check context periodically
 		// This fixes the blocking ReadFull issue from review comments
-		if conn, ok := stream.Conn().(interface{ SetReadDeadline(time.Time) error }); ok {
-			conn.SetReadDeadline(time.Now().Add(StreamReadTimeout))
-		}
-
+		// Set read deadline directly on the stream
+		stream.SetReadDeadline(time.Now().Add(StreamReadTimeout))
 		// Read message length (4 bytes)
 		lengthBuf := make([]byte, 4)
 		_, err := io.ReadFull(reader, lengthBuf)
