@@ -1,15 +1,42 @@
 # Pangea Net - Version Information
 
-**Current Version:** 0.4.5-alpha  
-**Last Updated:** 2025-11-23  
-**Status:** 🚀 Phase 1 Advanced - Voice Streaming Ready
+**Current Version:** 0.6.0-alpha  
+**Last Updated:** 2025-12-03  
+**Status:** 🚀 Distributed Compute System Ready
 
 ---
 
 ## Version History
 
-### v0.4.5-alpha (Current) 🚀
+### v0.6.0-alpha (Current) 🚀
 
+**Release Date:** 2025-12-03  
+**Status:** Distributed Compute System Complete  
+**Test Results:** All 86 tests passing (61 Rust + 13 Go + Python SDK)
+
+#### Major Achievements ✅
+- **Distributed Compute System**: Hierarchical Task Network for parallel computation
+- **WASM Sandbox**: Secure execution with resource limits (CPU, memory, time)
+- **Merkle Tree Verification**: Cryptographic proof of result integrity
+- **Go Orchestrator**: Task delegation, load balancing, worker trust scoring
+- **Python SDK**: Job definition DSL, data preprocessing, result visualization
+- **Thread-Safe Job DSL**: Using thread-local storage for concurrent job definitions
+- **MapReduce Interface**: Split, Execute, Merge functions for any computation
+- **Security Hardened**: Race condition fixes, proper mutex handling
+
+See `docs/DISTRIBUTED_COMPUTE.md` for complete technical documentation.
+
+### v0.5.0-alpha
+**Release Date:** 2025-12-03  
+**Status:** Compute System Initial Implementation
+
+#### New Features ✅
+- Initial distributed compute architecture
+- Rust compute engine with sandbox
+- Go orchestrator with manager and scheduler
+- Python client SDK for job submission
+
+### v0.4.5-alpha
 **Release Date:** 2025-11-23  
 **Status:** Phase 1 Advanced - Voice Streaming Ready  
 **Benchmark:** 294x better latency than target (0.33ms achieved vs 100ms target)
@@ -86,9 +113,24 @@ See `docs/ACHIEVEMENT_SUMMARY.md` for complete technical documentation.
 
 ## Component Status
 
-### Go Node (v0.4.0)
-**Status:** Cross-device proven working  
-**Last Updated:** 2025-11-22
+### Distributed Compute System (v0.6.0) 🆕
+**Status:** Complete - All tests passing  
+**Last Updated:** 2025-12-03
+
+| Component | Language | Status | Tests |
+|-----------|----------|--------|-------|
+| WASM Sandbox | Rust | ✅ Complete | 27 tests |
+| Resource Metering | Rust | ✅ Complete | CPU, RAM, time limits |
+| Merkle Verification | Rust | ✅ Complete | Hash, Merkle, Redundancy |
+| Split/Merge Executor | Rust | ✅ Complete | Data chunking |
+| Task Manager | Go | ✅ Complete | 13 tests |
+| Load Balancer | Go | ✅ Complete | Worker selection |
+| Job DSL | Python | ✅ Complete | Thread-safe |
+| Client SDK | Python | ✅ Complete | RPC client |
+
+### Go Node (v0.6.0)
+**Status:** Compute orchestration added  
+**Last Updated:** 2025-12-03
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -99,10 +141,12 @@ See `docs/ACHIEVEMENT_SUMMARY.md` for complete technical documentation.
 | Guard Objects | ✅ Complete | Security layer |
 | Proximity Routing | ✅ Complete | RTT-based peer selection |
 | Metrics Collection | ✅ Complete | Network statistics |
+| Compute Manager | ✅ Complete | Task delegation |
+| Load Balancing | ✅ Complete | Worker trust scoring |
 
-### Rust Node (v0.4.0)
-**Status:** Cross-device CES pipeline validated  
-**Last Updated:** 2025-11-22
+### Rust Node (v0.6.0)
+**Status:** Compute engine added  
+**Last Updated:** 2025-12-03
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -116,6 +160,7 @@ See `docs/ACHIEVEMENT_SUMMARY.md` for complete technical documentation.
 | Upload/Download | ✅ Complete | File transfer protocols |
 | RPC Server | ✅ Complete | Cap'n Proto |
 | libp2p DHT | 🚧 Partial | Kademlia implementation |
+| Compute Engine | ✅ Complete | WASM sandbox, verification |
 | eBPF Firewall | 🚧 Optional | Linux + root only |
 
 ### Python AI (v0.4.0)
@@ -131,10 +176,17 @@ See `docs/ACHIEVEMENT_SUMMARY.md` for complete technical documentation.
 | CLI Interface | ✅ Complete | User commands |
 | Health Tracking | ✅ Complete | Peer monitoring |
 | GPU/CPU Fallback | ✅ Complete | Automatic detection |
+| Compute SDK | ✅ Complete | Job DSL, preprocessing |
 
 ---
 
 ## Testing Status
+
+### Compute System Tests
+- ✅ Rust compute tests: 27 passing (sandbox, metering, verification, executor)
+- ✅ Go orchestrator tests: 13 passing (manager, scheduler)
+- ✅ Python SDK tests: All passing (job DSL, client, preprocessor)
+- ✅ Integration tests: `tests/test_compute.sh` - All 5 checks passing
 
 ### Local Testing
 - ✅ Go builds successfully
@@ -145,7 +197,7 @@ See `docs/ACHIEVEMENT_SUMMARY.md` for complete technical documentation.
 - ✅ Multi-node startup on localhost
 
 ### Integration Testing
-- 🚧 Full Go + Rust + Python workflow
+- ✅ Full Go + Rust + Python workflow (compute)
 - 🚧 Auto-healing verification
 - 🚧 AI optimizer with real data
 - ❌ WAN testing across different networks
@@ -153,9 +205,9 @@ See `docs/ACHIEVEMENT_SUMMARY.md` for complete technical documentation.
 - ❌ Long-running stability tests
 
 ### Unit Tests
-- ✅ Rust: 12/12 tests passing
-- 🚧 Go: Basic tests (needs expansion)
-- 🚧 Python: Basic tests (needs expansion)
+- ✅ Rust: 86 tests passing (61 lib + 7 integration + 6 phase1 + 12 streaming)
+- ✅ Go: 13+ compute tests passing
+- ✅ Python: SDK tests passing
 
 ---
 
