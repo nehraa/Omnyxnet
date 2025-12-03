@@ -968,7 +968,7 @@ def result(host, port, output, job_id):
                 click.echo(f"Preview:\n{text}")
                 if len(result) > 500:
                     click.echo(f"... ({len(result) - 500} more bytes)")
-            except:
+            except UnicodeDecodeError:
                 click.echo(f"Preview (hex): {preview.hex()[:100]}")
                 if len(result) > 500:
                     click.echo(f"... ({len(result) - 500} more bytes)")
