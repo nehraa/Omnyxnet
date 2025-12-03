@@ -215,7 +215,7 @@ async def run_quic_server(port=9995):
             return
         
         # Create QUIC configuration
-        config = QuicConfiguration(is_client=False, is_insecure=True)
+        config = QuicConfiguration(is_client=False)
         
         # Start server
         from aioquic.quic.server import QuicServer
@@ -249,10 +249,15 @@ async def run_quic_client(peer_ip, port=9995):
     print(f"🔗 QUIC Client connecting to {peer_ip}:{port}...")
     
     try:
-        # Use insecure connection for LAN testing (self-signed certs)
-        config = QuicConfiguration(is_client=True, is_insecure=True)
+        # Create SSL context that ignores self-signed certs for LAN testing
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
         
-        async with await connect(peer_ip, port, configuration=config) as connection:
+        # Use insecure connection for LAN testing (self-signed certs)
+        config = QuicConfiguration(is_client=True)
+        
+        async with await connect(peer_ip, port, configuration=config, session_ticket_handler=None) as connection:
             quic_connection = connection
             print("✅ QUIC Connected")
             
