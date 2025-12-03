@@ -258,13 +258,13 @@ async def sender_stream(writer):
                             capture_fps = 0
                         print(f"[QUIC Sender] {frame_count} frames | Capture: {capture_fps:.1f} FPS | Send: {total_fps:.1f} FPS | Quality: {adapter.get_jpeg_quality()}")
                     
-            except asyncio.TimeoutError:
-                if running and frame_count % 100 == 0:
-                    print("[Sender] Send timeout - QUIC buffering")
-            except Exception as e:
-                if running:
-                    print(f"[Sender] Error: {e}")
-                break
+                except asyncio.TimeoutError:
+                    if running and frame_count % 100 == 0:
+                        print("[Sender] Send timeout - QUIC buffering")
+                except Exception as e:
+                    if running:
+                        print(f"[Sender] Error: {e}")
+                    break
     
     except Exception as e:
         if running:
