@@ -9,8 +9,6 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import List, Dict, Optional
-
 # Add parent directory for relative imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
