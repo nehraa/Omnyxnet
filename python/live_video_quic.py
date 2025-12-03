@@ -11,26 +11,28 @@ This file is kept for reference only. For actual video streaming, the networking
 is now handled by Go's streaming.go and exposed via RPC.
 """
 
-# NOTE: aioquic module renamed 'asynch' to 'asyncio' in newer versions
-# Old import (broken): from aioquic.asynch import connect
-# Correct import: from aioquic.asyncio import connect
-
 import cv2
 import asyncio
 import struct
 import numpy as np
 import sys
 import time
+import os
+import tempfile
+import subprocess
 from queue import Queue, Empty
-from aioquic.asyncio import connect
+from aioquic.asyncio.client import connect
+from aioquic.asyncio.server import serve
+from aioquic.asyncio.protocol import QuicConnectionProtocol
 from aioquic.quic.configuration import QuicConfiguration
-import ssl
+from aioquic.quic.events import StreamDataReceived, HandshakeCompleted
 
 # Global state
 received_frames = Queue(maxsize=30)
 local_frames = Queue(maxsize=30)
 running = True
-quic_connection = None
+active_protocol = None
+STREAM_ID = 0
 
 
 class DynamicFrameRateAdapter:
@@ -111,85 +113,71 @@ class DynamicFrameRateAdapter:
         return self.jpeg_quality
 
 
-async def receiver_stream(reader):
-    """Receive video frames via QUIC stream."""
-    global running
-    frame_count = 0
-    start_time = time.time()
+class VideoStreamProtocol(QuicConnectionProtocol):
+    """Custom QUIC protocol for bidirectional video streaming."""
     
-    print("📺 QUIC Receiver started")
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.receive_buffer = b''
+        self.connected = False
+        
+    def quic_event_received(self, event):
+        global running
+        
+        if isinstance(event, HandshakeCompleted):
+            self.connected = True
+            print("✅ QUIC Handshake completed")
+            
+        elif isinstance(event, StreamDataReceived):
+            self.receive_buffer += event.data
+            self._process_frames()
     
-    try:
-        while running:
+    def _process_frames(self):
+        """Process received frame data from buffer."""
+        while len(self.receive_buffer) >= 8:
+            # Parse header
+            frame_id, frame_size = struct.unpack('>II', self.receive_buffer[:8])
+            
+            # Check if we have complete frame
+            total_size = 8 + frame_size
+            if len(self.receive_buffer) < total_size:
+                break
+            
+            # Extract frame data
+            frame_data = self.receive_buffer[8:total_size]
+            self.receive_buffer = self.receive_buffer[total_size:]
+            
+            # Decode JPEG
             try:
-                # Read frame header: frame_id (4) + frame_size (4)
-                header = await asyncio.wait_for(reader.read(8), timeout=2.0)
-                if not header or len(header) < 8:
-                    if running:
-                        await asyncio.sleep(0.01)
-                    continue
-                
-                frame_id, frame_size = struct.unpack('>II', header)
-                
-                # Read frame data
-                frame_data = b''
-                remaining = frame_size
-                while remaining > 0 and running:
-                    chunk = await asyncio.wait_for(reader.read(min(65536, remaining)), timeout=1.0)
-                    if not chunk:
-                        break
-                    frame_data += chunk
-                    remaining -= len(chunk)
-                
-                if len(frame_data) != frame_size:
-                    continue
-                
-                # Decode JPEG
-                try:
-                    frame = cv2.imdecode(np.frombuffer(frame_data, np.uint8), cv2.IMREAD_COLOR)
-                    if frame is not None:
-                        frame_count += 1
+                frame = cv2.imdecode(np.frombuffer(frame_data, np.uint8), cv2.IMREAD_COLOR)
+                if frame is not None:
+                    try:
+                        received_frames.put_nowait(frame)
+                    except:
                         try:
+                            received_frames.get_nowait()
                             received_frames.put_nowait(frame)
                         except:
-                            try:
-                                received_frames.get_nowait()
-                                received_frames.put_nowait(frame)
-                            except:
-                                pass
-                        
-                        if frame_count % 100 == 0:
-                            elapsed = time.time() - start_time
-                            fps = frame_count / elapsed if elapsed > 0 else 0
-                            print(f"[QUIC Receiver] {frame_count} frames | FPS: {fps:.1f}")
-                except Exception as e:
-                    if frame_count % 100 == 0:
-                        print(f"[Receiver] Decode error: {e}")
-                        
-            except asyncio.TimeoutError:
-                if running:
-                    await asyncio.sleep(0.01)
-                continue
+                            pass
             except Exception as e:
-                if running:
-                    print(f"[Receiver] Error: {e}")
-                    await asyncio.sleep(0.1)
+                pass
     
-    except Exception as e:
-        if running:
-            print(f"[Receiver] Fatal: {e}")
-    finally:
-        elapsed = time.time() - start_time
-        fps = frame_count / elapsed if elapsed > 0 else 0
-        print(f"📺 QUIC Receiver stopped. {frame_count} frames at {fps:.1f} FPS")
+    def send_frame(self, frame_id, frame_data):
+        """Send a video frame over QUIC stream."""
+        header = struct.pack('>II', frame_id, len(frame_data))
+        packet = header + frame_data
+        self._quic.send_stream_data(STREAM_ID, packet)
+        self.transmit()
 
 
-async def sender_stream(writer):
-    """Capture video and send via QUIC stream."""
+async def sender_task(protocol):
+    """Capture video and send via QUIC."""
     global running
     frame_count = 0
     print("📹 QUIC Sender started")
     adapter = DynamicFrameRateAdapter()
+    cap = None
+    start_time = time.time()
     
     try:
         cap = cv2.VideoCapture(0)
@@ -203,8 +191,11 @@ async def sender_stream(writer):
         cap.set(cv2.CAP_PROP_FPS, 30)
         cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
         
-        start_time = time.time()
         frame_times = []
+        
+        # Wait for connection
+        while running and not protocol.connected:
+            await asyncio.sleep(0.1)
         
         while running:
             ret, frame = cap.read()
@@ -216,7 +207,7 @@ async def sender_stream(writer):
             if len(frame_times) > 100:
                 frame_times.pop(0)
             
-            # Queue for display
+            # Queue for local display
             try:
                 local_frames.put_nowait(frame.copy())
             except:
@@ -226,23 +217,18 @@ async def sender_stream(writer):
                 except:
                     pass
             
-            # Encode JPEG with dynamic quality - QUIC handles retransmit
+            # Encode and send
             if adapter.should_send_frame(frame_count):
                 try:
                     send_start = time.time()
                     _, encoded = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, adapter.get_jpeg_quality()])
                     frame_data = encoded.tobytes()
                     
-                    # Send frame: [frame_id (4)] [frame_size (4)] [data]
-                    header = struct.pack('>II', frame_count, len(frame_data))
-                    packet = header + frame_data
-                    
-                    await asyncio.wait_for(writer.write(packet), timeout=1.0)
+                    protocol.send_frame(frame_count, frame_data)
                     
                     send_duration = time.time() - send_start
                     adapter.record_send(len(frame_data), send_duration)
                     
-                    # Check if we should adjust parameters
                     if adapter.should_adjust():
                         bw = adapter.estimate_bandwidth_mbps()
                         adapter.adjust_for_bandwidth(bw)
@@ -252,121 +238,133 @@ async def sender_stream(writer):
                     if frame_count % 100 == 0:
                         elapsed = time.time() - start_time
                         total_fps = frame_count / elapsed if elapsed > 0 else 0
-                        if len(frame_times) > 10:
-                            capture_fps = len(frame_times) / (frame_times[-1] - frame_times[0]) if frame_times[-1] != frame_times[0] else 0
-                        else:
-                            capture_fps = 0
-                        print(f"[QUIC Sender] {frame_count} frames | Capture: {capture_fps:.1f} FPS | Send: {total_fps:.1f} FPS | Quality: {adapter.get_jpeg_quality()}")
+                        print(f"[QUIC Sender] {frame_count} frames | Send: {total_fps:.1f} FPS | Quality: {adapter.get_jpeg_quality()}")
                     
-                except asyncio.TimeoutError:
-                    if running and frame_count % 100 == 0:
-                        print("[Sender] Send timeout - QUIC buffering")
                 except Exception as e:
                     if running:
                         print(f"[Sender] Error: {e}")
-                    break
+            
+            await asyncio.sleep(0.001)
     
     except Exception as e:
         if running:
             print(f"[Sender] Fatal error: {e}")
     finally:
-        elapsed = time.time() - start_time if 'start_time' in dir() else 0
+        elapsed = time.time() - start_time
         fps = frame_count / elapsed if elapsed > 0 else 0
         print(f"📹 QUIC Sender stopped. {frame_count} frames at {fps:.1f} FPS")
-        if 'cap' in dir():
+        if cap:
             cap.release()
 
 
 async def run_quic_server(port=9995):
-    """QUIC server - accept incoming connection."""
-    global running, quic_connection
+    """QUIC server - listen for incoming connections."""
+    global running, active_protocol
     
     print(f"🟢 QUIC Server listening on port {port}...")
     
-    # Create self-signed certificate for testing
-    import tempfile
-    import subprocess
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cert_file = f"{tmpdir}/cert.pem"
+            key_file = f"{tmpdir}/key.pem"
+            
+            # Generate self-signed cert
+            result = subprocess.run([
+                "openssl", "req", "-x509", "-newkey", "rsa:2048",
+                "-keyout", key_file, "-out", cert_file, "-days", "1",
+                "-nodes", "-subj", "/CN=localhost"
+            ], capture_output=True, check=False)
+            
+            if not os.path.exists(cert_file):
+                print("❌ Failed to generate certificate")
+                running = False
+                return
+            
+            # Create QUIC configuration
+            config = QuicConfiguration(is_client=False)
+            config.load_cert_chain(cert_file, key_file)
+            
+            def create_protocol():
+                global active_protocol
+                active_protocol = VideoStreamProtocol(config)
+                return active_protocol
+            
+            # Start server
+            server = await serve(
+                "0.0.0.0",
+                port,
+                configuration=config,
+                create_protocol=create_protocol,
+            )
+            
+            print("✅ QUIC Server started, waiting for peer connection...")
+            
+            # Wait for connection
+            while running and (active_protocol is None or not active_protocol.connected):
+                await asyncio.sleep(0.1)
+            
+            if active_protocol and active_protocol.connected:
+                print("✅ Peer connected!")
+                # Start sender task
+                sender = asyncio.create_task(sender_task(active_protocol))
+                
+                while running:
+                    await asyncio.sleep(0.1)
+                
+                sender.cancel()
+                try:
+                    await sender
+                except asyncio.CancelledError:
+                    pass
+            
+            server.close()
     
-    with tempfile.TemporaryDirectory() as tmpdir:
-        cert_file = f"{tmpdir}/cert.pem"
-        key_file = f"{tmpdir}/key.pem"
-        
-        # Generate self-signed cert
-        subprocess.run([
-            "openssl", "req", "-x509", "-newkey", "rsa:2048",
-            "-keyout", key_file, "-out", cert_file, "-days", "1",
-            "-nodes", "-subj", "/CN=localhost"
-        ], capture_output=True, check=False)
-        
-        if not os.path.exists(cert_file):
-            print("❌ Failed to generate certificate")
-            running = False
-            return
-        
-        # Create QUIC configuration
-        config = QuicConfiguration(is_client=False)
-        
-        # Start server
-        from aioquic.quic.server import QuicServer
-        
-        server = QuicServer(
-            host="0.0.0.0",
-            port=port,
-            configuration=config,
-            session_ticket_fetcher=None,
-            session_ticket_handler=None,
-        )
-        
-        await server.serve()
-        
-        print("✅ QUIC Server started")
-        
-        # Wait for first connection
-        while running:
-            try:
-                # Accept connections (simplified for this example)
-                await asyncio.sleep(1)
-            except Exception as e:
-                if running:
-                    print(f"[Server] Error: {e}")
+    except Exception as e:
+        if running:
+            print(f"[Server] Fatal error: {e}")
+            import traceback
+            traceback.print_exc()
+        running = False
 
 
 async def run_quic_client(peer_ip, port=9995):
     """QUIC client - connect to peer and stream."""
-    global running, quic_connection
+    global running, active_protocol
     
     print(f"🔗 QUIC Client connecting to {peer_ip}:{port}...")
     
     try:
-        # Create SSL context that ignores self-signed certs for LAN testing
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        
-        # Use insecure connection for LAN testing (self-signed certs)
+        # Create QUIC configuration (allow self-signed certs)
         config = QuicConfiguration(is_client=True)
+        config.verify_mode = False  # Allow self-signed certs for LAN
         
-        async with connect(peer_ip, port, configuration=config, session_ticket_handler=None) as connection:
-            quic_connection = connection
+        def create_protocol():
+            global active_protocol
+            active_protocol = VideoStreamProtocol(config)
+            return active_protocol
+        
+        async with connect(
+            peer_ip,
+            port,
+            configuration=config,
+            create_protocol=create_protocol,
+        ) as protocol:
+            active_protocol = protocol
             print("✅ QUIC Connected")
             
-            # Open bidirectional stream for video
-            stream_id = connection.get_next_available_stream_id(is_unidirectional=False)
-            reader = connection.create_stream_reader(stream_id)
-            writer = connection.create_stream_writer(stream_id)
+            # Wait for handshake
+            while running and not protocol.connected:
+                await asyncio.sleep(0.1)
             
-            # Run sender and receiver concurrently
-            sender = asyncio.create_task(sender_stream(writer))
-            receiver = asyncio.create_task(receiver_stream(reader))
+            # Start sender task
+            sender = asyncio.create_task(sender_task(protocol))
             
-            while running and not sender.done() and not receiver.done():
+            while running:
                 await asyncio.sleep(0.1)
             
             sender.cancel()
-            receiver.cancel()
-            
             try:
-                await asyncio.gather(sender, receiver)
+                await sender
             except asyncio.CancelledError:
                 pass
             
@@ -377,7 +375,7 @@ async def run_quic_client(peer_ip, port=9995):
 
 
 async def display_frames():
-    """Main thread for displaying frames."""
+    """Display local and received video frames."""
     global running
     
     print("\n🎥 QUIC Video streaming active! Press 'q' to end.\n")
@@ -426,25 +424,16 @@ async def main():
         display_task = asyncio.create_task(display_frames())
         
         if is_server:
-            # Server mode
-            print(f"🟢 Waiting for QUIC peer on port {port}...")
-            
-            # For simplicity, we'll use client mode but accept on UDP 9995
-            # Real implementation would use aioquic server
-            # For now, connect back to client
-            await asyncio.sleep(2)
-            
-            # Actually, let's swap roles - server connects to client for symmetry
-            # This is simpler with current aioquic API
-            if not peer_ip:
-                print("❌ No peer found")
-                running = False
-            else:
-                quic_task = asyncio.create_task(run_quic_client(peer_ip, port))
-                await quic_task
+            # Server mode: Listen for incoming connection
+            quic_task = asyncio.create_task(run_quic_server(port))
+            await quic_task
         else:
+            # Client mode: Connect to peer
             if not peer_ip:
-                print("❌ No peer IP found")
+                print("❌ No peer IP provided")
+                print("Usage:")
+                print("  Server: python3 live_video_quic.py true")
+                print("  Client: python3 live_video_quic.py false <server-ip>")
                 running = False
             else:
                 quic_task = asyncio.create_task(run_quic_client(peer_ip, port))
@@ -457,13 +446,9 @@ async def main():
     finally:
         running = False
         await asyncio.sleep(0.5)
-        if quic_connection:
-            await quic_connection.aclose()
 
 
 if __name__ == "__main__":
-    import os
-    
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
