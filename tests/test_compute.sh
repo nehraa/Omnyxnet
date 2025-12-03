@@ -47,7 +47,7 @@ cd "$PROJECT_ROOT"
 test_section "Go Compute Package"
 
 cd go
-if go test ./pkg/compute/... 2>&1 | grep -q "ok"; then
+if go test ./pkg/compute/...; then
     echo -e "${GREEN}✅ Go compute tests passed${NC}"
     PASSED=$((PASSED + 1))
 else
