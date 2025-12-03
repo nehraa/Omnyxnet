@@ -1,28 +1,8 @@
 #!/usr/bin/env python3
-"""
-DEPRECATED: This file uses direct Python networking which violates the Golden Rule.
+"""Live video streaming with webcam - macOS compatible.
 
-The Golden Rule:
-  - Go: All networking (libp2p, TCP, UDP)
-  - Rust: Files, memory, CES pipeline  
-  - Python: AI and CLI management
-
-This file is kept as a REFERENCE ONLY for understanding the video streaming protocol.
-For actual P2P video streaming, use the Go-based communication service:
-
-    # Start Go node with libp2p (auto-discovers peers via mDNS)
-    ./go/bin/go-node -node-id 1 -libp2p -local
-    
-    # Use Python CLI for high-level management
-    python3 -m main streaming start --type video
-
-The Go communication service (go/pkg/communication/communication.go) handles:
-  - P2P video streaming over libp2p streams
-  - P2P audio streaming over libp2p streams
-  - P2P chat messaging with history persistence
-  - Automatic peer discovery via mDNS
-
-See docs/COMMUNICATION.md for complete documentation.
+On macOS, OpenCV's imshow() must be called from the main thread.
+This version uses queues to pass frames between threads and the main loop.
 """
 
 import cv2
