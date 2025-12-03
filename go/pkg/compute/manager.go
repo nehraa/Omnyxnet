@@ -467,13 +467,14 @@ func (m *Manager) delegateJob(jobID string, manifest *JobManifest) {
 	m.mu.Unlock()
 	
 	// Delegate chunks to workers
+	// Note: executeChunk acquires the mutex internally for thread safety
 	var wg sync.WaitGroup
 	for i, chunk := range chunks {
 		wg.Add(1)
-		go func(index int, data []byte, state *JobState) {
+		go func(index int, data []byte) {
 			defer wg.Done()
-			m.executeChunk(jobID, uint32(index), manifest, data, state)
-		}(i, chunk, state)
+			m.executeChunk(jobID, uint32(index), manifest, data)
+		}(i, chunk)
 	}
 	
 	wg.Wait()

@@ -32,6 +32,8 @@ pub struct MerkleTree {
     nodes: Vec<String>,
     /// Number of leaves
     leaf_count: usize,
+    /// Size of each level (including padding) for proof generation
+    level_sizes: Vec<usize>,
 }
 
 impl MerkleTree {
@@ -42,6 +44,7 @@ impl MerkleTree {
                 root: String::new(),
                 nodes: Vec::new(),
                 leaf_count: 0,
+                level_sizes: Vec::new(),
             };
         }
         
@@ -52,6 +55,7 @@ impl MerkleTree {
             .collect();
         
         let leaf_count = nodes.len();
+        let mut level_sizes = Vec::new();
         
         // Build tree levels
         let mut level_start = 0;
@@ -60,11 +64,17 @@ impl MerkleTree {
         while level_size > 1 {
             let level_end = level_start + level_size;
             
+            // Track original size before padding
+            let original_size = level_size;
+            
             // If odd number, duplicate the last hash
             if level_size % 2 == 1 {
                 nodes.push(nodes[level_end - 1].clone());
                 level_size += 1;
             }
+            
+            // Record the padded size for this level
+            level_sizes.push(level_size);
             
             // Combine pairs
             for i in (level_start..level_start + level_size).step_by(2) {
@@ -72,9 +82,12 @@ impl MerkleTree {
                 nodes.push(Self::hash_string(&combined));
             }
             
-            level_start = level_end;
-            level_size = (level_size + 1) / 2;
+            level_start = level_end + (level_size - original_size); // Account for padding node
+            level_size = level_size / 2;
         }
+        
+        // Add final level (root)
+        level_sizes.push(1);
         
         let root = nodes.last().cloned().unwrap_or_default();
         
@@ -82,6 +95,7 @@ impl MerkleTree {
             root,
             nodes,
             leaf_count,
+            level_sizes,
         }
     }
     
@@ -101,6 +115,8 @@ impl MerkleTree {
     }
     
     /// Get a proof for a specific leaf
+    /// 
+    /// The proof is a list of sibling hashes needed to reconstruct the root.
     pub fn get_proof(&self, leaf_index: usize) -> Result<Vec<String>, ComputeError> {
         if leaf_index >= self.leaf_count {
             return Err(ComputeError::InvalidInput(
@@ -108,32 +124,32 @@ impl MerkleTree {
             ));
         }
         
+        if self.level_sizes.is_empty() {
+            return Ok(Vec::new());
+        }
+        
         let mut proof = Vec::new();
         let mut index = leaf_index;
         let mut level_start = 0;
-        let mut level_size = self.leaf_count;
         
-        // Adjust for potential padding
-        if level_size % 2 == 1 {
-            level_size += 1;
-        }
-        
-        while level_size > 1 {
-            // Get sibling
+        // Use recorded level sizes for accurate proof generation
+        for &level_size in &self.level_sizes[..self.level_sizes.len().saturating_sub(1)] {
+            // Get sibling index
             let sibling_index = if index % 2 == 0 {
                 index + 1
             } else {
                 index - 1
             };
             
-            if level_start + sibling_index < self.nodes.len() {
-                proof.push(self.nodes[level_start + sibling_index].clone());
+            // Add sibling hash to proof if it exists
+            let node_index = level_start + sibling_index;
+            if node_index < self.nodes.len() && sibling_index < level_size {
+                proof.push(self.nodes[node_index].clone());
             }
             
             // Move to parent level
             index /= 2;
             level_start += level_size;
-            level_size = (level_size + 1) / 2;
         }
         
         Ok(proof)

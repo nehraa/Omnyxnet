@@ -3,15 +3,22 @@ Job Definition DSL for Distributed Compute
 
 This module provides a Pythonic DSL for defining compute jobs.
 Jobs consist of three functions: split, execute, and merge.
+
+Thread Safety:
+    The Job class uses thread-local storage for the current builder
+    to ensure thread safety when multiple threads define jobs concurrently.
 """
 
 from dataclasses import dataclass, field
 from typing import Callable, List, Optional
 import hashlib
 import logging
+import threading
 
 logger = logging.getLogger(__name__)
 
+# Thread-local storage for job builder to ensure thread safety
+_thread_local = threading.local()
 
 @dataclass
 class JobDefinition:
@@ -142,11 +149,21 @@ class Job:
                 return str(total).encode()
     """
     
-    _current_builder: Optional[JobBuilder] = None
+    @classmethod
+    def _get_current_builder(cls) -> Optional[JobBuilder]:
+        """Get the current builder from thread-local storage."""
+        return getattr(_thread_local, 'current_builder', None)
+    
+    @classmethod
+    def _set_current_builder(cls, builder: Optional[JobBuilder]):
+        """Set the current builder in thread-local storage."""
+        _thread_local.current_builder = builder
     
     @classmethod
     def define(cls, fn: Callable) -> JobDefinition:
         """Define a compute job using decorators.
+        
+        This method is thread-safe: each thread maintains its own builder state.
         
         Args:
             fn: A function that defines the job using @Job.split, @Job.execute, @Job.merge
@@ -154,35 +171,39 @@ class Job:
         Returns:
             A JobDefinition
         """
-        cls._current_builder = JobBuilder(fn.__name__)
+        cls._set_current_builder(JobBuilder(fn.__name__))
         
         # Execute the function to register split/execute/merge
         fn()
         
-        definition = cls._current_builder.build()
-        cls._current_builder = None
+        builder = cls._get_current_builder()
+        definition = builder.build() if builder else JobDefinition(name=fn.__name__)
+        cls._set_current_builder(None)
         
         return definition
     
     @classmethod
     def split(cls, fn: Callable[[bytes], List[bytes]]) -> Callable[[bytes], List[bytes]]:
         """Decorator to define the split function."""
-        if cls._current_builder:
-            cls._current_builder.with_split(fn)
+        builder = cls._get_current_builder()
+        if builder:
+            builder.with_split(fn)
         return fn
     
     @classmethod
     def execute(cls, fn: Callable[[bytes], bytes]) -> Callable[[bytes], bytes]:
         """Decorator to define the execute function."""
-        if cls._current_builder:
-            cls._current_builder.with_execute(fn)
+        builder = cls._get_current_builder()
+        if builder:
+            builder.with_execute(fn)
         return fn
     
     @classmethod
     def merge(cls, fn: Callable[[List[bytes]], bytes]) -> Callable[[List[bytes]], bytes]:
         """Decorator to define the merge function."""
-        if cls._current_builder:
-            cls._current_builder.with_merge(fn)
+        builder = cls._get_current_builder()
+        if builder:
+            builder.with_merge(fn)
         return fn
 
 

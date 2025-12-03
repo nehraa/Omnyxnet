@@ -1,19 +1,25 @@
 # Pangea Net - AI-Enhanced Decentralized Internet
 
-**Version:** 0.4.5-alpha  
-**Status:** 🚀 **Phase 1 Advanced - Voice Streaming Ready** 🎯  
-**Last Updated:** 2025-11-23
+**Version:** 0.6.0-alpha  
+**Status:** 🚀 **Distributed Compute System Ready** 🎯  
+**Last Updated:** 2025-12-03
 
-> 🚀 **MAJOR BREAKTHROUGH:** Multi-language P2P system with **voice streaming capabilities!** 
-> - **0.33ms P2P latency** (294x better than 100ms target)
-> - **Real-time voice streaming** with 20.87x compression  
-> - **60MB HD video processing** in 262ms
-> - **Cross-device communication** proven across networks
-> - **Production-ready performance** with 50+ automated tests
+> 🚀 **NEW in v0.6.0:** **Distributed Compute System** with hierarchical task delegation!
+> - **WASM Sandbox** for secure computation with resource limits
+> - **MapReduce Interface** (Split, Execute, Merge) for any workload
+> - **Merkle Tree Verification** for cryptographic result integrity
+> - **Thread-Safe Python SDK** with decorator-based job definition
+> - **86+ tests passing** across Rust, Go, and Python
 
-## 🎯 **Phase 1 Progress Summary**
+## 🎯 **Current Capabilities**
 
-### **🚀 Performance Benchmarks EXCEEDED**
+### **🖥️ Distributed Compute (NEW v0.6.0)**
+- **Hierarchical Task Network**: Recursive delegation for scalable computation
+- **WASM Sandbox**: CPU, memory, and time limits enforced
+- **Multiple Verification Modes**: Hash, Merkle tree, and redundancy
+- **Load Balancing**: Worker trust scoring and task distribution
+
+### **🚀 Performance Benchmarks**
 - **Real-time P2P**: 0.33ms latency (294x better than target)
 - **Voice Streaming**: 20.87x compression, 10ms frame duration
 - **Large Media**: 60MB HD video processing in 262ms
@@ -23,9 +29,9 @@
 - **Multi-transport P2P**: UDP/QUIC for streaming, TCP for files
 - **Advanced Compression**: Brotli + Opus codec integration  
 - **Real Media Processing**: Tested with actual WAV/MP4/MP3 files
-- **Comprehensive Testing**: 50+ automated tests covering all scenarios
+- **Comprehensive Testing**: 86+ automated tests covering all scenarios
 
-**Pangea Net has achieved production-ready status for distributed P2P communication and storage.** See [Achievement Summary](docs/ACHIEVEMENT_SUMMARY.md) for complete details.
+**Pangea Net has achieved production-ready status for distributed P2P communication, storage, and computation.** See [Achievement Summary](docs/ACHIEVEMENT_SUMMARY.md) for complete details.
 
 ## 🚀 Quick Start
 

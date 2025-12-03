@@ -1,7 +1,7 @@
 # 📚 Pangea Net - Documentation Index
 
 **Last Updated**: December 3, 2025  
-**Version**: 0.5.0
+**Version**: 0.6.0-alpha
 
 **NEW:** [Distributed Compute System](docs/DISTRIBUTED_COMPUTE.md) - Hierarchical task network for parallel computation 🚀
 

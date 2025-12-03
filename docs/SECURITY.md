@@ -1,5 +1,94 @@
 # Security Guidelines
 
+**Version:** 0.6.0-alpha  
+**Last Updated:** 2025-12-03
+
+## Table of Contents
+
+1. [CES Encryption Key Management](#ces-encryption-key-management)
+2. [Distributed Compute Security](#distributed-compute-security)
+3. [Security Audit Results](#security-audit-results-v060)
+
+---
+
+## Distributed Compute Security
+
+### WASM Sandbox Isolation
+
+The distributed compute system executes untrusted code in a secure WASM sandbox:
+
+#### Resource Limits
+
+```rust
+// Default resource limits
+pub struct ResourceLimits {
+    max_memory_bytes: u64,      // 256 MB default
+    max_cpu_cycles: u64,        // 1 billion cycles
+    max_execution_time_ms: u64, // 30 seconds
+    max_stack_bytes: u64,       // 1 MB stack
+}
+```
+
+#### Sandbox Guarantees
+
+- **No Network Access:** WASM modules cannot make network calls
+- **No File System Access:** WASM modules cannot read or write files
+- **Memory Isolation:** Each task runs in isolated linear memory
+- **CPU Metering:** Execution is interrupted when limits are exceeded
+- **No System Calls:** WASI is restricted to pure computation
+
+### Verification Modes
+
+The system supports multiple verification modes for result integrity:
+
+1. **Hash Verification:** SHA256 hash of results compared
+2. **Merkle Tree Verification:** Cryptographic proof of data integrity
+3. **Redundancy Verification:** Same task runs on multiple workers, results compared
+
+### Trust Scoring
+
+Workers build reputation through successful task completion:
+
+```go
+// Trust score updated after each task
+if success {
+    worker.trustScore = oldScore*0.9 + 0.1  // Increase trust
+} else {
+    worker.trustScore = oldScore*0.9 + 0.0  // Decrease trust
+}
+```
+
+### Thread Safety
+
+- **Python Job DSL:** Uses thread-local storage for concurrent job definitions
+- **Go Manager:** Mutex protection for all shared state access
+- **Rust Compute:** No shared mutable state between tasks
+
+---
+
+## Security Audit Results (v0.6.0)
+
+### Fixed Issues
+
+| Issue | Component | Resolution |
+|-------|-----------|------------|
+| Race condition in `delegateJob` | Go | Proper goroutine closure captures |
+| Race condition in `executeChunk` | Go | Mutex lock for state access |
+| Thread-unsafe Job builder | Python | Thread-local storage |
+| Merkle proof padding logic | Rust | Track level sizes during build |
+
+### Remaining Considerations
+
+| Area | Status | Notes |
+|------|--------|-------|
+| WASM Sandbox | ⚠️ Simulation | Wasmtime integration pending |
+| Worker Authentication | ⚠️ Future | No secure key exchange yet |
+| Rate Limiting | ⚠️ Future | No per-worker rate limits |
+
+---
+
+## CES Encryption Key Management
+
 ## CES Encryption Key Management
 
 The WGT system uses XChaCha20-Poly1305 encryption for data protection in the CES (Compression, Encryption, Sharding) pipeline. Proper key management is **critical** for production deployments.

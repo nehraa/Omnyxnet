@@ -419,6 +419,27 @@ print(f"Word count: {result.decode()}")
 - **Redundancy:** Critical tasks run on multiple workers
 - **Reputation:** Workers build trust score over time
 
+### Security Audit Results (v0.6.0)
+
+**Race Conditions Fixed:**
+- ✅ Go `executeChunk`: Uses mutex for state access
+- ✅ Go `delegateJob`: Proper goroutine closure captures
+- ✅ Python Job DSL: Thread-local storage for builder state
+
+**Resource Limits:**
+- ✅ CPU cycle metering with configurable limits
+- ✅ Memory allocation tracking
+- ✅ Execution time limits with interrupt capability
+
+**Input Validation:**
+- ✅ Job manifest validation before execution
+- ✅ WASM module size limits
+- ✅ Chunk size constraints (min/max)
+
+**Known Limitations:**
+- ⚠️ Current sandbox uses simulation mode (Wasmtime integration pending)
+- ⚠️ No secure key exchange between workers (future enhancement)
+
 ## Future Enhancements
 
 - [ ] GPU compute support (WebGPU in WASM)

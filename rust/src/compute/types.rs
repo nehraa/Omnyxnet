@@ -275,7 +275,7 @@ pub struct ComputeCapacity {
 impl ComputeCapacity {
     /// Probe the system for compute capacity
     pub fn probe() -> Self {
-        use sysinfo::System;
+        use sysinfo::{System, SystemExt, CpuExt};
         
         let mut sys = System::new_all();
         sys.refresh_all();
