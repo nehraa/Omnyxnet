@@ -885,7 +885,7 @@ def submit(host, port, input_file, input_text, timeout, priority, schema):
         if len(result) < 200:
             try:
                 click.echo(f"   Result: {result.decode('utf-8')}")
-            except:
+            except UnicodeDecodeError:
                 click.echo(f"   Result (hex): {result[:100].hex()}")
         
     except Exception as e:
