@@ -25,6 +25,7 @@ pub mod ffi;
 pub mod auto_heal;
 pub mod file_detector;
 pub mod automated;
+pub mod compute; // Distributed Compute System
 
 // Re-export commonly used types for ease of use
 pub use capabilities::HardwareCaps;
@@ -41,3 +42,14 @@ pub use firewall::Firewall;
 pub use cache::{Cache, FileManifest, CacheStats};
 pub use lookup::{LookupService, LookupResult, DiscoveryResult};
 pub use automated::{AutomatedUploader, AutomatedDownloader, UploadResult, DownloadResult, FileInfo};
+
+// Distributed Compute System exports
+pub use compute::{
+    ComputeEngine, ComputeConfig, ComputeTask, TaskResult, TaskStatus,
+    JobManifest, ChunkInfo, VerificationMode, SplitStrategy,
+    ComputeError, ComputeCapacity,
+    WasmSandbox, SandboxConfig,
+    ResourceLimits, ResourceUsage, Metering,
+    MerkleTree, ResultVerifier, VerificationResult,
+    ComputeExecutor, ExecutionContext,
+};

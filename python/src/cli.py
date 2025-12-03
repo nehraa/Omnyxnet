@@ -790,6 +790,250 @@ def stats(host, port, schema):
     client.disconnect()
 
 
+# ============================================================================
+# Compute Commands (Distributed Compute System)
+# ============================================================================
+
+@cli.group()
+def compute():
+    """
+    Distributed Compute commands.
+    
+    The Distributed Compute System allows running parallel computations
+    across multiple nodes in the network. Following the Golden Rule:
+    - Rust: Compute sandbox (WASM), verification, split/merge
+    - Go: Orchestration, load balancing, task delegation
+    - Python: Job definition, data preprocessing, result visualization
+    
+    Usage:
+        python main.py compute submit --input data.bin
+        python main.py compute status <job_id>
+        python main.py compute result <job_id>
+    """
+    pass
+
+
+@compute.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--input', 'input_file', type=click.Path(exists=True), help='Input data file')
+@click.option('--input-text', default=None, help='Input text data')
+@click.option('--timeout', default=300, help='Job timeout in seconds')
+@click.option('--priority', default=5, help='Job priority (1-10)')
+@click.option('--schema', default=None, help='Path to schema.capnp')
+def submit(host, port, input_file, input_text, timeout, priority, schema):
+    """
+    Submit a compute job.
+    
+    Submits a job to the distributed compute network. The job will be
+    split, distributed across workers, and results merged automatically.
+    
+    Example:
+        python main.py compute submit --input large_data.bin
+        python main.py compute submit --input-text "Hello, World!"
+    """
+    from src.compute import Job, ComputeClient
+    
+    # Get input data
+    if input_file:
+        with open(input_file, 'rb') as f:
+            input_data = f.read()
+        click.echo(f"📁 Read {len(input_data)} bytes from {input_file}")
+    elif input_text:
+        input_data = input_text.encode('utf-8')
+    else:
+        click.echo("❌ Please provide --input or --input-text", err=True)
+        sys.exit(1)
+    
+    # Create a simple identity job for demonstration
+    @Job.define
+    def identity_job():
+        @Job.split
+        def split(data):
+            chunk_size = max(1024, len(data) // 8)
+            return [data[i:i+chunk_size] for i in range(0, len(data), chunk_size)]
+        
+        @Job.execute
+        def execute(chunk):
+            return chunk  # Identity
+        
+        @Job.merge
+        def merge(results):
+            return b''.join(results)
+    
+    client = ComputeClient(host, port)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect to {host}:{port}", err=True)
+        sys.exit(1)
+    
+    try:
+        click.echo(f"🚀 Submitting job with {len(input_data)} bytes...")
+        job_id = client.submit_job(
+            identity_job,
+            input_data,
+            timeout_secs=timeout,
+            priority=priority,
+        )
+        click.echo(f"✅ Job submitted: {job_id}")
+        
+        # Wait for result
+        click.echo("⏳ Waiting for result...")
+        result = client.get_result(job_id, timeout=timeout)
+        click.echo(f"✅ Job completed! Result size: {len(result)} bytes")
+        
+        # Show preview
+        if len(result) < 200:
+            try:
+                click.echo(f"   Result: {result.decode('utf-8')}")
+            except:
+                click.echo(f"   Result (hex): {result[:100].hex()}")
+        
+    except Exception as e:
+        click.echo(f"❌ Job failed: {e}", err=True)
+    finally:
+        client.disconnect()
+
+
+@compute.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.argument('job_id')
+def status(host, port, job_id):
+    """
+    Get status of a compute job.
+    
+    Shows the current status, progress, and other details of a running
+    or completed job.
+    """
+    from src.compute import ComputeClient
+    
+    client = ComputeClient(host, port)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect to {host}:{port}", err=True)
+        sys.exit(1)
+    
+    try:
+        status = client.get_status(job_id)
+        click.echo(f"\n📊 Job Status: {job_id}")
+        click.echo("=" * 50)
+        click.echo(f"Status:           {status.status.name}")
+        click.echo(f"Progress:         {status.progress * 100:.1f}%")
+        click.echo(f"Completed Chunks: {status.completed_chunks}/{status.total_chunks}")
+        if status.estimated_time_remaining > 0:
+            click.echo(f"Est. Time Left:   {status.estimated_time_remaining}s")
+        if status.error:
+            click.echo(f"Error:            {status.error}")
+    except KeyError:
+        click.echo(f"❌ Job {job_id} not found", err=True)
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+    finally:
+        client.disconnect()
+
+
+@compute.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--output', '-o', type=click.Path(), help='Output file')
+@click.argument('job_id')
+def result(host, port, output, job_id):
+    """
+    Get result of a compute job.
+    
+    Retrieves the result of a completed job. Can save to file with --output.
+    """
+    from src.compute import ComputeClient
+    
+    client = ComputeClient(host, port)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect to {host}:{port}", err=True)
+        sys.exit(1)
+    
+    try:
+        result = client.get_result(job_id, timeout=10)
+        
+        if output:
+            with open(output, 'wb') as f:
+                f.write(result)
+            click.echo(f"✅ Result saved to {output} ({len(result)} bytes)")
+        else:
+            click.echo(f"\n📦 Job Result: {job_id}")
+            click.echo("=" * 50)
+            click.echo(f"Size: {len(result)} bytes")
+            
+            # Show preview
+            preview = result[:500]
+            try:
+                text = preview.decode('utf-8')
+                click.echo(f"Preview:\n{text}")
+                if len(result) > 500:
+                    click.echo(f"... ({len(result) - 500} more bytes)")
+            except:
+                click.echo(f"Preview (hex): {preview.hex()[:100]}")
+                if len(result) > 500:
+                    click.echo(f"... ({len(result) - 500} more bytes)")
+                    
+    except KeyError:
+        click.echo(f"❌ Job {job_id} not found", err=True)
+    except TimeoutError:
+        click.echo(f"❌ Job {job_id} not yet complete", err=True)
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+    finally:
+        client.disconnect()
+
+
+@compute.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.argument('job_id')
+def cancel(host, port, job_id):
+    """
+    Cancel a running compute job.
+    """
+    from src.compute import ComputeClient
+    
+    client = ComputeClient(host, port)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect to {host}:{port}", err=True)
+        sys.exit(1)
+    
+    try:
+        if client.cancel_job(job_id):
+            click.echo(f"✅ Job {job_id} cancelled")
+        else:
+            click.echo(f"❌ Job {job_id} not found", err=True)
+    finally:
+        client.disconnect()
+
+
+@compute.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+def capacity(host, port):
+    """
+    Show compute capacity of the connected node.
+    """
+    from src.compute import ComputeClient
+    
+    client = ComputeClient(host, port)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect to {host}:{port}", err=True)
+        sys.exit(1)
+    
+    try:
+        cap = client.get_capacity()
+        click.echo(f"\n🖥️  Compute Capacity")
+        click.echo("=" * 50)
+        click.echo(f"CPU Cores:      {cap.cpu_cores}")
+        click.echo(f"RAM:            {cap.ram_mb} MB")
+        click.echo(f"Current Load:   {cap.current_load * 100:.1f}%")
+        click.echo(f"Disk Space:     {cap.disk_mb} MB")
+        click.echo(f"Bandwidth:      {cap.bandwidth_mbps} Mbps")
+    finally:
+        client.disconnect()
+
+
 if __name__ == '__main__':
     cli()
 

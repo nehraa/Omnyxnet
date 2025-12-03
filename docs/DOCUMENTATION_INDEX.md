@@ -1,9 +1,9 @@
 # 📚 Pangea Net - Documentation Index
 
-**Last Updated**: November 24, 2025  
-**Version**: 0.4.0
+**Last Updated**: December 3, 2025  
+**Version**: 0.5.0
 
-**NEW:** [Voice/Video Streaming Guide](docs/STREAMING_GUIDE.md) - UDP-based real-time streaming 🎤
+**NEW:** [Distributed Compute System](docs/DISTRIBUTED_COMPUTE.md) - Hierarchical task network for parallel computation 🚀
 
 ## 🚀 Getting Started
 
@@ -14,6 +14,15 @@
 3. **[TESTING_QUICK_START.md](TESTING_QUICK_START.md)** - Run tests quickly
 
 ## 📖 Core Documentation
+
+### Distributed Compute
+
+- **[Distributed Compute System](docs/DISTRIBUTED_COMPUTE.md)** ⭐ NEW (Dec 2025)
+  - Hierarchical Task Network (Recursive Delegation Model)
+  - WASM Sandbox for secure computation
+  - MapReduce interface (Split, Execute, Merge)
+  - Verification (Hash, Merkle, Redundancy)
+  - Python SDK for job definition
 
 ### Networking
 
@@ -49,6 +58,14 @@
   - Packet format and serialization
   - Usage examples and API reference
   - 12 tests (all passing)
+
+### Documentation Standards
+
+- **[Documentation Style Guide](docs/DOCUMENTATION_STYLE_GUIDE.md)** ⭐ NEW (Dec 2025)
+  - Formatting conventions
+  - Code examples standards
+  - Architecture diagrams
+  - Version and status indicators
 
 ## 🗂️ Directory Structure
 
