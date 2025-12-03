@@ -4,6 +4,13 @@
 //! It uses a simulated runtime for basic operations, with hooks for 
 //! integrating Wasmtime when full WASM support is needed.
 //!
+//! # Current Implementation
+//!
+//! The current implementation uses simulation mode for the split, execute,
+//! and merge functions. For production use with real WASM modules, integrate
+//! Wasmtime by adding it to Cargo.toml and implementing the `execute_wasm`
+//! method using `wasmtime::Module` and `wasmtime::Instance`.
+//!
 //! # Security
 //! 
 //! The sandbox enforces:
@@ -278,7 +285,7 @@ impl WasmSandbox {
         }
         
         // Allow both real WASM and test data
-        // Real WASM starts with: 0x00 0x61 0x73 0x6D (\\0asm)
+        // Real WASM starts with: 0x00 0x61 0x73 0x6D (\0asm)
         let is_wasm = bytes[0] == 0x00 && bytes[1] == 0x61 && 
                       bytes[2] == 0x73 && bytes[3] == 0x6D;
         
@@ -324,7 +331,7 @@ mod tests {
         
         // Create test data
         let data = vec![1u8; 256 * 1024]; // 256KB
-        let fake_wasm = b"\\0asmtest_module"; // Test module
+        let fake_wasm = b"\x00asmtest_module"; // Test module
         
         // Test split
         let split_result = sandbox.execute(fake_wasm, &data, "split").unwrap();
