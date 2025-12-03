@@ -33,6 +33,84 @@ running = True
 quic_connection = None
 
 
+class DynamicFrameRateAdapter:
+    """Dynamically adjust frame rate and quality based on network conditions."""
+    
+    def __init__(self):
+        self.jpeg_quality = 60
+        self.frame_skip = 0
+        self.target_fps = 30
+        self.send_times = []
+        self.last_adjustment = time.time()
+        self.adjustment_interval = 2.0
+        
+    def record_send(self, size_bytes, duration_sec):
+        """Record a frame send operation."""
+        self.send_times.append({
+            'size': size_bytes,
+            'time': time.time(),
+            'duration': duration_sec
+        })
+        if len(self.send_times) > 100:
+            self.send_times.pop(0)
+    
+    def estimate_bandwidth_mbps(self):
+        """Estimate current bandwidth in Mbps."""
+        if len(self.send_times) < 5:
+            return None
+        
+        recent = self.send_times[-10:]
+        total_bytes = sum(s['size'] for s in recent)
+        total_time = recent[-1]['time'] - recent[0]['time']
+        
+        if total_time <= 0:
+            return None
+        
+        mbps = (total_bytes * 8) / (total_time * 1_000_000)
+        return mbps
+    
+    def should_adjust(self):
+        """Check if it's time to adjust parameters."""
+        return (time.time() - self.last_adjustment) > self.adjustment_interval
+    
+    def adjust_for_bandwidth(self, bandwidth_mbps):
+        """Adjust quality and skip rate based on bandwidth."""
+        self.last_adjustment = time.time()
+        
+        if bandwidth_mbps is None:
+            return
+        
+        old_quality = self.jpeg_quality
+        old_skip = self.frame_skip
+        
+        if bandwidth_mbps > 5:
+            self.jpeg_quality = 85
+            self.frame_skip = 0
+        elif bandwidth_mbps > 2:
+            self.jpeg_quality = 70
+            self.frame_skip = 0
+        elif bandwidth_mbps > 1:
+            self.jpeg_quality = 50
+            self.frame_skip = 1
+        elif bandwidth_mbps > 0.5:
+            self.jpeg_quality = 40
+            self.frame_skip = 2
+        else:
+            self.jpeg_quality = 30
+            self.frame_skip = 3
+        
+        if old_quality != self.jpeg_quality or old_skip != self.frame_skip:
+            print(f"[QUIC Adapter] BW: {bandwidth_mbps:.2f} Mbps → Quality: {self.jpeg_quality} | Skip: {self.frame_skip}")
+    
+    def should_send_frame(self, frame_count):
+        """Determine if this frame should be sent based on skip rate."""
+        return (frame_count % (self.frame_skip + 1)) == 0
+    
+    def get_jpeg_quality(self):
+        """Get current JPEG quality setting."""
+        return self.jpeg_quality
+
+
 async def receiver_stream(reader):
     """Receive video frames via QUIC stream."""
     global running
@@ -111,6 +189,7 @@ async def sender_stream(writer):
     global running
     frame_count = 0
     print("📹 QUIC Sender started")
+    adapter = DynamicFrameRateAdapter()
     
     try:
         cap = cv2.VideoCapture(0)
@@ -147,27 +226,37 @@ async def sender_stream(writer):
                 except:
                     pass
             
-            # Encode JPEG - QUIC handles retransmit, so we can use lower quality
-            try:
-                _, encoded = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 55])
-                frame_data = encoded.tobytes()
-                
-                # Send frame: [frame_id (4)] [frame_size (4)] [data]
-                header = struct.pack('>II', frame_count, len(frame_data))
-                packet = header + frame_data
-                
-                await asyncio.wait_for(writer.write(packet), timeout=1.0)
-                
-                frame_count += 1
-                
-                if frame_count % 100 == 0:
-                    elapsed = time.time() - start_time
-                    total_fps = frame_count / elapsed if elapsed > 0 else 0
-                    if len(frame_times) > 10:
-                        capture_fps = len(frame_times) / (frame_times[-1] - frame_times[0]) if frame_times[-1] != frame_times[0] else 0
-                    else:
-                        capture_fps = 0
-                    print(f"[QUIC Sender] {frame_count} frames | Capture: {capture_fps:.1f} FPS | Total: {total_fps:.1f} FPS")
+            # Encode JPEG with dynamic quality - QUIC handles retransmit
+            if adapter.should_send_frame(frame_count):
+                try:
+                    send_start = time.time()
+                    _, encoded = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, adapter.get_jpeg_quality()])
+                    frame_data = encoded.tobytes()
+                    
+                    # Send frame: [frame_id (4)] [frame_size (4)] [data]
+                    header = struct.pack('>II', frame_count, len(frame_data))
+                    packet = header + frame_data
+                    
+                    await asyncio.wait_for(writer.write(packet), timeout=1.0)
+                    
+                    send_duration = time.time() - send_start
+                    adapter.record_send(len(frame_data), send_duration)
+                    
+                    # Check if we should adjust parameters
+                    if adapter.should_adjust():
+                        bw = adapter.estimate_bandwidth_mbps()
+                        adapter.adjust_for_bandwidth(bw)
+                    
+                    frame_count += 1
+                    
+                    if frame_count % 100 == 0:
+                        elapsed = time.time() - start_time
+                        total_fps = frame_count / elapsed if elapsed > 0 else 0
+                        if len(frame_times) > 10:
+                            capture_fps = len(frame_times) / (frame_times[-1] - frame_times[0]) if frame_times[-1] != frame_times[0] else 0
+                        else:
+                            capture_fps = 0
+                        print(f"[QUIC Sender] {frame_count} frames | Capture: {capture_fps:.1f} FPS | Send: {total_fps:.1f} FPS | Quality: {adapter.get_jpeg_quality()}")
                     
             except asyncio.TimeoutError:
                 if running and frame_count % 100 == 0:

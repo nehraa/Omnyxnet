@@ -20,6 +20,86 @@ local_frames = Queue(maxsize=30)
 running = True
 
 
+class DynamicFrameRateAdapter:
+    """Dynamically adjust frame rate and quality based on network conditions."""
+    
+    def __init__(self):
+        self.jpeg_quality = 60  # 0-100
+        self.frame_skip = 0  # Skip every Nth frame
+        self.target_fps = 30
+        self.send_times = []  # Track send times for bandwidth estimation
+        self.last_adjustment = time.time()
+        self.adjustment_interval = 2.0  # Adjust every 2 seconds
+        
+    def record_send(self, size_bytes, duration_sec):
+        """Record a frame send operation."""
+        self.send_times.append({
+            'size': size_bytes,
+            'time': time.time(),
+            'duration': duration_sec
+        })
+        # Keep last 100 sends
+        if len(self.send_times) > 100:
+            self.send_times.pop(0)
+    
+    def estimate_bandwidth_mbps(self):
+        """Estimate current bandwidth in Mbps."""
+        if len(self.send_times) < 5:
+            return None
+        
+        recent = self.send_times[-10:]  # Last 10 sends
+        total_bytes = sum(s['size'] for s in recent)
+        total_time = recent[-1]['time'] - recent[0]['time']
+        
+        if total_time <= 0:
+            return None
+        
+        mbps = (total_bytes * 8) / (total_time * 1_000_000)
+        return mbps
+    
+    def should_adjust(self):
+        """Check if it's time to adjust parameters."""
+        return (time.time() - self.last_adjustment) > self.adjustment_interval
+    
+    def adjust_for_bandwidth(self, bandwidth_mbps):
+        """Adjust quality and skip rate based on bandwidth."""
+        self.last_adjustment = time.time()
+        
+        if bandwidth_mbps is None:
+            return
+        
+        old_quality = self.jpeg_quality
+        old_skip = self.frame_skip
+        
+        # Adapt to bandwidth
+        if bandwidth_mbps > 5:  # >5 Mbps: high quality, no skipping
+            self.jpeg_quality = 85
+            self.frame_skip = 0
+        elif bandwidth_mbps > 2:  # 2-5 Mbps: medium quality
+            self.jpeg_quality = 70
+            self.frame_skip = 0
+        elif bandwidth_mbps > 1:  # 1-2 Mbps: lower quality
+            self.jpeg_quality = 50
+            self.frame_skip = 1  # Send every 2nd frame
+        elif bandwidth_mbps > 0.5:  # 0.5-1 Mbps: low quality, skip more
+            self.jpeg_quality = 40
+            self.frame_skip = 2  # Send every 3rd frame
+        else:  # <0.5 Mbps: minimal quality
+            self.jpeg_quality = 30
+            self.frame_skip = 3  # Send every 4th frame
+        
+        if old_quality != self.jpeg_quality or old_skip != self.frame_skip:
+            print(f"[Adapter] BW: {bandwidth_mbps:.2f} Mbps → Quality: {self.jpeg_quality} | Skip: {self.frame_skip}")
+    
+    def should_send_frame(self, frame_count):
+        """Determine if this frame should be sent based on skip rate."""
+        return (frame_count % (self.frame_skip + 1)) == 0
+    
+    def get_jpeg_quality(self):
+        """Get current JPEG quality setting."""
+        return self.jpeg_quality
+
+
 def receiver_thread(sock):
     """Receive video frames from peer and put them in queue."""
     global running
@@ -112,6 +192,7 @@ def sender_thread(sock):
     global running
     frame_count = 0
     print("📹 Sender thread started")
+    adapter = DynamicFrameRateAdapter()
     
     try:
         cap = cv2.VideoCapture(0)
@@ -122,7 +203,6 @@ def sender_thread(sock):
         
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        # Request max FPS from camera (don't hard-code 15)
         cap.set(cv2.CAP_PROP_FPS, 30)
         cap.set(cv2.CAP_PROP_AUTOFOCUS, 1)
         
@@ -151,30 +231,37 @@ def sender_thread(sock):
                 except:
                     pass
             
-            # Encode and send (lower JPEG quality for higher FPS)
-            try:
-                _, encoded = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
-                data = encoded.tobytes()
-                header = struct.pack('>I', len(data))
-                sock.sendall(header)
-                sock.sendall(data)
-                frame_count += 1
-                
-                if frame_count % 100 == 0:
-                    elapsed = time.time() - start_time
-                    actual_fps = frame_count / elapsed if elapsed > 0 else 0
-                    # Estimate capture FPS
-                    if len(frame_times) > 10:
-                        capture_fps = len(frame_times) / (frame_times[-1] - frame_times[0]) if frame_times[-1] != frame_times[0] else 0
-                    else:
-                        capture_fps = 0
-                    print(f"[Sender] {frame_count} frames | Capture: {capture_fps:.1f} FPS | Total: {actual_fps:.1f} FPS")
-            except Exception as e:
-                if running:
-                    print(f"[Sender] Send error: {e}")
-                break
-            
-            # No artificial delay - let camera dictate frame rate
+            # Encode and send with dynamic quality
+            if adapter.should_send_frame(frame_count):
+                try:
+                    send_start = time.time()
+                    _, encoded = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, adapter.get_jpeg_quality()])
+                    data = encoded.tobytes()
+                    header = struct.pack('>I', len(data))
+                    sock.sendall(header)
+                    sock.sendall(data)
+                    send_duration = time.time() - send_start
+                    adapter.record_send(len(data), send_duration)
+                    
+                    # Check if we should adjust parameters
+                    if adapter.should_adjust():
+                        bw = adapter.estimate_bandwidth_mbps()
+                        adapter.adjust_for_bandwidth(bw)
+                    
+                    frame_count += 1
+                    
+                    if frame_count % 100 == 0:
+                        elapsed = time.time() - start_time
+                        actual_fps = frame_count / elapsed if elapsed > 0 else 0
+                        if len(frame_times) > 10:
+                            capture_fps = len(frame_times) / (frame_times[-1] - frame_times[0]) if frame_times[-1] != frame_times[0] else 0
+                        else:
+                            capture_fps = 0
+                        print(f"[Sender] {frame_count} frames | Capture: {capture_fps:.1f} FPS | Send: {actual_fps:.1f} FPS | Quality: {adapter.get_jpeg_quality()}")
+                except Exception as e:
+                    if running:
+                        print(f"[Sender] Send error: {e}")
+                    break
             
     except Exception as e:
         if running:
