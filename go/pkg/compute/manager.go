@@ -470,10 +470,10 @@ func (m *Manager) delegateJob(jobID string, manifest *JobManifest) {
 	var wg sync.WaitGroup
 	for i, chunk := range chunks {
 		wg.Add(1)
-		go func(index int, data []byte) {
+		go func(index int, data []byte, state *JobState) {
 			defer wg.Done()
-			m.executeChunk(jobID, uint32(index), manifest, data)
-		}(i, chunk)
+			m.executeChunk(jobID, uint32(index), manifest, data, state)
+		}(i, chunk, state)
 	}
 	
 	wg.Wait()
