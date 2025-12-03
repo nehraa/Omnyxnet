@@ -41,6 +41,7 @@ The Communication module provides P2P communication capabilities for chat, voice
 - **Chat history persistence** stored in `~/.pangea/communication/chat_history.json`
 - **Automatic reconnection** when peers become available
 - **Message format**: JSON with timestamp, sender, and content
+- **Debounced saving**: History is saved with debouncing to prevent race conditions
 
 ### Voice
 - **Real-time audio streaming** over libp2p streams
@@ -83,13 +84,20 @@ Nodes will automatically discover each other via mDNS!
 source .venv/bin/activate
 cd python
 
-# Start streaming
-python3 main.py streaming start --type chat
-python3 main.py streaming start --type voice
-python3 main.py streaming start --type video
+# Chat commands
+python main.py chat send <peer_id> "Hello!"
+python main.py chat history
+python main.py chat peers
 
-# Get streaming stats
-python3 main.py streaming stats
+# Voice commands
+python main.py voice start
+python main.py voice stop
+python main.py voice stats
+
+# Video commands
+python main.py video start
+python main.py video stop
+python main.py video stats
 ```
 
 ## Protocol Details
@@ -181,119 +189,130 @@ All Pangea Net nodes advertise on the topic: `pangea-network`
 
 ## Python CLI Commands
 
-### Streaming Commands
-
-```bash
-# Start streaming service
-python3 main.py streaming start --type video
-python3 main.py streaming start --type voice
-python3 main.py streaming start --type chat
-
-# Stop streaming
-python3 main.py streaming stop
-
-# Get statistics
-python3 main.py streaming stats
-
-# Connect to streaming peer
-python3 main.py streaming connect-peer <host> <port>
-```
-
-### Chat Commands (Coming Soon)
+### Chat Commands
 
 ```bash
 # Send a chat message
-python3 main.py chat send <peer_id> "Hello!"
+python main.py chat send <peer_id> "Hello!"
 
 # View chat history
-python3 main.py chat history
+python main.py chat history
 
 # View history with specific peer
-python3 main.py chat history --peer <peer_id>
+python main.py chat history --peer <peer_id>
+
+# View last 50 messages
+python main.py chat history --limit 50
+
+# List connected peers
+python main.py chat peers
+```
+
+### Voice Commands
+
+```bash
+# Start voice streaming
+python main.py voice start
+
+# Start voice and connect to peer
+python main.py voice start --peer-host 192.168.1.100 --peer-port 9000
+
+# Stop voice streaming
+python main.py voice stop
+
+# View voice statistics
+python main.py voice stats
+```
+
+### Video Commands
+
+```bash
+# Start video streaming
+python main.py video start
+
+# Start video and connect to peer
+python main.py video start --peer-host 192.168.1.100 --peer-port 9000
+
+# Stop video streaming
+python main.py video stop
+
+# View video statistics
+python main.py video stats
+```
+
+### Legacy Streaming Commands
+
+The existing streaming commands also work:
+
+```bash
+# Start streaming service
+python main.py streaming start --type video
+python main.py streaming start --type audio
+python main.py streaming start --type chat
+
+# Stop streaming
+python main.py streaming stop
+
+# Get statistics
+python main.py streaming stats
 ```
 
 ## Testing
 
-### Automated Test
+Run the communication test suite:
 
 ```bash
-# Run communication tests
 ./tests/test_communication.sh
 ```
 
-### Manual Test
+The test suite checks:
+- Go compilation with communication package
+- Node startup and mDNS discovery
+- Python CLI command availability
+- Chat history file reading
+- Documentation correctness
 
-```bash
-# Terminal 1: Start first node
-./go/bin/go-node -node-id 1 -libp2p -local -test
+## Implementation Notes
 
-# Terminal 2: Start second node
-./go/bin/go-node -node-id 2 -libp2p -local -test
+### Context-Aware Reads
 
-# Watch for mDNS discovery logs:
-# 📡 mDNS discovered local peer: 12D3KooW...
-# ✅ Successfully connected to mDNS peer 12D3KooW
-```
+The stream handlers use read deadlines to ensure proper context cancellation handling. This prevents goroutines from blocking indefinitely on reads when the service is shutting down.
+
+### Debounced Chat History Saving
+
+Instead of spawning a goroutine on every message to save history, the service uses a debounced save mechanism. This prevents race conditions and reduces disk I/O.
+
+### Stream Type Constants
+
+The Python CLI uses named constants for stream types:
+- `STREAM_TYPE_VIDEO = 0` - Video streaming
+- `STREAM_TYPE_AUDIO = 1` - Audio/voice streaming
+- `STREAM_TYPE_CHAT = 2` - Chat messaging
 
 ## Troubleshooting
 
-### "No peers discovered"
+### No peers discovered
 
-1. **Check network**: Ensure devices are on the same subnet
-2. **Check firewall**: mDNS uses multicast (UDP port 5353)
-3. **Wait longer**: Discovery can take 5-10 seconds
-4. **Check logs**: Look for mDNS service initialization
+1. **Check network**: Ensure both nodes are on the same subnet
+2. **Firewall**: mDNS uses port 5353/UDP - ensure it's open
+3. **Local mode**: Use `-local` flag for local testing
 
-### "Connection failed"
+### Connection timeout
 
-1. **Check libp2p**: Ensure `-libp2p` flag is used
-2. **Check library**: Ensure `LD_LIBRARY_PATH` includes Rust library
-3. **Check ports**: Ensure no port conflicts
+1. **Verify peer address**: Check the peer ID is correct
+2. **Check ports**: Ensure Cap'n Proto port (default 8080) is not blocked
+3. **Retry**: mDNS discovery may take a few seconds
 
-### "Chat history not saving"
+### Chat history not showing
 
-1. **Check permissions**: Ensure `~/.pangea/communication/` is writable
-2. **Check disk space**: Ensure sufficient disk space
-3. **Check logs**: Look for save errors in node output
+1. **Check file**: Verify `~/.pangea/communication/chat_history.json` exists
+2. **Permissions**: Ensure the directory is readable/writable
+3. **Format**: Ensure the JSON is valid
 
-## Performance
+## Future Enhancements
 
-| Metric | Value |
-|--------|-------|
-| Chat latency | < 10ms (local network) |
-| Video frame rate | 30 FPS (configurable) |
-| Voice latency | 20-50ms (local network) |
-| mDNS discovery | 2-5 seconds |
-
-## Security
-
-- **Transport encryption**: Noise Protocol (Curve25519 + ChaCha20Poly1305)
-- **Authentication**: Peer ID verification via libp2p
-- **No central server**: True P2P communication
-- **Local discovery only**: mDNS doesn't expose to internet
-
-## Deprecated Files
-
-The following Python files are deprecated and kept only as references:
-
-| File | Replacement |
-|------|-------------|
-| `python/live_chat.py` | Go communication service |
-| `python/live_voice.py` | Go communication service |
-| `python/live_video.py` | Go communication service |
-| `python/live_video_udp.py` | Go communication service |
-| `python/live_video_quic.py` | Removed (QUIC not needed) |
-
-## Related Documentation
-
-- [MDNS.md](MDNS.md) - mDNS auto-discovery details
-- [STREAMING_GUIDE.md](STREAMING_GUIDE.md) - Streaming architecture
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Overall system architecture
-- [TESTING_QUICK_START.md](TESTING_QUICK_START.md) - Testing guide
-
----
-
-**Module**: Communication  
-**Package**: `go/pkg/communication`  
-**Protocol Version**: 1.0.0  
-**Last Updated**: December 2025
+- [ ] RPC methods for chat history retrieval (currently reads from file)
+- [ ] End-to-end encryption for messages
+- [ ] Message delivery receipts
+- [ ] Typing indicators
+- [ ] Group chat support

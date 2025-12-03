@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"sync"
@@ -26,6 +27,12 @@ const (
 	ChatProtocol  protocol.ID = "/pangea/chat/1.0.0"
 	VideoProtocol protocol.ID = "/pangea/video/1.0.0"
 	VoiceProtocol protocol.ID = "/pangea/voice/1.0.0"
+
+	// Stream read timeout for context-aware reads
+	StreamReadTimeout = 5 * time.Second
+
+	// Debounce interval for saving chat history
+	SaveDebounceInterval = 2 * time.Second
 )
 
 // ChatMessage represents a chat message
@@ -75,6 +82,11 @@ type CommunicationService struct {
 	chatHistoryFile string
 	historyMu       sync.RWMutex
 
+	// Debounced save mechanism (fixes race condition from review comment)
+	saveChan      chan struct{}
+	saveTimer     *time.Timer
+	saveTimerMu   sync.Mutex
+
 	// Connected peers for streaming
 	chatStreams  map[peer.ID]network.Stream
 	videoStreams map[peer.ID]network.Stream
@@ -116,6 +128,7 @@ func NewCommunicationService(h host.Host, cfg Config) *CommunicationService {
 		chatStreams:     make(map[peer.ID]network.Stream),
 		videoStreams:    make(map[peer.ID]network.Stream),
 		voiceStreams:    make(map[peer.ID]network.Stream),
+		saveChan:        make(chan struct{}, 1), // Buffered channel for debouncing
 	}
 
 	// Load existing chat history
@@ -138,6 +151,10 @@ func (cs *CommunicationService) Start() error {
 	cs.host.SetStreamHandler(VideoProtocol, cs.handleVideoStream)
 	cs.host.SetStreamHandler(VoiceProtocol, cs.handleVoiceStream)
 
+	// Start debounced save goroutine
+	cs.wg.Add(1)
+	go cs.debouncedSaveLoop()
+
 	cs.running = true
 	log.Printf("💬 Communication service started")
 	log.Printf("   Chat Protocol:  %s", ChatProtocol)
@@ -145,6 +162,32 @@ func (cs *CommunicationService) Start() error {
 	log.Printf("   Voice Protocol: %s", VoiceProtocol)
 
 	return nil
+}
+
+// debouncedSaveLoop handles debounced saving of chat history
+// This fixes the race condition identified in review comment about spawning
+// goroutines on every addToHistory call
+func (cs *CommunicationService) debouncedSaveLoop() {
+	defer cs.wg.Done()
+
+	for {
+		select {
+		case <-cs.ctx.Done():
+			// Final save before exit
+			cs.saveChatHistory()
+			return
+		case <-cs.saveChan:
+			// Debounce: wait for more save requests before actually saving
+			cs.saveTimerMu.Lock()
+			if cs.saveTimer != nil {
+				cs.saveTimer.Stop()
+			}
+			cs.saveTimer = time.AfterFunc(SaveDebounceInterval, func() {
+				cs.saveChatHistory()
+			})
+			cs.saveTimerMu.Unlock()
+		}
+	}
 }
 
 // Stop shuts down the communication service
@@ -160,7 +203,7 @@ func (cs *CommunicationService) Stop() error {
 	// Cancel context to signal all goroutines to stop
 	cs.cancel()
 
-	// Close all streams
+	// Close all streams - this will unblock any blocking reads
 	cs.streamMu.Lock()
 	for _, s := range cs.chatStreams {
 		s.Close()
@@ -190,7 +233,7 @@ func (cs *CommunicationService) Stop() error {
 		log.Printf("⚠️  Timeout waiting for goroutines to finish")
 	}
 
-	// Save chat history
+	// Save chat history one final time
 	cs.saveChatHistory()
 
 	log.Printf("💬 Communication service stopped")
@@ -223,10 +266,15 @@ func (cs *CommunicationService) SetVoiceCallback(cb func(peerID string, chunk Vo
 // Chat Functions
 // ============================================================================
 
-// handleChatStream handles incoming chat connections
+// handleChatStream handles incoming chat connections with context-aware reads
+// Fixes the blocking I/O issue identified in review comments by using deadlines
 func (cs *CommunicationService) handleChatStream(stream network.Stream) {
 	remotePeer := stream.Conn().RemotePeer()
-	log.Printf("💬 New chat connection from peer: %s", remotePeer.String()[:12])
+	peerStr := remotePeer.String()
+	if len(peerStr) > 12 {
+		peerStr = peerStr[:12]
+	}
+	log.Printf("💬 New chat connection from peer: %s", peerStr)
 
 	// Store the stream
 	cs.streamMu.Lock()
@@ -242,16 +290,26 @@ func (cs *CommunicationService) handleChatStream(stream network.Stream) {
 
 	reader := bufio.NewReader(stream)
 	for {
+		// Check context first
 		select {
 		case <-cs.ctx.Done():
 			return
 		default:
 		}
 
+		// Set read deadline to ensure we can check context periodically
+		// This fixes the blocking ReadFull issue from review comments
+		// Set read deadline directly on the stream
+		stream.SetReadDeadline(time.Now().Add(StreamReadTimeout))
 		// Read message length (4 bytes)
 		lengthBuf := make([]byte, 4)
-		if _, err := io.ReadFull(reader, lengthBuf); err != nil {
-			if err != io.EOF {
+		_, err := io.ReadFull(reader, lengthBuf)
+		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				// Timeout is expected, continue loop to check context
+				continue
+			}
+			if err != io.EOF && cs.ctx.Err() == nil {
 				log.Printf("Chat read error: %v", err)
 			}
 			return
@@ -266,7 +324,9 @@ func (cs *CommunicationService) handleChatStream(stream network.Stream) {
 		// Read message content
 		msgBuf := make([]byte, length)
 		if _, err := io.ReadFull(reader, msgBuf); err != nil {
-			log.Printf("Chat read error: %v", err)
+			if cs.ctx.Err() == nil {
+				log.Printf("Chat read error: %v", err)
+			}
 			return
 		}
 
@@ -292,7 +352,11 @@ func (cs *CommunicationService) handleChatStream(stream network.Stream) {
 			cb(msg)
 		}
 
-		log.Printf("📨 Chat from %s: %s", msg.From[:12], msg.Content)
+		fromStr := msg.From
+		if len(fromStr) > 12 {
+			fromStr = fromStr[:12]
+		}
+		log.Printf("📨 Chat from %s: %s", fromStr, msg.Content)
 	}
 }
 
@@ -332,7 +396,11 @@ func (cs *CommunicationService) SendChatMessage(peerID peer.ID, content string) 
 	// Store in our history
 	cs.addToHistory(msg)
 
-	log.Printf("📤 Chat to %s: %s", peerID.String()[:12], content)
+	peerStr := peerID.String()
+	if len(peerStr) > 12 {
+		peerStr = peerStr[:12]
+	}
+	log.Printf("📤 Chat to %s: %s", peerStr, content)
 	return nil
 }
 
@@ -399,7 +467,8 @@ func (cs *CommunicationService) GetAllChatHistory() map[string][]ChatMessage {
 	return result
 }
 
-// addToHistory adds a message to chat history
+// addToHistory adds a message to chat history with debounced saving
+// Fixes race condition by using a channel-based debounce instead of goroutine per call
 func (cs *CommunicationService) addToHistory(msg ChatMessage) {
 	cs.historyMu.Lock()
 	defer cs.historyMu.Unlock()
@@ -417,8 +486,12 @@ func (cs *CommunicationService) addToHistory(msg ChatMessage) {
 		cs.chatHistory[peerID] = cs.chatHistory[peerID][len(cs.chatHistory[peerID])-1000:]
 	}
 
-	// Periodically save (async)
-	go cs.saveChatHistory()
+	// Signal debounced save (non-blocking)
+	select {
+	case cs.saveChan <- struct{}{}:
+	default:
+		// Channel already has a pending save signal
+	}
 }
 
 // saveChatHistory saves chat history to disk
@@ -459,10 +532,14 @@ func (cs *CommunicationService) loadChatHistory() {
 // Video Functions
 // ============================================================================
 
-// handleVideoStream handles incoming video streams
+// handleVideoStream handles incoming video streams with context-aware reads
 func (cs *CommunicationService) handleVideoStream(stream network.Stream) {
 	remotePeer := stream.Conn().RemotePeer()
-	log.Printf("🎥 New video connection from peer: %s", remotePeer.String()[:12])
+	peerStr := remotePeer.String()
+	if len(peerStr) > 12 {
+		peerStr = peerStr[:12]
+	}
+	log.Printf("🎥 New video connection from peer: %s", peerStr)
 
 	cs.streamMu.Lock()
 	cs.videoStreams[remotePeer] = stream
@@ -476,16 +553,24 @@ func (cs *CommunicationService) handleVideoStream(stream network.Stream) {
 	}()
 
 	for {
+		// Check context first
 		select {
 		case <-cs.ctx.Done():
 			return
 		default:
 		}
 
+		// Set read deadline for context-aware reads
+		stream.SetReadDeadline(time.Now().Add(StreamReadTimeout))
+
 		// Read frame header (12 bytes): frameID(4) + width(2) + height(2) + quality(1) + reserved(3)
 		header := make([]byte, 12)
-		if _, err := io.ReadFull(stream, header); err != nil {
-			if err != io.EOF {
+		_, err := io.ReadFull(stream, header)
+		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				continue
+			}
+			if err != io.EOF && cs.ctx.Err() == nil {
 				log.Printf("Video header read error: %v", err)
 			}
 			return
@@ -499,7 +584,9 @@ func (cs *CommunicationService) handleVideoStream(stream network.Stream) {
 		// Read data length (4 bytes)
 		lengthBuf := make([]byte, 4)
 		if _, err := io.ReadFull(stream, lengthBuf); err != nil {
-			log.Printf("Video length read error: %v", err)
+			if cs.ctx.Err() == nil {
+				log.Printf("Video length read error: %v", err)
+			}
 			return
 		}
 		dataLen := binary.BigEndian.Uint32(lengthBuf)
@@ -512,7 +599,9 @@ func (cs *CommunicationService) handleVideoStream(stream network.Stream) {
 		// Read frame data
 		data := make([]byte, dataLen)
 		if _, err := io.ReadFull(stream, data); err != nil {
-			log.Printf("Video data read error: %v", err)
+			if cs.ctx.Err() == nil {
+				log.Printf("Video data read error: %v", err)
+			}
 			return
 		}
 
@@ -602,10 +691,14 @@ func (cs *CommunicationService) getVideoStream(peerID peer.ID) (network.Stream, 
 // Voice Functions
 // ============================================================================
 
-// handleVoiceStream handles incoming voice streams
+// handleVoiceStream handles incoming voice streams with context-aware reads
 func (cs *CommunicationService) handleVoiceStream(stream network.Stream) {
 	remotePeer := stream.Conn().RemotePeer()
-	log.Printf("🎤 New voice connection from peer: %s", remotePeer.String()[:12])
+	peerStr := remotePeer.String()
+	if len(peerStr) > 12 {
+		peerStr = peerStr[:12]
+	}
+	log.Printf("🎤 New voice connection from peer: %s", peerStr)
 
 	cs.streamMu.Lock()
 	cs.voiceStreams[remotePeer] = stream
@@ -619,16 +712,24 @@ func (cs *CommunicationService) handleVoiceStream(stream network.Stream) {
 	}()
 
 	for {
+		// Check context first
 		select {
 		case <-cs.ctx.Done():
 			return
 		default:
 		}
 
+		// Set read deadline for context-aware reads
+		stream.SetReadDeadline(time.Now().Add(StreamReadTimeout))
+
 		// Read chunk header (8 bytes): sampleRate(4) + channels(1) + reserved(3)
 		header := make([]byte, 8)
-		if _, err := io.ReadFull(stream, header); err != nil {
-			if err != io.EOF {
+		_, err := io.ReadFull(stream, header)
+		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				continue
+			}
+			if err != io.EOF && cs.ctx.Err() == nil {
 				log.Printf("Voice header read error: %v", err)
 			}
 			return
@@ -640,7 +741,9 @@ func (cs *CommunicationService) handleVoiceStream(stream network.Stream) {
 		// Read data length (4 bytes)
 		lengthBuf := make([]byte, 4)
 		if _, err := io.ReadFull(stream, lengthBuf); err != nil {
-			log.Printf("Voice length read error: %v", err)
+			if cs.ctx.Err() == nil {
+				log.Printf("Voice length read error: %v", err)
+			}
 			return
 		}
 		dataLen := binary.BigEndian.Uint32(lengthBuf)
@@ -653,7 +756,9 @@ func (cs *CommunicationService) handleVoiceStream(stream network.Stream) {
 		// Read audio data
 		data := make([]byte, dataLen)
 		if _, err := io.ReadFull(stream, data); err != nil {
-			log.Printf("Voice data read error: %v", err)
+			if cs.ctx.Err() == nil {
+				log.Printf("Voice data read error: %v", err)
+			}
 			return
 		}
 
@@ -674,7 +779,7 @@ func (cs *CommunicationService) handleVoiceStream(stream network.Stream) {
 	}
 }
 
-// SendVoiceChunk sends an audio chunk to a peer
+// SendVoiceChunk sends a voice chunk to a peer
 func (cs *CommunicationService) SendVoiceChunk(peerID peer.ID, chunk VoiceChunk) error {
 	stream, err := cs.getVoiceStream(peerID)
 	if err != nil {
@@ -739,37 +844,55 @@ func (cs *CommunicationService) getVoiceStream(peerID peer.ID) (network.Stream, 
 // Utility Functions
 // ============================================================================
 
-// GetConnectedPeers returns a list of currently connected peers for each protocol
-func (cs *CommunicationService) GetConnectedPeers() map[string][]string {
+// GetConnectedChatPeers returns list of peers with active chat streams
+func (cs *CommunicationService) GetConnectedChatPeers() []peer.ID {
 	cs.streamMu.RLock()
 	defer cs.streamMu.RUnlock()
 
-	result := make(map[string][]string)
-
-	chatPeers := make([]string, 0, len(cs.chatStreams))
-	for p := range cs.chatStreams {
-		chatPeers = append(chatPeers, p.String())
+	peers := make([]peer.ID, 0, len(cs.chatStreams))
+	for peerID := range cs.chatStreams {
+		peers = append(peers, peerID)
 	}
-	result["chat"] = chatPeers
-
-	videoPeers := make([]string, 0, len(cs.videoStreams))
-	for p := range cs.videoStreams {
-		videoPeers = append(videoPeers, p.String())
-	}
-	result["video"] = videoPeers
-
-	voicePeers := make([]string, 0, len(cs.voiceStreams))
-	for p := range cs.voiceStreams {
-		voicePeers = append(voicePeers, p.String())
-	}
-	result["voice"] = voicePeers
-
-	return result
+	return peers
 }
 
-// IsRunning returns whether the service is running
+// GetConnectedVideoPeers returns list of peers with active video streams
+func (cs *CommunicationService) GetConnectedVideoPeers() []peer.ID {
+	cs.streamMu.RLock()
+	defer cs.streamMu.RUnlock()
+
+	peers := make([]peer.ID, 0, len(cs.videoStreams))
+	for peerID := range cs.videoStreams {
+		peers = append(peers, peerID)
+	}
+	return peers
+}
+
+// GetConnectedVoicePeers returns list of peers with active voice streams
+func (cs *CommunicationService) GetConnectedVoicePeers() []peer.ID {
+	cs.streamMu.RLock()
+	defer cs.streamMu.RUnlock()
+
+	peers := make([]peer.ID, 0, len(cs.voiceStreams))
+	for peerID := range cs.voiceStreams {
+		peers = append(peers, peerID)
+	}
+	return peers
+}
+
+// IsRunning returns whether the communication service is running
 func (cs *CommunicationService) IsRunning() bool {
 	cs.mu.RLock()
 	defer cs.mu.RUnlock()
 	return cs.running
+}
+
+// GetHost returns the underlying libp2p host
+func (cs *CommunicationService) GetHost() host.Host {
+	return cs.host
+}
+
+// GetChatHistoryFilePath returns the path to the chat history file
+func (cs *CommunicationService) GetChatHistoryFilePath() string {
+	return cs.chatHistoryFile
 }

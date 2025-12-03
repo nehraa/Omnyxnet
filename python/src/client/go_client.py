@@ -725,23 +725,58 @@ class GoNodeClient:
         """
         Get chat history from the Go communication service.
         
-        This is a placeholder method. To fully implement chat history retrieval,
-        the following would need to be added:
-        1. Add getChatHistory RPC method to go/schema/schema.capnp
-        2. Implement the RPC handler in Go's capnp_service.go
-        3. Wire up the communication service's GetChatHistory method
+        This method reads the chat history from the local file stored by the
+        Go communication service. The file is located at:
+        ~/.pangea/communication/chat_history.json
         
-        For now, chat history is stored locally by the Go communication service
-        at ~/.pangea/communication/chat_history.json
+        If an RPC method for getChatHistory is added to the Cap'n Proto schema
+        and implemented in Go, this method can be updated to use that instead.
         
         Args:
-            peer_id: Optional peer ID to filter by
+            peer_id: Optional peer ID to filter by. If None, returns all history.
             
         Returns:
-            List of chat message dictionaries (currently empty - RPC not yet implemented)
+            List of chat message dictionaries with keys:
+            - id: Message ID
+            - from: Sender peer ID
+            - to: Recipient peer ID
+            - content: Message text
+            - timestamp: ISO timestamp
         """
-        # Note: Full implementation requires adding getChatHistory to Cap'n Proto schema
-        # and implementing the RPC handler in Go
-        logger.info("get_chat_history: RPC method not yet implemented - chat history is stored locally by Go service")
-        return []
+        import json
+        import os
+        
+        # Path to chat history file stored by Go communication service
+        home_dir = os.path.expanduser("~")
+        history_file = os.path.join(home_dir, ".pangea", "communication", "chat_history.json")
+        
+        if not os.path.exists(history_file):
+            logger.info(f"Chat history file not found at {history_file}")
+            return []
+        
+        try:
+            with open(history_file, 'r') as f:
+                history = json.load(f)
+            
+            # history is a dict mapping peer_id -> list of messages
+            if peer_id:
+                # Return messages for specific peer
+                messages = history.get(peer_id, [])
+                return messages
+            else:
+                # Flatten all messages from all peers
+                all_messages = []
+                for pid, messages in history.items():
+                    all_messages.extend(messages)
+                # Sort by timestamp
+                all_messages.sort(key=lambda m: m.get('timestamp', ''))
+                return all_messages
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse chat history: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"Error reading chat history: {e}")
+            return []
+
 

@@ -14,15 +14,12 @@ For actual P2P video streaming, use the Go-based communication service:
     ./go/bin/go-node -node-id 1 -libp2p -local
     
     # Use Python CLI for high-level management
-    python3 -m main streaming start --type video
+    python main.py video start
+    python main.py video stop
 
-The Go communication service (go/pkg/communication/communication.go) handles:
-  - P2P video streaming over libp2p streams
-  - P2P audio streaming over libp2p streams
-  - P2P chat messaging with history persistence
-  - Automatic peer discovery via mDNS
+This file shows legacy UDP-based video streaming for reference only.
 
-See docs/COMMUNICATION.md for complete documentation.
+See docs/COMMUNICATION.md for full documentation.
 """
 
 import cv2

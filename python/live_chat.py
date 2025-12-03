@@ -14,16 +14,10 @@ For actual P2P chat, use the Go-based communication service:
     ./go/bin/go-node -node-id 1 -libp2p -local
     
     # Use Python CLI for high-level management
-    python3 -m main chat send <peer_id> "Hello!"
-    python3 -m main chat history
+    python main.py chat send <peer_id> "Hello!"
+    python main.py chat history
 
-The Go communication service (go/pkg/communication/communication.go) handles:
-  - P2P video streaming over libp2p streams
-  - P2P audio streaming over libp2p streams
-  - P2P chat messaging with history persistence
-  - Automatic peer discovery via mDNS
-
-See docs/COMMUNICATION.md for complete documentation.
+See docs/COMMUNICATION.md for full documentation.
 """
 
 import socket
