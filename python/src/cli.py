@@ -3,7 +3,6 @@ Command-line interface for easy execution of Python functions.
 Provides simple commands for common operations.
 """
 import click
-import json
 import logging
 import sys
 import time
