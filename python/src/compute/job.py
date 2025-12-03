@@ -6,7 +6,7 @@ Jobs consist of three functions: split, execute, and merge.
 """
 
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Any
+from typing import Callable, List, Optional
 import hashlib
 import json
 import logging
