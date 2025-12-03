@@ -346,7 +346,7 @@ async def run_quic_client(peer_ip, port=9995):
         # Use insecure connection for LAN testing (self-signed certs)
         config = QuicConfiguration(is_client=True)
         
-        async with await connect(peer_ip, port, configuration=config, session_ticket_handler=None) as connection:
+        async with connect(peer_ip, port, configuration=config, session_ticket_handler=None) as connection:
             quic_connection = connection
             print("✅ QUIC Connected")
             
