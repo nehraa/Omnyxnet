@@ -720,4 +720,22 @@ class GoNodeClient:
         except Exception as e:
             logger.error(f"Error getting stream stats: {e}")
             return None
+    
+    def get_chat_history(self, peer_id: Optional[str] = None) -> List[Dict]:
+        """
+        Get chat history from the Go communication service.
+        
+        Note: This is a placeholder - actual implementation requires
+        adding a getChatHistory RPC method to the Go service schema.
+        
+        Args:
+            peer_id: Optional peer ID to filter by
+            
+        Returns:
+            List of chat message dictionaries
+        """
+        # For now, return empty list - full implementation requires
+        # adding getChatHistory to the Cap'n Proto schema and Go service
+        logger.info("get_chat_history: RPC method not yet implemented in Go service")
+        return []
 

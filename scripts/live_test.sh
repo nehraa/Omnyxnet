@@ -390,48 +390,6 @@ run_live_video_udp() {
 }
 
 # ============================================================
-# LIVE VIDEO QUIC (Option 5)
-# ============================================================
-
-run_live_video_quic() {
-    echo -e "\n${BOLD}${MAGENTA}🎥 LIVE VIDEO MODE (QUIC - Low Latency + Reliability)${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    
-    python3 -c "import cv2" 2>/dev/null && HAS_CV2=true || HAS_CV2=false
-    python3 -c "import aioquic" 2>/dev/null && HAS_QUIC=true || HAS_QUIC=false
-    
-    if [ "$HAS_CV2" = false ]; then
-        echo -e "${YELLOW}⚠️  OpenCV not found.${NC}"
-        echo -e "${CYAN}Install for live webcam support:${NC}"
-        echo -e "  ${GREEN}pip install opencv-python${NC}"
-        return
-    fi
-    
-    if [ "$HAS_QUIC" = false ]; then
-        echo -e "${YELLOW}⚠️  aioquic not found.${NC}"
-        echo -e "${CYAN}Install QUIC support:${NC}"
-        echo -e "  ${GREEN}pip install aioquic${NC}"
-        return
-    fi
-    
-    local is_server=false
-    local peer_ip=""
-    
-    if [ -f "$PEER_FILE" ] && [ ! -f "$REMOTE_PEER_FILE" ]; then
-        is_server=true
-    elif [ -f "$REMOTE_PEER_FILE" ]; then
-        peer_ip=$(grep -oP '/ip4/\K[0-9.]+' "$REMOTE_PEER_FILE" | head -1)
-    fi
-    
-    echo -e "${GREEN}🎥 Starting QUIC video streaming (low-latency + reliability)...${NC}"
-    echo -e "${YELLOW}QUIC: UDP speed with TCP reliability, no head-of-line blocking${NC}"
-    echo -e "${YELLOW}Press 'q' in video window or Ctrl+C to stop${NC}\n"
-    
-    is_server_lower=$([ "$is_server" = true ] && echo "true" || echo "false")
-    python3 "$PROJECT_ROOT/python/live_video_quic.py" "$is_server_lower" "$peer_ip"
-}
-
-# ============================================================
 # MAIN MENU
 # ============================================================
 
@@ -456,7 +414,6 @@ show_test_menu() {
     echo -e "  ${GREEN}${BOLD}2${NC} - 🎤 ${CYAN}Live Voice${NC}       (audio call)"
     echo -e "  ${GREEN}${BOLD}3${NC} - 🎥 ${CYAN}Live Video${NC}       (video call, TCP)"
     echo -e "  ${GREEN}${BOLD}4${NC} - 🎥 ${CYAN}Live Video UDP${NC}    (low-latency, best-effort)"
-    echo -e "  ${GREEN}${BOLD}5${NC} - 🎥 ${CYAN}Live Video QUIC${NC}   (low-latency + reliability)"
     echo -e ""
     echo -e "  ${YELLOW}Q${NC} - Quit"
     echo ""
@@ -513,14 +470,13 @@ main() {
     
     while true; do
         show_test_menu
-        read -p "Select test [1-5, Q]: " CHOICE
+        read -p "Select test [1-4, Q]: " CHOICE
         
         case $CHOICE in
             1) run_live_chat ;;
             2) run_live_voice ;;
             3) run_live_video ;;
             4) run_live_video_udp ;;
-            5) run_live_video_quic ;;
             [Qq])
                 echo -e "\n${CYAN}Stopping node...${NC}"
                 cleanup
@@ -528,7 +484,7 @@ main() {
                 exit 0
                 ;;
             *)
-                echo -e "${RED}Invalid choice. Please select 1, 2, 3, 4, 5, or Q.${NC}"
+                echo -e "${RED}Invalid choice. Please select 1, 2, 3, 4, or Q.${NC}"
                 ;;
         esac
         
