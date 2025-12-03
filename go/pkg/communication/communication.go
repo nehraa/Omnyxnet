@@ -724,9 +724,7 @@ func (cs *CommunicationService) handleVoiceStream(stream network.Stream) {
 		}
 
 		// Set read deadline for context-aware reads
-		if conn, ok := stream.Conn().(interface{ SetReadDeadline(time.Time) error }); ok {
-			conn.SetReadDeadline(time.Now().Add(StreamReadTimeout))
-		}
+		stream.SetReadDeadline(time.Now().Add(StreamReadTimeout))
 
 		// Read chunk header (8 bytes): sampleRate(4) + channels(1) + reserved(3)
 		header := make([]byte, 8)
