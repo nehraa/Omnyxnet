@@ -842,7 +842,7 @@ def submit(host, port, input_file, input_text, timeout, priority, schema):
     elif input_text:
         input_data = input_text.encode('utf-8')
     else:
-        click.echo("❌ Please provide --input or --input-text", err=True)
+        click.echo("❌ Error: No input provided. Use --input FILE or --input-text TEXT to specify input data.", err=True)
         sys.exit(1)
     
     # Create a simple identity job for demonstration
