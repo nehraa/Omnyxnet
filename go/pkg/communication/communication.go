@@ -63,6 +63,7 @@ type CommunicationService struct {
 	mu         sync.RWMutex
 	running    bool
 	dataDir    string
+	wg         sync.WaitGroup // Track goroutines for clean shutdown
 
 	// Callbacks
 	onChatMessage func(msg ChatMessage)
@@ -149,12 +150,14 @@ func (cs *CommunicationService) Start() error {
 // Stop shuts down the communication service
 func (cs *CommunicationService) Stop() error {
 	cs.mu.Lock()
-	defer cs.mu.Unlock()
-
 	if !cs.running {
+		cs.mu.Unlock()
 		return nil
 	}
+	cs.running = false
+	cs.mu.Unlock()
 
+	// Cancel context to signal all goroutines to stop
 	cs.cancel()
 
 	// Close all streams
@@ -173,10 +176,23 @@ func (cs *CommunicationService) Stop() error {
 	cs.voiceStreams = make(map[peer.ID]network.Stream)
 	cs.streamMu.Unlock()
 
+	// Wait for all goroutines to finish with timeout
+	done := make(chan struct{})
+	go func() {
+		cs.wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// All goroutines finished
+	case <-time.After(5 * time.Second):
+		log.Printf("⚠️  Timeout waiting for goroutines to finish")
+	}
+
 	// Save chat history
 	cs.saveChatHistory()
 
-	cs.running = false
 	log.Printf("💬 Communication service stopped")
 
 	return nil
@@ -343,8 +359,12 @@ func (cs *CommunicationService) getChatStream(peerID peer.ID) (network.Stream, e
 	cs.chatStreams[peerID] = newStream
 	cs.streamMu.Unlock()
 
-	// Start reading from stream in background
-	go cs.handleChatStream(newStream)
+	// Start reading from stream in background with proper tracking
+	cs.wg.Add(1)
+	go func() {
+		defer cs.wg.Done()
+		cs.handleChatStream(newStream)
+	}()
 
 	return newStream, nil
 }
@@ -569,7 +589,11 @@ func (cs *CommunicationService) getVideoStream(peerID peer.ID) (network.Stream, 
 	cs.videoStreams[peerID] = newStream
 	cs.streamMu.Unlock()
 
-	go cs.handleVideoStream(newStream)
+	cs.wg.Add(1)
+	go func() {
+		defer cs.wg.Done()
+		cs.handleVideoStream(newStream)
+	}()
 
 	return newStream, nil
 }
@@ -702,7 +726,11 @@ func (cs *CommunicationService) getVoiceStream(peerID peer.ID) (network.Stream, 
 	cs.voiceStreams[peerID] = newStream
 	cs.streamMu.Unlock()
 
-	go cs.handleVoiceStream(newStream)
+	cs.wg.Add(1)
+	go func() {
+		defer cs.wg.Done()
+		cs.handleVoiceStream(newStream)
+	}()
 
 	return newStream, nil
 }

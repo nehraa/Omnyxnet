@@ -131,9 +131,21 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Find available ports
+find_available_port() {
+    local port=$1
+    while netstat -tuln 2>/dev/null | grep -q ":$port " || ss -tuln 2>/dev/null | grep -q ":$port "; do
+        port=$((port + 1))
+    done
+    echo $port
+}
+
+PORT1=$(find_available_port 18080)
+PORT2=$(find_available_port $((PORT1 + 1)))
+
 # Start node 1
-echo -e "${CYAN}Starting Node 1...${NC}"
-"$PROJECT_ROOT/go/bin/go-node" -node-id=1 -capnp-addr=:18080 -libp2p -local -test > "$NODE1_LOG" 2>&1 &
+echo -e "${CYAN}Starting Node 1 on port $PORT1...${NC}"
+"$PROJECT_ROOT/go/bin/go-node" -node-id=1 -capnp-addr=:$PORT1 -libp2p -local -test > "$NODE1_LOG" 2>&1 &
 NODE1_PID=$!
 sleep 2
 
@@ -147,8 +159,8 @@ else
 fi
 
 # Start node 2
-echo -e "${CYAN}Starting Node 2...${NC}"
-"$PROJECT_ROOT/go/bin/go-node" -node-id=2 -capnp-addr=:18081 -libp2p -local -test > "$NODE2_LOG" 2>&1 &
+echo -e "${CYAN}Starting Node 2 on port $PORT2...${NC}"
+"$PROJECT_ROOT/go/bin/go-node" -node-id=2 -capnp-addr=:$PORT2 -libp2p -local -test > "$NODE2_LOG" 2>&1 &
 NODE2_PID=$!
 sleep 2
 

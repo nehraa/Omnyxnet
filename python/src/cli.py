@@ -458,6 +458,9 @@ def send(host, port, schema, peer_id, message):
     
     Example:
         python main.py chat send 12D3KooW... "Hello, peer!"
+        
+    Note: Full chat functionality requires the Go communication service RPC methods
+    to be implemented. Currently uses the existing sendChatMessage RPC.
     """
     schema_path = schema or get_go_schema_path()
     client = GoNodeClient(host, port, schema_path)
@@ -465,9 +468,10 @@ def send(host, port, schema, peer_id, message):
         click.echo(f"❌ Failed to connect to Go node at {host}:{port}", err=True)
         sys.exit(1)
     
-    click.echo(f"💬 Sending message to {peer_id[:12]}...")
+    click.echo(f"💬 Sending message to {peer_id[:12] if len(peer_id) > 12 else peer_id}...")
     
     # Send chat message via RPC
+    # Note: peer_id is passed as peerAddr - the Go service will handle the mapping
     success = client.send_chat_message(peer_id, message)
     if success:
         click.echo(f"✅ Message sent!")
@@ -529,7 +533,10 @@ def peers(host, port, schema):
     """
     List peers with active chat connections.
     
-    Shows peers that have active chat streams via libp2p.
+    Shows peers that have active connections via libp2p.
+    
+    Note: Returns node IDs from the Go node. Future versions will
+    return full libp2p peer IDs when the communication RPC is integrated.
     """
     schema_path = schema or get_go_schema_path()
     client = GoNodeClient(host, port, schema_path)
@@ -537,17 +544,22 @@ def peers(host, port, schema):
         click.echo(f"❌ Failed to connect to Go node at {host}:{port}", err=True)
         sys.exit(1)
     
-    click.echo(f"\n💬 Active Chat Peers")
+    click.echo(f"\n💬 Connected Peers")
     click.echo("=" * 60)
     
-    # Get connected peers via RPC
+    # Get connected peers via RPC (returns node IDs as integers)
     peers_list = client.get_connected_peers()
     
     if not peers_list:
-        click.echo("No active chat peers.")
+        click.echo("No connected peers.")
     else:
         for i, peer_id in enumerate(peers_list, 1):
-            click.echo(f"  {i}. {peer_id[:16]}...")
+            # Handle both int (node ID) and string (peer ID) types
+            if isinstance(peer_id, int):
+                click.echo(f"  {i}. Node {peer_id}")
+            else:
+                peer_str = str(peer_id)
+                click.echo(f"  {i}. {peer_str[:16]}...")
     
     click.echo("")
     client.disconnect()
