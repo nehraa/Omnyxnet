@@ -1,9 +1,9 @@
 # 📚 Pangea Net - Documentation Index
 
-**Last Updated**: November 24, 2025  
-**Version**: 0.4.0
+**Last Updated**: December 3, 2025  
+**Version**: 0.5.0
 
-**NEW:** [Voice/Video Streaming Guide](docs/STREAMING_GUIDE.md) - UDP-based real-time streaming 🎤
+**NEW:** [Communication Guide](COMMUNICATION.md) - P2P Chat, Voice, Video using libp2p 💬🎤🎥
 
 ## 🚀 Getting Started
 
@@ -15,17 +15,31 @@
 
 ## 📖 Core Documentation
 
+### Communication (NEW!)
+
+- **[Communication Guide](COMMUNICATION.md)** ⭐ NEW (Dec 3)
+  - P2P Chat with history persistence
+  - P2P Voice streaming using libp2p
+  - P2P Video streaming using libp2p
+  - mDNS auto-discovery for seamless connections
+  - No server required - true P2P!
+
 ### Networking
 
-- **[Network Adapter](docs/networking/NETWORK_ADAPTER.md)** ⭐ NEW
+- **[Network Adapter](networking/NETWORK_ADAPTER.md)**
   - LibP2P and Legacy implementations
   - FetchShard protocol for file distribution
   - Localhost vs Cross-device modes
   - mDNS discovery status and workarounds
 
+- **[mDNS Auto-Discovery](MDNS.md)**
+  - Zero-configuration peer discovery
+  - Local network automatic connections
+  - Integration with libp2p
+
 ### API & Services
 
-- **[Cap'n Proto Service](docs/api/CAPNP_SERVICE.md)** ⭐ NEW
+- **[Cap'n Proto Service](api/CAPNP_SERVICE.md)**
   - Upload/Download RPC methods (fully wired!)
   - Shard distribution protocol
   - Reed-Solomon encoding (8+4 shards)
@@ -33,7 +47,7 @@
 
 ### Testing
 
-- **[Testing Guide](docs/testing/TESTING_GUIDE.md)** ⭐ NEW
+- **[Testing Guide](testing/TESTING_GUIDE.md)**
   - Complete test suite overview
   - Localhost multi-node testing guide
   - Cross-device testing instructions
@@ -42,13 +56,11 @@
 
 ### Streaming
 
-- **[Voice/Video Streaming Guide](docs/STREAMING_GUIDE.md)** ⭐ NEW (Nov 24)
-  - UDP-based real-time audio streaming
-  - Opus codec integration for low-latency voice
-  - Stream configuration (voice, high-quality)
-  - Packet format and serialization
+- **[Voice/Video Streaming Guide](STREAMING_GUIDE.md)**
+  - Real-time audio streaming with Opus codec
+  - Video streaming over libp2p
+  - Stream configuration options
   - Usage examples and API reference
-  - 12 tests (all passing)
 
 ## 🗂️ Directory Structure
 
