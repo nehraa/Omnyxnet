@@ -34,7 +34,7 @@ test_section() {
 test_section "Rust Compute Module"
 
 cd rust
-if cargo test 2>&1 | grep -q "test result: ok"; then
+if cargo test --quiet; then
     echo -e "${GREEN}✅ Rust compute tests passed${NC}"
     PASSED=$((PASSED + 1))
 else
