@@ -5,7 +5,6 @@ This module provides the Python client for submitting and monitoring
 compute jobs via the Go orchestrator's Cap'n Proto RPC interface.
 """
 
-import json
 import logging
 import time
 from dataclasses import dataclass
