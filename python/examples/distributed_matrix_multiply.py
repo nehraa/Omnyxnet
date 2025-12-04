@@ -33,7 +33,7 @@ from typing import List, Tuple
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from src.compute import Job, ComputeClient, DataPreprocessor
+from src.compute import Job, ComputeClient
 
 # Try to import numpy, but provide fallback
 try:
@@ -210,9 +210,11 @@ def distributed_matrix_multiply():
                         b_block.append(b_row)
                     
                     # Serialize block pair with position info
-                    chunk = struct.pack('>IIII', i, j, len(a_block), len(b_block[0]) if b_block else 0)
-                    chunk += serialize_matrix(a_block, len(a_block), len(a_block[0]) if a_block else 0)
-                    chunk += serialize_matrix(b_block, len(b_block), len(b_block[0]) if b_block else 0)
+                    b_block_cols = len(b_block[0]) if b_block and len(b_block) > 0 and len(b_block[0]) > 0 else 0
+                    chunk = struct.pack('>IIII', i, j, len(a_block), b_block_cols)
+                    a_block_cols = len(a_block[0]) if a_block and len(a_block) > 0 else 0
+                    chunk += serialize_matrix(a_block, len(a_block), a_block_cols)
+                    chunk += serialize_matrix(b_block, len(b_block), b_block_cols)
                     chunks.append(chunk)
         
         print(f"  📊 Split into {len(chunks)} block multiplications")
