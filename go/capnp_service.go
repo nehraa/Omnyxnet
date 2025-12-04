@@ -10,29 +10,42 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
+	"github.com/pangea-net/go-node/pkg/compute"
 )
 
 // nodeServiceServer implements the Cap'n Proto NodeService interface
 // Note: NodeService_Server interface is generated in schema.capnp.go
 type nodeServiceServer struct {
-	store           *NodeStore
-	network         NetworkAdapter
-	shmMgr          *SharedMemoryManager
+	store            *NodeStore
+	network          NetworkAdapter
+	shmMgr           *SharedMemoryManager
 	streamingService *StreamingService
-	streamStats     *StreamingStats
-	peerAddr        *net.UDPAddr // Current streaming peer address
+	streamStats      *StreamingStats
+	peerAddr         *net.UDPAddr // Current streaming peer address
+	computeManager   *compute.Manager
+	cesPipeline      *CESPipeline // Shared CES pipeline for consistent encryption
 }
 
 // NewNodeServiceServer creates a new NodeService server
 func NewNodeServiceServer(store *NodeStore, network NetworkAdapter, shmMgr *SharedMemoryManager) NodeService_Server {
+	// Create a shared CES pipeline with default compression level 3
+	// This ensures the same encryption key is used across process and reconstruct
+	cesPipeline := NewCESPipeline(3)
+	if cesPipeline == nil {
+		log.Printf("WARNING: Failed to create shared CES pipeline")
+	}
+	
 	return &nodeServiceServer{
-		store:       store,
-		network:     network,
-		shmMgr:      shmMgr,
-		streamStats: &StreamingStats{},
+		store:          store,
+		network:        network,
+		shmMgr:         shmMgr,
+		streamStats:    &StreamingStats{},
+		computeManager: compute.NewManager(compute.DefaultConfig()),
+		cesPipeline:    cesPipeline,
 	}
 }
 
@@ -447,23 +460,21 @@ func (s *nodeServiceServer) CesProcess(ctx context.Context, call NodeService_ces
 	if err != nil {
 		return err
 	}
-	compressionLevel := request.CompressionLevel()
+	// Note: compressionLevel from request is currently ignored - using shared pipeline's level
 
-	// Create CES pipeline
-	pipeline := NewCESPipeline(int(compressionLevel))
-	if pipeline == nil {
+	// Use shared CES pipeline for consistent encryption
+	if s.cesPipeline == nil {
 		response, err := results.NewResponse()
 		if err != nil {
 			return err
 		}
 		response.SetSuccess(false)
-		response.SetErrorMsg("Failed to create CES pipeline")
+		response.SetErrorMsg("CES pipeline not initialized")
 		return nil
 	}
-	defer pipeline.Close()
 
 	// Process through CES pipeline
-	shards, err := pipeline.Process(data)
+	shards, err := s.cesPipeline.Process(data)
 	if err != nil {
 		response, err := results.NewResponse()
 		if err != nil {
@@ -525,7 +536,7 @@ func (s *nodeServiceServer) CesReconstruct(ctx context.Context, call NodeService
 		return err
 	}
 
-	compressionLevel := request.CompressionLevel()
+	// Note: compressionLevel from request is currently ignored - using shared pipeline's level
 
 	// Convert to Go shards
 	shardCount := shardsList.Len()
@@ -542,21 +553,19 @@ func (s *nodeServiceServer) CesReconstruct(ctx context.Context, call NodeService
 		present[i] = presentList.At(i)
 	}
 
-	// Create CES pipeline
-	pipeline := NewCESPipeline(int(compressionLevel))
-	if pipeline == nil {
+	// Use shared CES pipeline for consistent encryption
+	if s.cesPipeline == nil {
 		response, err := results.NewResponse()
 		if err != nil {
 			return err
 		}
 		response.SetSuccess(false)
-		response.SetErrorMsg("Failed to create CES pipeline")
+		response.SetErrorMsg("CES pipeline not initialized")
 		return nil
 	}
-	defer pipeline.Close()
 
 	// Reconstruct data
-	data, err := pipeline.Reconstruct(shards, present)
+	data, err := s.cesPipeline.Reconstruct(shards, present)
 	if err != nil {
 		response, err := results.NewResponse()
 		if err != nil {
@@ -1055,6 +1064,201 @@ func (s *nodeServiceServer) GetStreamStats(ctx context.Context, call NodeService
 		stats.SetBytesReceived(bytesRecv)
 		stats.SetAvgLatencyMs(0.0) // TODO: Calculate actual latency
 	}
+
+	return nil
+}
+
+// ============================================================================
+// Distributed Compute Services
+// ============================================================================
+
+// SubmitComputeJob implements the submitComputeJob method
+func (s *nodeServiceServer) SubmitComputeJob(ctx context.Context, call NodeService_submitComputeJob) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	manifest, err := args.Manifest()
+	if err != nil {
+		results.SetSuccess(false)
+		results.SetErrorMsg(fmt.Sprintf("Failed to get manifest: %v", err))
+		return nil
+	}
+
+	// Extract manifest fields
+	jobID, _ := manifest.JobId()
+	wasmModule, _ := manifest.WasmModule()
+	inputData, _ := manifest.InputData()
+	minChunkSize := manifest.MinChunkSize()
+	maxChunkSize := manifest.MaxChunkSize()
+	timeoutSecs := manifest.TimeoutSecs()
+	retryCount := manifest.RetryCount()
+	priority := manifest.Priority()
+	redundancy := manifest.Redundancy()
+
+	// Create job manifest for manager
+	jobManifest := &compute.JobManifest{
+		JobID:            jobID,
+		WASMModule:       wasmModule,
+		InputData:        inputData,
+		MinChunkSize:     int64(minChunkSize),
+		MaxChunkSize:     int64(maxChunkSize),
+		TimeoutSecs:      timeoutSecs,
+		RetryCount:       retryCount,
+		Priority:         priority,
+		Redundancy:       redundancy,
+		VerificationMode: compute.VerificationHash,
+	}
+
+	// Submit job
+	log.Printf("📤 [COMPUTE] Received job submission: %s (input size: %d bytes)", jobID, len(inputData))
+	submittedJobID, err := s.computeManager.SubmitJob(jobManifest)
+	if err != nil {
+		log.Printf("❌ [COMPUTE] Job submission failed: %v", err)
+		results.SetSuccess(false)
+		results.SetErrorMsg(fmt.Sprintf("Failed to submit job: %v", err))
+		return nil
+	}
+
+	log.Printf("✅ [COMPUTE] Job submitted successfully: %s", submittedJobID)
+	results.SetJobId(submittedJobID)
+	results.SetSuccess(true)
+	results.SetErrorMsg("")
+	return nil
+}
+
+// GetComputeJobStatus implements the getComputeJobStatus method
+func (s *nodeServiceServer) GetComputeJobStatus(ctx context.Context, call NodeService_getComputeJobStatus) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	jobID, err := args.JobId()
+	if err != nil {
+		return err
+	}
+
+	// Get job status from manager
+	jobStatus, err := s.computeManager.GetJobStatus(jobID)
+	if err != nil {
+		log.Printf("❌ [COMPUTE] Failed to get job status for %s: %v", jobID, err)
+		status, _ := results.NewStatus()
+		status.SetJobId(jobID)
+		status.SetStatus("failed")
+		status.SetErrorMsg(fmt.Sprintf("Failed to get status: %v", err))
+		return nil
+	}
+
+	// Map status to string
+	statusStr := jobStatus.Status.String()
+	log.Printf("📊 [COMPUTE] Job %s status: %s (%.1f%% complete, %d/%d chunks)",
+		jobID, statusStr, jobStatus.Progress*100, jobStatus.CompletedChunks, jobStatus.TotalChunks)
+
+	status, err := results.NewStatus()
+	if err != nil {
+		return err
+	}
+	status.SetJobId(jobID)
+	status.SetStatus(statusStr)
+	status.SetProgress(jobStatus.Progress)
+	status.SetCompletedChunks(jobStatus.CompletedChunks)
+	status.SetTotalChunks(jobStatus.TotalChunks)
+	status.SetEstimatedTimeRemaining(jobStatus.EstimatedTimeRemaining)
+	status.SetErrorMsg("")
+
+	return nil
+}
+
+// GetComputeJobResult implements the getComputeJobResult method
+func (s *nodeServiceServer) GetComputeJobResult(ctx context.Context, call NodeService_getComputeJobResult) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	jobID, err := args.JobId()
+	if err != nil {
+		return err
+	}
+	timeoutMs := args.TimeoutMs()
+
+	log.Printf("⏳ [COMPUTE] Waiting for job result: %s (timeout: %dms)", jobID, timeoutMs)
+
+	// Get job result from manager (blocking with timeout)
+	timeout := time.Duration(timeoutMs) * time.Millisecond
+	if timeout == 0 {
+		timeout = 5 * time.Minute // Default timeout
+	}
+
+	result, err := s.computeManager.GetJobResult(jobID, timeout)
+	if err != nil {
+		log.Printf("❌ [COMPUTE] Failed to get job result for %s: %v", jobID, err)
+		results.SetSuccess(false)
+		results.SetErrorMsg(fmt.Sprintf("Failed to get result: %v", err))
+		return nil
+	}
+
+	log.Printf("✅ [COMPUTE] Job %s completed with result size: %d bytes", jobID, len(result))
+	results.SetResult(result)
+	results.SetSuccess(true)
+	results.SetErrorMsg("")
+	return nil
+}
+
+// CancelComputeJob implements the cancelComputeJob method
+func (s *nodeServiceServer) CancelComputeJob(ctx context.Context, call NodeService_cancelComputeJob) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	jobID, err := args.JobId()
+	if err != nil {
+		return err
+	}
+
+	log.Printf("🛑 [COMPUTE] Cancelling job: %s", jobID)
+
+	err = s.computeManager.CancelJob(jobID)
+	if err != nil {
+		log.Printf("❌ [COMPUTE] Failed to cancel job %s: %v", jobID, err)
+		results.SetSuccess(false)
+		return nil
+	}
+
+	log.Printf("✅ [COMPUTE] Job %s cancelled successfully", jobID)
+	results.SetSuccess(true)
+	return nil
+}
+
+// GetComputeCapacity implements the getComputeCapacity method
+func (s *nodeServiceServer) GetComputeCapacity(ctx context.Context, call NodeService_getComputeCapacity) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	// Get capacity from manager
+	cap := s.computeManager.GetCapacity()
+
+	log.Printf("💻 [COMPUTE] Reporting capacity: %d cores, %d MB RAM, %.1f%% load",
+		cap.CPUCores, cap.RAMMB, cap.CurrentLoad*100)
+
+	capacity, err := results.NewCapacity()
+	if err != nil {
+		return err
+	}
+	capacity.SetCpuCores(cap.CPUCores)
+	capacity.SetRamMb(cap.RAMMB)
+	capacity.SetCurrentLoad(cap.CurrentLoad)
+	capacity.SetDiskMb(cap.DiskMB)
+	capacity.SetBandwidthMbps(cap.BandwidthMbps)
 
 	return nil
 }

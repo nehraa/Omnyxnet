@@ -95,7 +95,7 @@ else
     echo "Using system Python: $PYTHON_BIN"
 fi
 
-$PYTHON_BIN tests/test_ces_wiring.py
+$PYTHON_BIN tests/ces/test_ces_wiring.py
 
 TEST_RESULT=$?
 
