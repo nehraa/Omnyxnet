@@ -395,9 +395,11 @@ show_menu() {
     echo "15) Run Phase 1 Audio Integration Test"
     echo "16) Run Phase 1 Performance Benchmarks"
     echo "17) Run Streaming & AI Wiring Test (Phase 1&2)"
-    echo "18) View Setup Log"
-    echo "19) View Test Log"
-    echo "20) Clean Build Artifacts"
+    echo "18) Run Distributed Compute Test"
+    echo "19) Run Live P2P Test (Chat/Voice/Video)"
+    echo "20) View Setup Log"
+    echo "21) View Test Log"
+    echo "22) Clean Build Artifacts"
     echo "0) Exit"
     echo ""
     echo -n "Select an option: "
@@ -473,13 +475,13 @@ main() {
                 ;;
             5)
                 log_info "User selected: Run Integration Tests"
-                run_test "Integration Tests" "tests/test_integration.sh"
+                run_test "Integration Tests" "tests/integration/test_integration.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             6)
                 log_info "User selected: Run 2-Node StreamUpdates Test"
-                run_test "StreamUpdates Test" "tests/test_stream_updates.sh"
+                run_test "StreamUpdates Test" "tests/streaming/test_stream_updates.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
@@ -495,17 +497,17 @@ main() {
                 run_test "Go Tests" "tests/test_go.sh"
                 run_test "Python Tests" "tests/test_python.sh"
                 run_test "Rust Tests" "tests/test_rust.sh"
-                run_test "Integration Tests" "tests/test_integration.sh"
-                run_test "StreamUpdates Test" "tests/test_stream_updates.sh"
-                run_test "FFI Integration Test" "tests/test_ffi_integration.sh"
-                run_test "Upload/Download Local Test" "tests/test_upload_download_local.sh"
+                run_test "Integration Tests" "tests/integration/test_integration.sh"
+                run_test "StreamUpdates Test" "tests/streaming/test_stream_updates.sh"
+                run_test "FFI Integration Test" "tests/integration/test_ffi_integration.sh"
+                run_test "Upload/Download Local Test" "tests/integration/test_upload_download_local.sh"
                 log_success "All localhost tests completed!"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             8)
                 log_info "User selected: Run Comprehensive Localhost Test"
-                run_test "Comprehensive Localhost Test" "tests/test_localhost_full.sh"
+                run_test "Comprehensive Localhost Test" "tests/integration/test_localhost_full.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
@@ -538,7 +540,7 @@ main() {
                         ./scripts/easy_test.sh
                         ;;
                     3)
-                        run_interactive_test "Cross-Device Upload/Download Test" "tests/test_upload_download_cross_device.sh"
+                        run_interactive_test "Cross-Device Upload/Download Test" "tests/integration/test_upload_download_cross_device.sh"
                         ;;
                     *)
                         echo -e "${RED}Invalid option${NC}"
@@ -549,7 +551,7 @@ main() {
                 ;;
             10)
                 log_info "User selected: Run Upload/Download Tests (Local)"
-                run_test "Upload/Download Local Test" "tests/test_upload_download_local.sh"
+                run_test "Upload/Download Local Test" "tests/integration/test_upload_download_local.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
@@ -560,7 +562,7 @@ main() {
                 echo "Have you set up nodes on multiple devices? (y/n)"
                 read -p "> " setup_done
                 if [ "$setup_done" = "y" ]; then
-                    run_interactive_test "Cross-Device Upload/Download Test" "tests/test_upload_download_cross_device.sh"
+                    run_interactive_test "Cross-Device Upload/Download Test" "tests/integration/test_upload_download_cross_device.sh"
                 else
                     echo "Please use option 9 to setup cross-device testing first."
                 fi
@@ -569,13 +571,13 @@ main() {
                 ;;
             12)
                 log_info "User selected: Run FFI Integration Test"
-                run_test "FFI Integration Test" "tests/test_ffi_integration.sh"
+                run_test "FFI Integration Test" "tests/integration/test_ffi_integration.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             13)
                 log_info "User selected: Run CES Wiring Test"
-                run_test "CES Wiring Test" "tests/test_ces_simple.sh"
+                run_test "CES Wiring Test" "tests/ces/test_ces_simple.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
@@ -599,19 +601,95 @@ main() {
                 ;;
             17)
                 log_info "User selected: Run Streaming & AI Wiring Test"
-                run_test "Streaming & AI Wiring Test" "tests/test_streaming.sh"
+                run_test "Streaming & AI Wiring Test" "tests/streaming/test_streaming.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             18)
+                log_info "User selected: Run Distributed Compute Test"
+                echo ""
+                echo -e "${BLUE}========================================${NC}"
+                echo -e "${BLUE}   Distributed Compute Test${NC}"
+                echo -e "${BLUE}========================================${NC}"
+                echo ""
+                echo "This test can run in two modes:"
+                echo "  1) Local mode (unit tests only, no connection needed)"
+                echo "  2) Distributed mode (requires connected nodes)"
+                echo ""
+                read -p "Select mode (1-2): " compute_mode
+                case $compute_mode in
+                    1)
+                        echo ""
+                        log_info "Running local compute tests..."
+                        run_test "Distributed Compute Test (Local)" "tests/compute/test_compute.sh"
+                        ;;
+                    2)
+                        echo ""
+                        echo -e "${YELLOW}Checking for connected nodes...${NC}"
+                        # Check if a Go node is running by looking for the actual binary
+                        if pgrep -f "bin/go-node" > /dev/null 2>&1; then
+                            echo -e "${GREEN}✅ Go node is running${NC}"
+                            run_test "Distributed Compute Test" "tests/compute/test_compute.sh"
+                        else
+                            echo -e "${YELLOW}⚠️  No Go node running. Starting connection setup...${NC}"
+                            echo ""
+                            echo "To run distributed compute tests, you need connected nodes."
+                            echo "Would you like to:"
+                            echo "  1) Start a local node first (launches live_test.sh)"
+                            echo "  2) Connect to an existing network (use Cross-Device setup)"
+                            echo "  3) Cancel"
+                            echo ""
+                            read -p "Select option (1-3): " node_choice
+                            case $node_choice in
+                                1)
+                                    echo ""
+                                    log_info "Starting local node via live_test.sh..."
+                                    ./scripts/live_test.sh
+                                    ;;
+                                2)
+                                    echo ""
+                                    echo "Please use the 'Setup Cross-Device/WAN Testing' option from the main menu."
+                                    ;;
+                                3)
+                                    echo "Cancelled."
+                                    ;;
+                                *)
+                                    echo -e "${RED}Invalid option${NC}"
+                                    ;;
+                            esac
+                        fi
+                        ;;
+                    *)
+                        echo -e "${RED}Invalid option${NC}"
+                        ;;
+                esac
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            19)
+                log_info "User selected: Run Live P2P Test"
+                echo ""
+                echo -e "${BLUE}========================================${NC}"
+                echo -e "${BLUE}   Live P2P Test (Chat/Voice/Video)${NC}"
+                echo -e "${BLUE}========================================${NC}"
+                echo ""
+                echo "This launches the interactive live_test.sh script."
+                echo "You can test Chat, Voice, and Video streaming."
+                echo ""
+                read -p "Press Enter to start live test..."
+                ./scripts/live_test.sh
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            20)
                 log_info "User selected: View Setup Log"
                 less "$LOG_FILE"
                 ;;
-            19)
+            21)
                 log_info "User selected: View Test Log"
                 less "$TEST_LOG_FILE"
                 ;;
-            20)
+            22)
                 log_info "User selected: Clean Build Artifacts"
                 clean_builds
                 echo ""

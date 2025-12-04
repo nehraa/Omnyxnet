@@ -512,6 +512,11 @@ func (n *LibP2PPangeaNode) GetReachabilityStatus() (ReachabilityStatus, NATType)
 	return n.reachability, n.natType
 }
 
+// GetHost returns the libp2p host for use by other services
+func (n *LibP2PPangeaNode) GetHost() host.Host {
+	return n.host
+}
+
 // ConnectToPeer connects to a specific peer by address
 func (n *LibP2PPangeaNode) ConnectToPeer(addr string) error {
 	// Parse multiaddr (e.g., "/ip4/192.168.1.100/tcp/4001/p2p/QmPeer...")

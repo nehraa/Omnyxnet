@@ -320,10 +320,10 @@ run_audio_streaming_test() {
     fi
 
     # Run Python streaming tests
-    if [ -f "../tests/test_localhost_streaming.py" ]; then
+    if [ -f "../tests/streaming/test_localhost_streaming.py" ]; then
         log "INFO" "Running Python streaming tests..."
         cd "$PROJECT_ROOT"
-        python3 tests/test_localhost_streaming.py 2>&1 | tee -a "$LOG_FILE" || true
+        python3 tests/streaming/test_localhost_streaming.py 2>&1 | tee -a "$LOG_FILE" || true
     fi
 
     log "INFO" "Audio streaming test completed"
@@ -367,9 +367,9 @@ run_cross_device_test() {
     cd "$PROJECT_ROOT"
 
     # Run the cross-device upload/download test
-    if [ -f "tests/test_upload_download_cross_device.sh" ]; then
+    if [ -f "tests/integration/test_upload_download_cross_device.sh" ]; then
         log "INFO" "Running cross-device file transfer test..."
-        bash tests/test_upload_download_cross_device.sh 2>&1 | tee -a "$LOG_FILE" || true
+        bash tests/integration/test_upload_download_cross_device.sh 2>&1 | tee -a "$LOG_FILE" || true
     fi
 
     # Test P2P connectivity

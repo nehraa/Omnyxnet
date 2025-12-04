@@ -39,9 +39,16 @@ The Communication module provides P2P communication capabilities for chat, voice
 ### Chat
 - **P2P messaging** over libp2p streams
 - **Chat history persistence** stored in `~/.pangea/communication/chat_history.json`
+- **Always listening**: Messages are received even when not actively viewing chat
+- **Automatic storage**: Incoming messages are stored and can be viewed later
 - **Automatic reconnection** when peers become available
 - **Message format**: JSON with timestamp, sender, and content
 - **Debounced saving**: History is saved with debouncing to prevent race conditions
+
+> **Note:** You don't need to be actively on the chat screen to receive messages.
+> The Go node is always listening for incoming messages, and they are automatically
+> stored in the chat history file. When you open chat, you can see messages sent
+> by other peers along with their sender IP/peer ID and timestamp.
 
 ### Voice
 - **Real-time audio streaming** over libp2p streams

@@ -206,18 +206,29 @@ start_bootstrap_node() {
     local p2p_port=$(echo "$peer_addr" | grep -oP '/tcp/\K[0-9]+' || echo "unknown")
     local local_ip=$(echo "$peer_addr" | grep -oP '/ip4/\K[0-9.]+' || echo "unknown")
     
+    # Truncate peer_id if too long for display
+    local peer_id_display="$peer_id"
+    if [ ${#peer_id} -gt 16 ]; then
+        peer_id_display="${peer_id:0:16}..."
+    fi
+    
     echo -e "${GREEN}✅ Bootstrap node started!${NC}"
     echo ""
-    echo -e "╔════════════════════════════════════════╗"
-    echo -e "║   🌍 Pangea Net - Easy Device Test    ║"
-    echo -e "╚════════════════════════════════════════╝"
+    echo -e "╔══════════════════════════════════════════════════════════════════╗"
+    echo -e "║   🌍 PANGEA NET - CONNECTION INFORMATION                        ║"
+    echo -e "╠══════════════════════════════════════════════════════════════════╣"
+    printf "║  ✓ Peer ID:   %-52s ║\n" "$peer_id_display"
+    printf "║  ✓ P2P Port:  %-52s ║\n" "$p2p_port"
+    printf "║  ✓ Your IP:   %-52s ║\n" "$local_ip"
+    echo -e "║                                                                  ║"
+    echo -e "║  ℹ️  Note: Port and Peer ID change on each restart              ║"
+    echo -e "╠══════════════════════════════════════════════════════════════════╣"
+    echo -e "║  📋 COPY THIS FULL ADDRESS TO OTHER DEVICE:                     ║"
+    echo -e "║                                                                  ║"
+    echo -e "║  ${CYAN}${peer_addr}${NC}"
+    echo -e "║  (Address shown above - copy the entire line)                   ║"
+    echo -e "╚══════════════════════════════════════════════════════════════════╝"
     echo ""
-    echo -e "✓ Peer ID: ${peer_id}"
-    echo -e "✓ P2P Port: ${p2p_port}"
-    echo -e "✓ Your IP: ${local_ip}"
-    echo ""
-    echo -e "For other devices to join:"
-    echo -e "  ${CYAN}${peer_addr}${NC}"
     
     return 0
 }
@@ -278,7 +289,7 @@ run_live_chat() {
     fi
     
     is_server_lower=$([ "$is_server" = true ] && echo "true" || echo "false")
-    python3 "$PROJECT_ROOT/python/live_chat.py" "$is_server_lower" "$peer_ip"
+    python3 "$PROJECT_ROOT/python/src/communication/live_chat.py" "$is_server_lower" "$peer_ip"
 }
 
 # ============================================================
@@ -319,7 +330,7 @@ run_live_voice() {
     echo -e "${YELLOW}Press Ctrl+C to stop${NC}\n"
     
     is_server_lower=$([ "$is_server" = true ] && echo "true" || echo "false")
-    python3 "$PROJECT_ROOT/python/live_voice.py" "$is_server_lower" "$peer_ip"
+    python3 "$PROJECT_ROOT/python/src/communication/live_voice.py" "$is_server_lower" "$peer_ip"
 }
 
 # ============================================================
@@ -352,7 +363,7 @@ run_live_video() {
     echo -e "${YELLOW}Press 'q' in video window or Ctrl+C to stop${NC}\n"
     
     is_server_lower=$([ "$is_server" = true ] && echo "true" || echo "false")
-    python3 "$PROJECT_ROOT/python/live_video.py" "$is_server_lower" "$peer_ip"
+    python3 "$PROJECT_ROOT/python/src/communication/live_video.py" "$is_server_lower" "$peer_ip"
 }
 
 # ============================================================
@@ -386,49 +397,7 @@ run_live_video_udp() {
     echo -e "${YELLOW}Press 'q' in video window or Ctrl+C to stop${NC}\n"
     
     is_server_lower=$([ "$is_server" = true ] && echo "true" || echo "false")
-    python3 "$PROJECT_ROOT/python/live_video_udp.py" "$is_server_lower" "$peer_ip"
-}
-
-# ============================================================
-# LIVE VIDEO QUIC (Option 5)
-# ============================================================
-
-run_live_video_quic() {
-    echo -e "\n${BOLD}${MAGENTA}🎥 LIVE VIDEO MODE (QUIC - Low Latency + Reliability)${NC}"
-    echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    
-    python3 -c "import cv2" 2>/dev/null && HAS_CV2=true || HAS_CV2=false
-    python3 -c "import aioquic" 2>/dev/null && HAS_QUIC=true || HAS_QUIC=false
-    
-    if [ "$HAS_CV2" = false ]; then
-        echo -e "${YELLOW}⚠️  OpenCV not found.${NC}"
-        echo -e "${CYAN}Install for live webcam support:${NC}"
-        echo -e "  ${GREEN}pip install opencv-python${NC}"
-        return
-    fi
-    
-    if [ "$HAS_QUIC" = false ]; then
-        echo -e "${YELLOW}⚠️  aioquic not found.${NC}"
-        echo -e "${CYAN}Install QUIC support:${NC}"
-        echo -e "  ${GREEN}pip install aioquic${NC}"
-        return
-    fi
-    
-    local is_server=false
-    local peer_ip=""
-    
-    if [ -f "$PEER_FILE" ] && [ ! -f "$REMOTE_PEER_FILE" ]; then
-        is_server=true
-    elif [ -f "$REMOTE_PEER_FILE" ]; then
-        peer_ip=$(grep -oP '/ip4/\K[0-9.]+' "$REMOTE_PEER_FILE" | head -1)
-    fi
-    
-    echo -e "${GREEN}🎥 Starting QUIC video streaming (low-latency + reliability)...${NC}"
-    echo -e "${YELLOW}QUIC: UDP speed with TCP reliability, no head-of-line blocking${NC}"
-    echo -e "${YELLOW}Press 'q' in video window or Ctrl+C to stop${NC}\n"
-    
-    is_server_lower=$([ "$is_server" = true ] && echo "true" || echo "false")
-    python3 "$PROJECT_ROOT/python/live_video_quic.py" "$is_server_lower" "$peer_ip"
+    python3 "$PROJECT_ROOT/python/src/communication/live_video_udp.py" "$is_server_lower" "$peer_ip"
 }
 
 # ============================================================
@@ -449,14 +418,13 @@ EOF
 
 show_test_menu() {
     echo -e "\n${BOLD}${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${BOLD}${MAGENTA}  SELECT TEST MODE${NC}"
+    echo -e "${BOLD}${MAGENTA}  SELECT TEST MODE (Go libp2p networking)${NC}"
     echo -e "${BOLD}${MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}\n"
     
     echo -e "  ${GREEN}${BOLD}1${NC} - 💬 ${CYAN}Live Chat${NC}        (text messaging)"
     echo -e "  ${GREEN}${BOLD}2${NC} - 🎤 ${CYAN}Live Voice${NC}       (audio call)"
     echo -e "  ${GREEN}${BOLD}3${NC} - 🎥 ${CYAN}Live Video${NC}       (video call, TCP)"
-    echo -e "  ${GREEN}${BOLD}4${NC} - 🎥 ${CYAN}Live Video UDP${NC}    (low-latency, best-effort)"
-    echo -e "  ${GREEN}${BOLD}5${NC} - 🎥 ${CYAN}Live Video QUIC${NC}   (low-latency + reliability)"
+    echo -e "  ${GREEN}${BOLD}4${NC} - 🎥 ${CYAN}Live Video UDP${NC}   (low-latency, best-effort)"
     echo -e ""
     echo -e "  ${YELLOW}Q${NC} - Quit"
     echo ""
@@ -513,14 +481,13 @@ main() {
     
     while true; do
         show_test_menu
-        read -p "Select test [1-5, Q]: " CHOICE
+        read -p "Select test [1-4, Q]: " CHOICE
         
         case $CHOICE in
             1) run_live_chat ;;
             2) run_live_voice ;;
             3) run_live_video ;;
             4) run_live_video_udp ;;
-            5) run_live_video_quic ;;
             [Qq])
                 echo -e "\n${CYAN}Stopping node...${NC}"
                 cleanup
@@ -528,7 +495,7 @@ main() {
                 exit 0
                 ;;
             *)
-                echo -e "${RED}Invalid choice. Please select 1, 2, 3, 4, 5, or Q.${NC}"
+                echo -e "${RED}Invalid choice. Please select 1, 2, 3, 4, or Q.${NC}"
                 ;;
         esac
         
