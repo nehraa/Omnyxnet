@@ -248,7 +248,29 @@ else
 fi
 cd "$PROJECT_ROOT"
 
-# 4. Cap'n Proto Schema Compilation
+# 4. Matrix Multiplication Example (Complex Compute Test)
+test_section "Matrix Multiplication Example"
+echo -e "  ${CYAN}Testing distributed matrix multiplication (real-world example)...${NC}"
+
+cd python
+if python3 examples/distributed_matrix_multiply.py --size 5 --generate --verify 2>&1 | while read line; do
+    # Show key progress lines
+    if [[ "$line" == *"Split into"* ]] || [[ "$line" == *"Merged into"* ]] || \
+       [[ "$line" == *"COMPUTATION COMPLETE"* ]] || [[ "$line" == *"matches NumPy"* ]]; then
+        echo -e "  ${CYAN}$line${NC}"
+    fi
+done; then
+    # Clean up temp files
+    rm -f temp_matrix_*.json demo_matrix_*.json 2>/dev/null
+    echo -e "${GREEN}✅ Matrix multiplication example passed${NC}"
+    PASSED=$((PASSED + 1))
+else
+    echo -e "${RED}❌ Matrix multiplication example failed${NC}"
+    FAILED=$((FAILED + 1))
+fi
+cd "$PROJECT_ROOT"
+
+# 5. Cap'n Proto Schema Compilation
 test_section "Cap'n Proto Schema"
 
 # Check schema syntax (ignore Go annotations which require special setup)
