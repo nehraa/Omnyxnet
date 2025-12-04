@@ -57,20 +57,21 @@ const (
 
 // LibP2PPangeaNode represents a Pangea node using libp2p
 type LibP2PPangeaNode struct {
-	nodeID         uint32
-	host           host.Host
-	dht            *dht.IpfsDHT
-	ping           *ping.PingService
-	discovery      *routing.RoutingDiscovery
-	mdns           mdns.Service
-	store          *NodeStore
-	ctx            context.Context
-	cancel         context.CancelFunc
-	localMode      bool
-	testMode       bool
-	reachability   ReachabilityStatus
-	natType        NATType
-	reachabilityMu sync.RWMutex
+	nodeID          uint32
+	host            host.Host
+	dht             *dht.IpfsDHT
+	ping            *ping.PingService
+	discovery       *routing.RoutingDiscovery
+	mdns            mdns.Service
+	store           *NodeStore
+	ctx             context.Context
+	cancel          context.CancelFunc
+	localMode       bool
+	testMode        bool
+	reachability    ReachabilityStatus
+	natType         NATType
+	reachabilityMu  sync.RWMutex
+	computeProtocol *ComputeProtocol
 }
 
 // NewLibP2PPangeaNode creates a new libp2p-powered Pangea node
@@ -227,6 +228,16 @@ func (n *LibP2PPangeaNode) Start() error {
 	go n.monitorReachability()
 
 	return nil
+}
+
+// SetComputeProtocol sets the compute protocol for this node
+func (n *LibP2PPangeaNode) SetComputeProtocol(cp *ComputeProtocol) {
+	n.computeProtocol = cp
+}
+
+// GetComputeProtocol returns the compute protocol handler
+func (n *LibP2PPangeaNode) GetComputeProtocol() *ComputeProtocol {
+	return n.computeProtocol
 }
 
 // discoverPeers handles both local and global peer discovery

@@ -223,5 +223,56 @@ interface NodeService {
     
     # Get streaming statistics
     getStreamStats @21 () -> (stats :StreamStats);
+
+    # === Distributed Compute Service ===
+    
+    # Submit a compute job to be distributed across the network
+    submitComputeJob @22 (manifest :ComputeJobManifest) -> (jobId :Text, success :Bool, errorMsg :Text);
+
+    # Get the status of a submitted compute job
+    getComputeJobStatus @23 (jobId :Text) -> (status :ComputeJobStatus);
+
+    # Get the result of a completed compute job
+    getComputeJobResult @24 (jobId :Text, timeoutMs :UInt32) -> (result :Data, success :Bool, errorMsg :Text);
+
+    # Cancel a running compute job
+    cancelComputeJob @25 (jobId :Text) -> (success :Bool);
+
+    # Get node compute capacity
+    getComputeCapacity @26 () -> (capacity :ComputeCapacity);
+}
+
+# === Distributed Compute Structures ===
+
+struct ComputeJobManifest {
+    jobId @0 :Text;
+    wasmModule @1 :Data;
+    inputData @2 :Data;
+    splitStrategy @3 :Text;
+    minChunkSize @4 :UInt64;
+    maxChunkSize @5 :UInt64;
+    verificationMode @6 :Text;
+    timeoutSecs @7 :UInt32;
+    retryCount @8 :UInt32;
+    priority @9 :UInt32;
+    redundancy @10 :UInt32;
+}
+
+struct ComputeJobStatus {
+    jobId @0 :Text;
+    status @1 :Text;
+    progress @2 :Float32;
+    completedChunks @3 :UInt32;
+    totalChunks @4 :UInt32;
+    estimatedTimeRemaining @5 :UInt32;
+    errorMsg @6 :Text;
+}
+
+struct ComputeCapacity {
+    cpuCores @0 :UInt32;
+    ramMb @1 :UInt64;
+    currentLoad @2 :Float32;
+    diskMb @3 :UInt64;
+    bandwidthMbps @4 :Float32;
 }
 

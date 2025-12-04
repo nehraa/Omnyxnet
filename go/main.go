@@ -9,6 +9,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/pangea-net/go-node/pkg/compute"
 )
 
 func main() {
@@ -44,6 +46,10 @@ func main() {
 	shmMgr := NewSharedMemoryManager()
 	defer shmMgr.CloseAll()
 
+	// Create compute manager - shared across all connections
+	computeManager := compute.NewManager(compute.DefaultConfig())
+	log.Printf("⚙️ Compute manager initialized")
+
 	// Network adapter will be set based on which P2P implementation we use
 	var networkAdapter NetworkAdapter
 
@@ -66,6 +72,14 @@ func main() {
 			log.Fatalf("❌ Failed to start libp2p node: %v", err)
 		}
 
+		// Create and register compute protocol
+		computeProtocol := NewComputeProtocol(libp2pNode.GetHost(), computeManager, uint32(*nodeID))
+		libp2pNode.SetComputeProtocol(computeProtocol)
+
+		// Wire the compute protocol as the task delegator for distributed compute
+		computeManager.SetDelegator(computeProtocol)
+		log.Printf("🌐 Distributed compute protocol enabled")
+
 		// Note: The communication service (go/pkg/communication/communication.go)
 		// provides always-on chat/voice/video message handling.
 		// To integrate, add this import:
@@ -79,10 +93,10 @@ func main() {
 		// Create network adapter for libp2p
 		networkAdapter = NewLibP2PAdapter(libp2pNode, store)
 
-		// Start Cap'n Proto server for Python communication
+		// Start Cap'n Proto server for Python communication with shared compute manager
 		go func() {
 			log.Printf("🔌 Starting Cap'n Proto server on %s", *capnpAddr)
-			if err := StartCapnpServer(store, networkAdapter, shmMgr, *capnpAddr); err != nil {
+			if err := StartCapnpServerWithManager(store, networkAdapter, shmMgr, *capnpAddr, computeManager); err != nil {
 				log.Fatalf("❌ Failed to start Cap'n Proto server: %v", err)
 			}
 		}()

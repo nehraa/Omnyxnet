@@ -779,4 +779,163 @@ class GoNodeClient:
             logger.error(f"Error reading chat history: {e}")
             return []
 
+    # ============================================================
+    # Distributed Compute Methods
+    # ============================================================
+    
+    def submit_compute_job(self, job_id: str, input_data: bytes, 
+                           split_strategy: str = "fixed",
+                           min_chunk_size: int = 1024,
+                           max_chunk_size: int = 65536,
+                           timeout_secs: int = 300,
+                           priority: int = 5) -> Tuple[bool, str]:
+        """Submit a compute job to the Go orchestrator.
+        
+        Args:
+            job_id: Unique job identifier
+            input_data: The input data to process
+            split_strategy: How to split data ("fixed", "adaptive", "semantic")
+            min_chunk_size: Minimum chunk size in bytes
+            max_chunk_size: Maximum chunk size in bytes
+            timeout_secs: Job timeout in seconds
+            priority: Job priority (1-10, higher = more important)
+            
+        Returns:
+            Tuple of (success, error_message)
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_submit():
+            manifest = self.schema.ComputeJobManifest.new_message()
+            manifest.jobId = job_id
+            manifest.wasmModule = b""  # WASM module for complex jobs
+            manifest.inputData = input_data
+            manifest.splitStrategy = split_strategy
+            manifest.minChunkSize = min_chunk_size
+            manifest.maxChunkSize = max_chunk_size
+            manifest.verificationMode = "hash"
+            manifest.timeoutSecs = timeout_secs
+            manifest.retryCount = 3
+            manifest.priority = priority
+            manifest.redundancy = 1
+            
+            result = await self.service.submitComputeJob(manifest)
+            return result.success, result.errorMsg
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_submit(), self._loop)
+            return future.result(timeout=10.0)
+        except Exception as e:
+            logger.error(f"Error submitting compute job: {e}")
+            return False, str(e)
+    
+    def get_compute_job_status(self, job_id: str) -> Optional[Dict]:
+        """Get status of a compute job.
+        
+        Args:
+            job_id: The job identifier
+            
+        Returns:
+            Dict with status info or None if error
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_get_status():
+            result = await self.service.getComputeJobStatus(job_id)
+            status = result.status
+            return {
+                'jobId': status.jobId,
+                'status': status.status,
+                'progress': status.progress,
+                'completedChunks': status.completedChunks,
+                'totalChunks': status.totalChunks,
+                'estimatedTimeRemaining': status.estimatedTimeRemaining,
+                'errorMsg': status.errorMsg
+            }
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_get_status(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error getting compute job status: {e}")
+            return None
+    
+    def get_compute_job_result(self, job_id: str, timeout_ms: int = 60000) -> Tuple[Optional[bytes], str]:
+        """Get the result of a completed compute job.
+        
+        Args:
+            job_id: The job identifier
+            timeout_ms: How long to wait for result in milliseconds
+            
+        Returns:
+            Tuple of (result_data, error_message)
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_get_result():
+            result = await self.service.getComputeJobResult(job_id, timeout_ms)
+            if result.success:
+                return bytes(result.result), ""
+            return None, result.errorMsg
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_get_result(), self._loop)
+            return future.result(timeout=timeout_ms/1000 + 5)
+        except Exception as e:
+            logger.error(f"Error getting compute job result: {e}")
+            return None, str(e)
+    
+    def cancel_compute_job(self, job_id: str) -> bool:
+        """Cancel a running compute job.
+        
+        Args:
+            job_id: The job identifier
+            
+        Returns:
+            True if cancelled successfully
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_cancel():
+            result = await self.service.cancelComputeJob(job_id)
+            return result.success
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_cancel(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error cancelling compute job: {e}")
+            return False
+    
+    def get_compute_capacity(self) -> Optional[Dict]:
+        """Get compute capacity of the connected node.
+        
+        Returns:
+            Dict with capacity info or None if error
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_get_capacity():
+            result = await self.service.getCapacity()
+            cap = result.capacity
+            return {
+                'cpuCores': cap.cpuCores,
+                'ramMb': cap.ramMb,
+                'currentLoad': cap.currentLoad,
+                'diskMb': cap.diskMb,
+                'bandwidthMbps': cap.bandwidthMbps
+            }
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_get_capacity(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error getting compute capacity: {e}")
+            return None
+
 

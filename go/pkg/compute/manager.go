@@ -18,8 +18,10 @@ package compute
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
+	"unsafe"
 )
 
 // ComputeConfig holds configuration for the compute service
@@ -47,8 +49,8 @@ func DefaultConfig() ComputeConfig {
 		DefaultTimeout:      5 * time.Minute,
 		RetryCount:          3,
 		ComplexityThreshold: 1.0,
-		MinChunkSize:        64 * 1024,       // 64 KB
-		MaxChunkSize:        1024 * 1024,     // 1 MB
+		MinChunkSize:        64 * 1024,   // 64 KB
+		MaxChunkSize:        1024 * 1024, // 1 MB
 		VerificationMode:    VerificationHash,
 	}
 }
@@ -216,15 +218,26 @@ type ComputeCapacity struct {
 	BandwidthMbps float32 `json:"bandwidthMbps"`
 }
 
+// TaskDelegator is an interface for sending tasks to remote workers
+type TaskDelegator interface {
+	// DelegateTask sends a task to a remote worker and returns the result
+	DelegateTask(ctx context.Context, workerID string, task *ComputeTask) (*TaskResult, error)
+	// GetAvailableWorkers returns a list of available worker IDs
+	GetAvailableWorkers() []string
+	// HasWorkers returns true if there are remote workers available
+	HasWorkers() bool
+}
+
 // Manager is the main orchestrator for distributed compute
 type Manager struct {
-	config   ComputeConfig
-	jobs     map[string]*jobState
-	workers  map[string]*workerState
-	capacity ComputeCapacity
-	mu       sync.RWMutex
-	ctx      context.Context
-	cancel   context.CancelFunc
+	config    ComputeConfig
+	jobs      map[string]*jobState
+	workers   map[string]*workerState
+	capacity  ComputeCapacity
+	delegator TaskDelegator
+	mu        sync.RWMutex
+	ctx       context.Context
+	cancel    context.CancelFunc
 }
 
 // jobState tracks the internal state of a job
@@ -239,20 +252,20 @@ type jobState struct {
 
 // workerState tracks the internal state of a worker
 type workerState struct {
-	id            string
-	capacity      ComputeCapacity
-	activeTasks   int
-	lastSeen      time.Time
-	trustScore    float32
-	totalTasks    int
-	successTasks  int
+	id             string
+	capacity       ComputeCapacity
+	activeTasks    int
+	lastSeen       time.Time
+	trustScore     float32
+	totalTasks     int
+	successTasks   int
 	avgExecutionMs float64
 }
 
 // NewManager creates a new compute manager
 func NewManager(config ComputeConfig) *Manager {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &Manager{
 		config:   config,
 		jobs:     make(map[string]*jobState),
@@ -261,6 +274,15 @@ func NewManager(config ComputeConfig) *Manager {
 		ctx:      ctx,
 		cancel:   cancel,
 	}
+}
+
+// SetDelegator sets the task delegator for remote task execution
+func (m *Manager) SetDelegator(delegator TaskDelegator) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.delegator = delegator
+	log.Printf("⚙️ [COMPUTE] Task delegator configured")
+
 }
 
 // probeCapacity probes the system for compute capacity
@@ -279,16 +301,16 @@ func probeCapacity() ComputeCapacity {
 func (m *Manager) SubmitJob(manifest *JobManifest) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	if manifest.JobID == "" {
 		manifest.JobID = generateJobID()
 	}
-	
+
 	// Check if job already exists
 	if _, exists := m.jobs[manifest.JobID]; exists {
 		return "", fmt.Errorf("job %s already exists", manifest.JobID)
 	}
-	
+
 	// Create job state
 	state := &jobState{
 		manifest:   manifest,
@@ -298,12 +320,12 @@ func (m *Manager) SubmitJob(manifest *JobManifest) (string, error) {
 		startTime:  time.Now(),
 		lastUpdate: time.Now(),
 	}
-	
+
 	m.jobs[manifest.JobID] = state
-	
+
 	// Start processing in background
 	go m.processJob(manifest.JobID)
-	
+
 	return manifest.JobID, nil
 }
 
@@ -311,26 +333,26 @@ func (m *Manager) SubmitJob(manifest *JobManifest) (string, error) {
 func (m *Manager) GetJobStatus(jobID string) (*JobStatus, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	state, exists := m.jobs[jobID]
 	if !exists {
 		return nil, fmt.Errorf("job %s not found", jobID)
 	}
-	
+
 	completed := uint32(0)
 	for _, result := range state.results {
 		if result.Status == TaskCompleted {
 			completed++
 		}
 	}
-	
+
 	total := uint32(len(state.chunks))
 	if total == 0 {
 		total = 1
 	}
-	
+
 	progress := float32(completed) / float32(total)
-	
+
 	return &JobStatus{
 		JobID:                  jobID,
 		Status:                 state.status,
@@ -345,11 +367,11 @@ func (m *Manager) GetJobStatus(jobID string) (*JobStatus, error) {
 func (m *Manager) GetJobResult(jobID string, timeout time.Duration) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(m.ctx, timeout)
 	defer cancel()
-	
+
 	// Wait for job to complete
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
-	
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -361,14 +383,14 @@ func (m *Manager) GetJobResult(jobID string, timeout time.Duration) ([]byte, err
 				m.mu.RUnlock()
 				return nil, fmt.Errorf("job %s not found", jobID)
 			}
-			
+
 			if state.status == TaskCompleted {
 				// Merge results and return
 				result := m.mergeResults(state)
 				m.mu.RUnlock()
 				return result, nil
 			}
-			
+
 			if state.status == TaskFailed || state.status == TaskCancelled {
 				m.mu.RUnlock()
 				return nil, fmt.Errorf("job %s failed or was cancelled", jobID)
@@ -382,15 +404,15 @@ func (m *Manager) GetJobResult(jobID string, timeout time.Duration) ([]byte, err
 func (m *Manager) CancelJob(jobID string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	state, exists := m.jobs[jobID]
 	if !exists {
 		return fmt.Errorf("job %s not found", jobID)
 	}
-	
+
 	state.status = TaskCancelled
 	state.lastUpdate = time.Now()
-	
+
 	return nil
 }
 
@@ -405,7 +427,7 @@ func (m *Manager) GetCapacity() ComputeCapacity {
 func (m *Manager) RegisterWorker(workerID string, capacity ComputeCapacity) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	
+
 	m.workers[workerID] = &workerState{
 		id:         workerID,
 		capacity:   capacity,
@@ -422,14 +444,14 @@ func (m *Manager) processJob(jobID string) {
 		m.mu.Unlock()
 		return
 	}
-	
+
 	state.status = TaskComputing
 	manifest := state.manifest
 	m.mu.Unlock()
-	
+
 	// Calculate complexity
 	complexity := m.calculateComplexity(manifest)
-	
+
 	// Decide: delegate or execute locally
 	if complexity > m.config.ComplexityThreshold && len(m.workers) > 0 {
 		// Delegate to workers
@@ -443,8 +465,8 @@ func (m *Manager) processJob(jobID string) {
 // calculateComplexity calculates the complexity score for a job
 func (m *Manager) calculateComplexity(manifest *JobManifest) float64 {
 	dataFactor := float64(len(manifest.InputData)) / (1024.0 * 1024.0) // MB
-	wasmFactor := float64(len(manifest.WASMModule)) / (64.0 * 1024.0)   // 64KB units
-	
+	wasmFactor := float64(len(manifest.WASMModule)) / (64.0 * 1024.0)  // 64KB units
+
 	return dataFactor * (1.0 + wasmFactor*0.1)
 }
 
@@ -452,7 +474,7 @@ func (m *Manager) calculateComplexity(manifest *JobManifest) float64 {
 func (m *Manager) delegateJob(jobID string, manifest *JobManifest) {
 	// Split data into chunks
 	chunks := m.splitData(manifest.InputData, manifest.MinChunkSize, manifest.MaxChunkSize)
-	
+
 	m.mu.Lock()
 	state := m.jobs[jobID]
 	state.chunks = make([]ChunkInfo, len(chunks))
@@ -464,21 +486,39 @@ func (m *Manager) delegateJob(jobID string, manifest *JobManifest) {
 			Status: TaskPending,
 		}
 	}
+	delegator := m.delegator
 	m.mu.Unlock()
-	
-	// Delegate chunks to workers
-	// Note: executeChunk acquires the mutex internally for thread safety
+
+	// Get available workers
+	var workers []string
+	if delegator != nil && delegator.HasWorkers() {
+		workers = delegator.GetAvailableWorkers()
+		log.Printf("🌐 [COMPUTE] Found %d remote workers for job %s", len(workers), jobID)
+	}
+
+	// Delegate chunks to workers (remote or local)
 	var wg sync.WaitGroup
 	for i, chunk := range chunks {
 		wg.Add(1)
-		go func(index int, data []byte) {
-			defer wg.Done()
-			m.executeChunk(jobID, uint32(index), manifest, data)
-		}(i, chunk)
+		workerIdx := i % (len(workers) + 1) // +1 to include local
+
+		if workerIdx < len(workers) && delegator != nil {
+			// Delegate to remote worker
+			go func(index int, data []byte, workerID string) {
+				defer wg.Done()
+				m.executeChunkRemote(jobID, uint32(index), manifest, data, workerID, delegator)
+			}(i, chunk, workers[workerIdx])
+		} else {
+			// Execute locally
+			go func(index int, data []byte) {
+				defer wg.Done()
+				m.executeChunk(jobID, uint32(index), manifest, data)
+			}(i, chunk)
+		}
 	}
-	
+
 	wg.Wait()
-	
+
 	// Check if all chunks completed
 	m.mu.Lock()
 	allComplete := true
@@ -488,7 +528,7 @@ func (m *Manager) delegateJob(jobID string, manifest *JobManifest) {
 			break
 		}
 	}
-	
+
 	if allComplete {
 		state.status = TaskCompleted
 	} else {
@@ -510,10 +550,10 @@ func (m *Manager) executeJobLocally(jobID string, manifest *JobManifest) {
 		Status: TaskPending,
 	}}
 	m.mu.Unlock()
-	
+
 	// Execute the chunk
 	m.executeChunk(jobID, 0, manifest, manifest.InputData)
-	
+
 	// Mark job as complete
 	m.mu.Lock()
 	if result, ok := state.results[0]; ok && result.Status == TaskCompleted {
@@ -528,24 +568,247 @@ func (m *Manager) executeJobLocally(jobID string, manifest *JobManifest) {
 // executeChunk executes a single chunk
 func (m *Manager) executeChunk(jobID string, chunkIndex uint32, manifest *JobManifest, data []byte) {
 	start := time.Now()
-	
-	// In a real implementation, this would call the Rust compute engine via IPC
-	// For now, we simulate execution
-	result := &TaskResult{
-		TaskID:          fmt.Sprintf("%s:%d", jobID, chunkIndex),
-		Status:          TaskCompleted,
-		ResultData:      data, // Identity for simulation
-		ResultHash:      hashData(data),
-		ExecutionTimeMs: uint64(time.Since(start).Milliseconds()),
-		WorkerID:        "local",
+
+	// Execute the actual compute operation
+	resultData, err := executeMatrixBlockMultiply(data)
+
+	var result *TaskResult
+	if err != nil {
+		log.Printf("❌ [COMPUTE] Chunk %d execution failed: %v", chunkIndex, err)
+		result = &TaskResult{
+			TaskID:          fmt.Sprintf("%s:%d", jobID, chunkIndex),
+			Status:          TaskFailed,
+			ResultData:      nil,
+			ResultHash:      "",
+			ExecutionTimeMs: uint64(time.Since(start).Milliseconds()),
+			WorkerID:        "local",
+			Error:           err.Error(),
+		}
+	} else {
+		log.Printf("✅ [COMPUTE] Chunk %d completed locally: %d bytes → %d bytes",
+			chunkIndex, len(data), len(resultData))
+		result = &TaskResult{
+			TaskID:          fmt.Sprintf("%s:%d", jobID, chunkIndex),
+			Status:          TaskCompleted,
+			ResultData:      resultData,
+			ResultHash:      hashData(resultData),
+			ExecutionTimeMs: uint64(time.Since(start).Milliseconds()),
+			WorkerID:        "local",
+		}
 	}
-	
+
 	m.mu.Lock()
 	state := m.jobs[jobID]
 	state.results[chunkIndex] = result
-	state.chunks[chunkIndex].Status = TaskCompleted
+	if result.Status == TaskCompleted {
+		state.chunks[chunkIndex].Status = TaskCompleted
+	} else {
+		state.chunks[chunkIndex].Status = TaskFailed
+	}
 	state.lastUpdate = time.Now()
 	m.mu.Unlock()
+}
+
+// executeChunkRemote executes a chunk on a remote worker
+func (m *Manager) executeChunkRemote(jobID string, chunkIndex uint32, manifest *JobManifest, data []byte, workerID string, delegator TaskDelegator) {
+	start := time.Now()
+
+	log.Printf("📤 [COMPUTE] Delegating chunk %d to worker %s (%d bytes)",
+		chunkIndex, workerID[:12], len(data))
+
+	// Create compute task for remote execution
+	task := &ComputeTask{
+		TaskID:          fmt.Sprintf("%s:%d", jobID, chunkIndex),
+		ParentJobID:     jobID,
+		ChunkIndex:      chunkIndex,
+		WASMModule:      manifest.WASMModule,
+		InputData:       data,
+		FunctionName:    "matrix_block_multiply",
+		DelegationDepth: 0,
+		TimeoutMs:       uint64(manifest.TimeoutSecs) * 1000,
+	}
+
+	// Execute on remote worker via delegator
+	ctx, cancel := context.WithTimeout(m.ctx, time.Duration(manifest.TimeoutSecs)*time.Second)
+	defer cancel()
+
+	remoteResult, err := delegator.DelegateTask(ctx, workerID, task)
+
+	var result *TaskResult
+	if err != nil {
+		log.Printf("❌ [COMPUTE] Remote chunk %d failed on %s: %v", chunkIndex, workerID[:12], err)
+		// Fall back to local execution
+		log.Printf("🔄 [COMPUTE] Falling back to local execution for chunk %d", chunkIndex)
+		m.executeChunk(jobID, chunkIndex, manifest, data)
+		return
+	}
+
+	if remoteResult.Status == TaskCompleted {
+		log.Printf("✅ [COMPUTE] Chunk %d completed by worker %s in %dms: %d bytes",
+			chunkIndex, workerID[:12], remoteResult.ExecutionTimeMs, len(remoteResult.ResultData))
+		result = remoteResult
+		result.WorkerID = workerID
+	} else {
+		log.Printf("❌ [COMPUTE] Remote chunk %d returned failure: %s", chunkIndex, remoteResult.Error)
+		// Fall back to local execution
+		log.Printf("🔄 [COMPUTE] Falling back to local execution for chunk %d", chunkIndex)
+		m.executeChunk(jobID, chunkIndex, manifest, data)
+		return
+	}
+
+	result.ExecutionTimeMs = uint64(time.Since(start).Milliseconds())
+
+	m.mu.Lock()
+	state := m.jobs[jobID]
+	state.results[chunkIndex] = result
+	if result.Status == TaskCompleted {
+		state.chunks[chunkIndex].Status = TaskCompleted
+	} else {
+		state.chunks[chunkIndex].Status = TaskFailed
+	}
+	state.lastUpdate = time.Now()
+	m.mu.Unlock()
+}
+
+// ExecuteMatrixBlockMultiply executes matrix block multiplication (exported for compute protocol)
+// Input format: [a_rows:4][a_cols:4][a_data:a_rows*a_cols*8][b_rows:4][b_cols:4][b_data:b_rows*b_cols*8]
+// Output format: [c_rows:4][c_cols:4][c_data:c_rows*c_cols*8]
+func ExecuteMatrixBlockMultiply(data []byte) ([]byte, error) {
+	return executeMatrixBlockMultiply(data)
+}
+
+// executeMatrixBlockMultiply executes matrix block multiplication
+// Input format: [a_rows:4][a_cols:4][a_data:a_rows*a_cols*8][b_rows:4][b_cols:4][b_data:b_rows*b_cols*8]
+// Output format: [c_rows:4][c_cols:4][c_data:c_rows*c_cols*8]
+func executeMatrixBlockMultiply(data []byte) ([]byte, error) {
+	if len(data) < 16 {
+		return nil, fmt.Errorf("input data too short: %d bytes", len(data))
+	}
+
+	// Debug: print first 16 bytes
+	log.Printf("   📊 [COMPUTE] Data length: %d, first 16 bytes: %x", len(data), data[:16])
+
+	// Parse matrix A dimensions (big-endian)
+	aRows := uint32(data[0])<<24 | uint32(data[1])<<16 | uint32(data[2])<<8 | uint32(data[3])
+	aCols := uint32(data[4])<<24 | uint32(data[5])<<16 | uint32(data[6])<<8 | uint32(data[7])
+
+	log.Printf("   📊 [COMPUTE] Parsed dimensions: aRows=%d, aCols=%d", aRows, aCols)
+
+	aDataSize := int(aRows * aCols * 8)
+	if len(data) < 8+aDataSize+8 {
+		return nil, fmt.Errorf("input data incomplete for matrix A: need %d, have %d", 8+aDataSize+8, len(data))
+	}
+
+	// Parse matrix B dimensions
+	bOffset := 8 + aDataSize
+	bRows := uint32(data[bOffset])<<24 | uint32(data[bOffset+1])<<16 | uint32(data[bOffset+2])<<8 | uint32(data[bOffset+3])
+	bCols := uint32(data[bOffset+4])<<24 | uint32(data[bOffset+5])<<16 | uint32(data[bOffset+6])<<8 | uint32(data[bOffset+7])
+
+	bDataSize := int(bRows * bCols * 8)
+	if len(data) < bOffset+8+bDataSize {
+		return nil, fmt.Errorf("input data incomplete for matrix B")
+	}
+
+	// Validate dimensions for matrix multiplication
+	if aCols != bRows {
+		return nil, fmt.Errorf("matrix dimensions incompatible: %dx%d * %dx%d", aRows, aCols, bRows, bCols)
+	}
+
+	log.Printf("   📊 [COMPUTE] Multiplying %dx%d * %dx%d matrices", aRows, aCols, bRows, bCols)
+
+	// Read matrix A data
+	matrixA := make([][]float64, aRows)
+	offset := 8
+	for i := uint32(0); i < aRows; i++ {
+		matrixA[i] = make([]float64, aCols)
+		for j := uint32(0); j < aCols; j++ {
+			bits := uint64(data[offset])<<56 | uint64(data[offset+1])<<48 |
+				uint64(data[offset+2])<<40 | uint64(data[offset+3])<<32 |
+				uint64(data[offset+4])<<24 | uint64(data[offset+5])<<16 |
+				uint64(data[offset+6])<<8 | uint64(data[offset+7])
+			matrixA[i][j] = float64frombits(bits)
+			offset += 8
+		}
+	}
+
+	// Debug: print first element
+	log.Printf("   📊 [COMPUTE] Matrix A[0][0] = %f", matrixA[0][0])
+
+	// Read matrix B data
+	matrixB := make([][]float64, bRows)
+	offset = bOffset + 8
+	for i := uint32(0); i < bRows; i++ {
+		matrixB[i] = make([]float64, bCols)
+		for j := uint32(0); j < bCols; j++ {
+			bits := uint64(data[offset])<<56 | uint64(data[offset+1])<<48 |
+				uint64(data[offset+2])<<40 | uint64(data[offset+3])<<32 |
+				uint64(data[offset+4])<<24 | uint64(data[offset+5])<<16 |
+				uint64(data[offset+6])<<8 | uint64(data[offset+7])
+			matrixB[i][j] = float64frombits(bits)
+			offset += 8
+		}
+	}
+
+	// Debug: print first element of B
+	log.Printf("   📊 [COMPUTE] Matrix B[0][0] = %f", matrixB[0][0])
+
+	// Perform matrix multiplication: C = A * B
+	cRows := aRows
+	cCols := bCols
+	matrixC := make([][]float64, cRows)
+	for i := uint32(0); i < cRows; i++ {
+		matrixC[i] = make([]float64, cCols)
+		for j := uint32(0); j < cCols; j++ {
+			sum := 0.0
+			for k := uint32(0); k < aCols; k++ {
+				sum += matrixA[i][k] * matrixB[k][j]
+			}
+			matrixC[i][j] = sum
+		}
+	}
+
+	// Serialize result matrix
+	resultSize := 8 + int(cRows*cCols*8)
+	result := make([]byte, resultSize)
+
+	// Write dimensions (big-endian)
+	result[0] = byte(cRows >> 24)
+	result[1] = byte(cRows >> 16)
+	result[2] = byte(cRows >> 8)
+	result[3] = byte(cRows)
+	result[4] = byte(cCols >> 24)
+	result[5] = byte(cCols >> 16)
+	result[6] = byte(cCols >> 8)
+	result[7] = byte(cCols)
+
+	// Write matrix data
+	offset = 8
+	for i := uint32(0); i < cRows; i++ {
+		for j := uint32(0); j < cCols; j++ {
+			bits := float64bits(matrixC[i][j])
+			result[offset] = byte(bits >> 56)
+			result[offset+1] = byte(bits >> 48)
+			result[offset+2] = byte(bits >> 40)
+			result[offset+3] = byte(bits >> 32)
+			result[offset+4] = byte(bits >> 24)
+			result[offset+5] = byte(bits >> 16)
+			result[offset+6] = byte(bits >> 8)
+			result[offset+7] = byte(bits)
+			offset += 8
+		}
+	}
+
+	return result, nil
+}
+
+// float64frombits converts bits to float64
+func float64frombits(bits uint64) float64 {
+	return *(*float64)(unsafe.Pointer(&bits))
+}
+
+// float64bits converts float64 to bits
+func float64bits(f float64) uint64 {
+	return *(*uint64)(unsafe.Pointer(&f))
 }
 
 // splitData splits data into chunks
@@ -553,18 +816,18 @@ func (m *Manager) splitData(data []byte, minSize, maxSize int64) [][]byte {
 	if len(data) == 0 {
 		return [][]byte{}
 	}
-	
+
 	// Calculate chunk size
 	targetChunks := 8
 	chunkSize := int64(len(data)) / int64(targetChunks)
-	
+
 	if chunkSize < minSize {
 		chunkSize = minSize
 	}
 	if chunkSize > maxSize {
 		chunkSize = maxSize
 	}
-	
+
 	var chunks [][]byte
 	for i := int64(0); i < int64(len(data)); i += chunkSize {
 		end := i + chunkSize
@@ -573,7 +836,7 @@ func (m *Manager) splitData(data []byte, minSize, maxSize int64) [][]byte {
 		}
 		chunks = append(chunks, data[i:end])
 	}
-	
+
 	return chunks
 }
 
@@ -594,11 +857,11 @@ func (m *Manager) estimateTimeRemaining(state *jobState, completed, total uint32
 	if completed == 0 {
 		return 0
 	}
-	
+
 	elapsed := time.Since(state.startTime)
 	avgPerChunk := elapsed / time.Duration(completed)
 	remaining := total - completed
-	
+
 	return uint32(avgPerChunk.Seconds() * float64(remaining))
 }
 

@@ -88,38 +88,46 @@ class ComputeClient:
         self.port = port
         self.schema_path = schema_path
         self._connected = False
-        self._client = None
+        self._go_client = None
         self._jobs: Dict[str, Any] = {}
     
     def connect(self) -> bool:
-        """Connect to the Go orchestrator.
+        """Connect to the Go orchestrator via Cap'n Proto RPC.
         
         Returns:
             True if connected successfully
         """
         try:
-            # In a real implementation, this would establish a Cap'n Proto connection
-            # For now, we simulate connection
+            from src.client.go_client import GoNodeClient
+            
             logger.info(f"Connecting to compute service at {self.host}:{self.port}")
-            self._connected = True
-            return True
+            self._go_client = GoNodeClient(self.host, self.port, self.schema_path)
+            
+            if self._go_client.connect():
+                self._connected = True
+                logger.info(f"✅ Connected to Go node at {self.host}:{self.port}")
+                return True
+            else:
+                logger.error(f"Failed to connect to Go node at {self.host}:{self.port}")
+                return False
         except Exception as e:
             logger.error(f"Failed to connect: {e}")
             return False
     
     def disconnect(self):
         """Disconnect from the Go orchestrator."""
-        if self._connected:
+        if self._connected and self._go_client:
             logger.info("Disconnecting from compute service")
+            self._go_client.disconnect()
             self._connected = False
-            self._client = None
+            self._go_client = None
     
     def is_connected(self) -> bool:
         """Check if client is connected."""
-        return self._connected
+        return self._connected and self._go_client is not None
     
     def submit_job(self, job_definition, input_data: bytes, **kwargs) -> str:
-        """Submit a compute job.
+        """Submit a compute job to the Go orchestrator.
         
         Args:
             job_definition: A JobDefinition object
@@ -142,7 +150,7 @@ class ComputeClient:
         
         logger.info(f"Submitting job {job_id} with {len(input_data)} bytes of input")
         
-        # Store job locally for simulation
+        # Store job locally for tracking
         self._jobs[job_id] = {
             'manifest': manifest,
             'input_data': input_data,
@@ -152,16 +160,31 @@ class ComputeClient:
             'result': None,
         }
         
-        # In a real implementation, this would send the manifest via RPC
-        # For now, we simulate local execution
-        self._simulate_job_execution(job_id)
+        # Submit to Go orchestrator via RPC
+        success, error_msg = self._go_client.submit_compute_job(
+            job_id=job_id,
+            input_data=input_data,
+            split_strategy=manifest.get('splitStrategy', 'fixed'),
+            min_chunk_size=manifest.get('minChunkSize', 1024),
+            max_chunk_size=manifest.get('maxChunkSize', 65536),
+            timeout_secs=manifest.get('timeoutSecs', 300),
+            priority=manifest.get('priority', 5)
+        )
+        
+        if success:
+            logger.info(f"✅ Job {job_id} submitted to Go orchestrator")
+            self._jobs[job_id]['status'] = TaskStatus.ASSIGNED
+        else:
+            logger.warning(f"⚠️ Go orchestrator submission failed: {error_msg}")
+            logger.info(f"   Falling back to local execution for job {job_id}")
+            self._execute_locally(job_id)
         
         return job_id
     
-    def _simulate_job_execution(self, job_id: str):
-        """Simulate job execution locally.
+    def _execute_locally(self, job_id: str):
+        """Execute job locally when Go orchestrator is unavailable.
         
-        In a real implementation, the Go orchestrator would handle this.
+        This is the fallback when distributed execution fails.
         """
         job = self._jobs[job_id]
         definition = job['definition']
@@ -170,28 +193,34 @@ class ComputeClient:
         try:
             # Split
             job['status'] = TaskStatus.COMPUTING
+            print("   [LOCAL] SPLIT phase...")
             chunks = definition.split(input_data)
+            print(f"   [LOCAL] Split into {len(chunks)} chunks")
             
             # Execute each chunk
+            print("   [LOCAL] EXECUTE phase...")
             results = []
-            for chunk in chunks:
+            for i, chunk in enumerate(chunks):
                 result = definition.execute(chunk)
                 results.append(result)
+                print(f"   [LOCAL] Chunk {i+1}/{len(chunks)} completed")
             
             # Merge
+            print("   [LOCAL] MERGE phase...")
             final_result = definition.merge(results)
             
             job['result'] = final_result
             job['status'] = TaskStatus.COMPLETED
-            logger.info(f"Job {job_id} completed with {len(final_result)} bytes result")
+            logger.info(f"Job {job_id} completed locally with {len(final_result)} bytes result")
             
         except Exception as e:
             job['status'] = TaskStatus.FAILED
             job['error'] = str(e)
             logger.error(f"Job {job_id} failed: {e}")
     
+    
     def get_status(self, job_id: str) -> JobStatus:
-        """Get the status of a job.
+        """Get the status of a job from Go orchestrator.
         
         Args:
             job_id: The job ID
@@ -209,8 +238,35 @@ class ComputeClient:
         if job_id not in self._jobs:
             raise KeyError(f"Job {job_id} not found")
         
-        job = self._jobs[job_id]
+        # Try to get status from Go orchestrator
+        status_dict = self._go_client.get_compute_job_status(job_id)
         
+        if status_dict:
+            # Map Go status string to TaskStatus enum
+            status_map = {
+                'pending': TaskStatus.PENDING,
+                'assigned': TaskStatus.ASSIGNED,
+                'computing': TaskStatus.COMPUTING,
+                'verifying': TaskStatus.VERIFYING,
+                'completed': TaskStatus.COMPLETED,
+                'failed': TaskStatus.FAILED,
+                'timeout': TaskStatus.TIMEOUT,
+                'cancelled': TaskStatus.CANCELLED,
+            }
+            status = status_map.get(status_dict['status'].lower(), TaskStatus.PENDING)
+            
+            return JobStatus(
+                job_id=job_id,
+                status=status,
+                progress=status_dict['progress'],
+                completed_chunks=status_dict['completedChunks'],
+                total_chunks=status_dict['totalChunks'],
+                estimated_time_remaining=status_dict['estimatedTimeRemaining'],
+                error=status_dict['errorMsg'] if status_dict['errorMsg'] else None,
+            )
+        
+        # Fallback to local status
+        job = self._jobs[job_id]
         return JobStatus(
             job_id=job_id,
             status=job['status'],
@@ -222,7 +278,7 @@ class ComputeClient:
         )
     
     def get_result(self, job_id: str, timeout: float = 300.0) -> bytes:
-        """Get the result of a completed job.
+        """Get the result of a completed job from Go orchestrator.
         
         Args:
             job_id: The job ID
@@ -243,6 +299,19 @@ class ComputeClient:
         if job_id not in self._jobs:
             raise KeyError(f"Job {job_id} not found")
         
+        # Try to get result from Go orchestrator first
+        result_data, error_msg = self._go_client.get_compute_job_result(
+            job_id, 
+            timeout_ms=int(timeout * 1000)
+        )
+        
+        if result_data:
+            return result_data
+        
+        if error_msg:
+            logger.warning(f"Go orchestrator result fetch failed: {error_msg}")
+        
+        # Fallback to local result
         start = time.time()
         while time.time() - start < timeout:
             job = self._jobs[job_id]
@@ -261,7 +330,7 @@ class ComputeClient:
         raise TimeoutError(f"Timeout waiting for job {job_id}")
     
     def cancel_job(self, job_id: str) -> bool:
-        """Cancel a running job.
+        """Cancel a running job via Go orchestrator.
         
         Args:
             job_id: The job ID
@@ -272,15 +341,25 @@ class ComputeClient:
         if not self._connected:
             raise ConnectionError("Not connected to compute service")
         
+        # Try to cancel via Go orchestrator
+        cancelled = self._go_client.cancel_compute_job(job_id)
+        
+        if cancelled:
+            if job_id in self._jobs:
+                self._jobs[job_id]['status'] = TaskStatus.CANCELLED
+            logger.info(f"Job {job_id} cancelled via Go orchestrator")
+            return True
+        
+        # Fallback to local cancellation
         if job_id not in self._jobs:
             return False
         
         self._jobs[job_id]['status'] = TaskStatus.CANCELLED
-        logger.info(f"Job {job_id} cancelled")
+        logger.info(f"Job {job_id} cancelled locally")
         return True
     
     def get_capacity(self) -> ComputeCapacity:
-        """Get the compute capacity of the connected node.
+        """Get the compute capacity of the connected node from Go orchestrator.
         
         Returns:
             ComputeCapacity object
@@ -288,7 +367,19 @@ class ComputeClient:
         if not self._connected:
             raise ConnectionError("Not connected to compute service")
         
-        # In a real implementation, this would query the Go node
+        # Query capacity from Go node
+        capacity = self._go_client.get_compute_capacity()
+        
+        if capacity:
+            return ComputeCapacity(
+                cpu_cores=capacity.get('cpuCores', 4),
+                ram_mb=capacity.get('ramMb', 8192),
+                current_load=capacity.get('currentLoad', 0.0),
+                disk_mb=capacity.get('diskMb', 100000),
+                bandwidth_mbps=capacity.get('bandwidthMbps', 100.0),
+            )
+        
+        # Fallback to estimated local capacity
         return ComputeCapacity(
             cpu_cores=4,
             ram_mb=8192,

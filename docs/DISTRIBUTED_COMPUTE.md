@@ -1,8 +1,36 @@
 # Distributed Compute System - Architecture & Implementation
 
-**Version:** 1.0.0  
-**Last Updated:** 2025-12-03  
+**Version:** 1.1.0  
+**Last Updated:** 2025-12-04  
 **Status:** ✅ Active
+
+---
+
+## Quick Start (Cross-Device Testing)
+
+### Step 1: Run the test on your main device
+```bash
+./scripts/setup.sh
+# Select: 18 (Run Compute Tests)
+# Select: 3 (Distributed Compute)
+```
+
+### Step 2: Connect another device
+The script will show you a command like:
+```bash
+cd go && ./bin/go-node -node-id=2 -capnp-addr=:8080 -local -test \
+    -peers="/ip4/192.168.1.X/tcp/XXXXX/p2p/12D3KooW..."
+```
+Run this on your second device (copy the full command from the script output).
+
+### Step 3: Press Enter to run the compute test
+Once the second device connects, the coordinator will:
+1. Split the matrix into chunks
+2. Distribute chunks to connected workers
+3. Collect and merge results
+4. Verify against NumPy
+
+---
 
 ## Overview
 

@@ -32,21 +32,35 @@ type nodeServiceServer struct {
 
 // NewNodeServiceServer creates a new NodeService server
 func NewNodeServiceServer(store *NodeStore, network NetworkAdapter, shmMgr *SharedMemoryManager) NodeService_Server {
+	return NewNodeServiceServerWithManager(store, network, shmMgr, nil)
+}
+
+// NewNodeServiceServerWithManager creates a new NodeService server with an external compute manager
+func NewNodeServiceServerWithManager(store *NodeStore, network NetworkAdapter, shmMgr *SharedMemoryManager, manager *compute.Manager) NodeService_Server {
 	// Create a shared CES pipeline with default compression level 3
 	// This ensures the same encryption key is used across process and reconstruct
 	cesPipeline := NewCESPipeline(3)
 	if cesPipeline == nil {
 		log.Printf("WARNING: Failed to create shared CES pipeline")
 	}
-	
+
+	if manager == nil {
+		manager = compute.NewManager(compute.DefaultConfig())
+	}
+
 	return &nodeServiceServer{
 		store:          store,
 		network:        network,
 		shmMgr:         shmMgr,
 		streamStats:    &StreamingStats{},
-		computeManager: compute.NewManager(compute.DefaultConfig()),
+		computeManager: manager,
 		cesPipeline:    cesPipeline,
 	}
+}
+
+// GetComputeManager returns the compute manager for external integration
+func (s *nodeServiceServer) GetComputeManager() *compute.Manager {
+	return s.computeManager
 }
 
 // GetNode implements the getNode method
@@ -380,6 +394,11 @@ func (s *nodeServiceServer) GetNetworkMetrics(ctx context.Context, call NodeServ
 
 // StartCapnpServer starts the Cap'n Proto RPC server
 func StartCapnpServer(store *NodeStore, network NetworkAdapter, shmMgr *SharedMemoryManager, address string) error {
+	return StartCapnpServerWithManager(store, network, shmMgr, address, nil)
+}
+
+// StartCapnpServerWithManager starts the Cap'n Proto RPC server with an external compute manager
+func StartCapnpServerWithManager(store *NodeStore, network NetworkAdapter, shmMgr *SharedMemoryManager, address string, manager *compute.Manager) error {
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", address, err)
@@ -394,18 +413,22 @@ func StartCapnpServer(store *NodeStore, network NetworkAdapter, shmMgr *SharedMe
 			continue
 		}
 
-		go handleCapnpConnection(conn, store, network, shmMgr)
+		go handleCapnpConnectionWithManager(conn, store, network, shmMgr, manager)
 	}
 }
 
 func handleCapnpConnection(conn net.Conn, store *NodeStore, network NetworkAdapter, shmMgr *SharedMemoryManager) {
+	handleCapnpConnectionWithManager(conn, store, network, shmMgr, nil)
+}
+
+func handleCapnpConnectionWithManager(conn net.Conn, store *NodeStore, network NetworkAdapter, shmMgr *SharedMemoryManager, manager *compute.Manager) {
 	defer conn.Close()
 
 	transport := rpc.NewStreamTransport(conn)
 	defer transport.Close()
 
 	// Create the service implementation
-	serviceImpl := NewNodeServiceServer(store, network, shmMgr)
+	serviceImpl := NewNodeServiceServerWithManager(store, network, shmMgr, manager)
 
 	// Create RPC connection with our service as bootstrap
 	// NodeService_ServerToClient returns a NodeService which is a capnp.Client
@@ -1090,13 +1113,23 @@ func (s *nodeServiceServer) SubmitComputeJob(ctx context.Context, call NodeServi
 	// Extract manifest fields
 	jobID, _ := manifest.JobId()
 	wasmModule, _ := manifest.WasmModule()
-	inputData, _ := manifest.InputData()
+	inputDataRef, _ := manifest.InputData()
 	minChunkSize := manifest.MinChunkSize()
 	maxChunkSize := manifest.MaxChunkSize()
 	timeoutSecs := manifest.TimeoutSecs()
 	retryCount := manifest.RetryCount()
 	priority := manifest.Priority()
 	redundancy := manifest.Redundancy()
+
+	// IMPORTANT: Copy input data - Cap'n Proto slices reference the message buffer
+	// which gets recycled after RPC completes
+	inputData := make([]byte, len(inputDataRef))
+	copy(inputData, inputDataRef)
+
+	// Debug: log first bytes of input data
+	if len(inputData) > 16 {
+		log.Printf("📊 [COMPUTE] Input data first 16 bytes: %x", inputData[:16])
+	}
 
 	// Create job manifest for manager
 	jobManifest := &compute.JobManifest{
