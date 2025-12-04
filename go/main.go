@@ -68,9 +68,12 @@ func main() {
 
 		// Note: The communication service (go/pkg/communication/communication.go)
 		// provides always-on chat/voice/video message handling.
-		// It can be integrated by calling:
+		// To integrate, add this import:
+		//   import "github.com/pangea-net/go-node/pkg/communication"
+		// Then call:
 		//   commService := communication.NewCommunicationService(libp2pNode.GetHost(), communication.Config{})
 		//   commService.Start()
+		//   defer commService.Stop()
 		// Messages are automatically stored in ~/.pangea/communication/chat_history.json
 
 		// Create network adapter for libp2p

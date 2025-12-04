@@ -206,14 +206,20 @@ start_bootstrap_node() {
     local p2p_port=$(echo "$peer_addr" | grep -oP '/tcp/\K[0-9]+' || echo "unknown")
     local local_ip=$(echo "$peer_addr" | grep -oP '/ip4/\K[0-9.]+' || echo "unknown")
     
+    # Truncate peer_id if too long for display
+    local peer_id_display="$peer_id"
+    if [ ${#peer_id} -gt 16 ]; then
+        peer_id_display="${peer_id:0:16}..."
+    fi
+    
     echo -e "${GREEN}✅ Bootstrap node started!${NC}"
     echo ""
     echo -e "╔══════════════════════════════════════════════════════════════════╗"
     echo -e "║   🌍 PANGEA NET - CONNECTION INFORMATION                        ║"
     echo -e "╠══════════════════════════════════════════════════════════════════╣"
-    echo -e "║  ✓ Peer ID:   ${peer_id}"
-    echo -e "║  ✓ P2P Port:  ${p2p_port}"
-    echo -e "║  ✓ Your IP:   ${local_ip}"
+    printf "║  ✓ Peer ID:   %-52s ║\n" "$peer_id_display"
+    printf "║  ✓ P2P Port:  %-52s ║\n" "$p2p_port"
+    printf "║  ✓ Your IP:   %-52s ║\n" "$local_ip"
     echo -e "║                                                                  ║"
     echo -e "║  ℹ️  Note: Port and Peer ID change on each restart              ║"
     echo -e "╠══════════════════════════════════════════════════════════════════╣"
