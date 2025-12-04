@@ -7,20 +7,34 @@
 
 ## Test Organization
 
-Tests are organized by component/feature:
+Tests are organized by component/feature into subdirectories:
 
 ```
 tests/
-├── README.md           # This file
-├── communication/      # P2P communication tests (chat, voice, video)
-├── compute/            # Distributed compute and CES pipeline tests
-├── integration/        # Full system integration tests
-├── streaming/          # Media streaming tests
-├── test_all.sh         # Run all tests
-├── test_go.sh          # Go-specific tests
-├── test_python.sh      # Python-specific tests
-├── test_rust.sh        # Rust-specific tests
-└── ...
+├── README.md               # This file
+├── communication/          # P2P communication tests (chat, voice, video)
+│   ├── test_communication.sh
+│   └── test_p2p_streaming.py
+├── compute/                # Distributed compute tests
+│   └── test_compute.sh
+├── ces/                    # CES pipeline tests
+│   ├── test_ces_simple.sh
+│   ├── test_ces_wiring.py
+│   └── test_ces_compression.py
+├── streaming/              # Media streaming tests
+│   ├── test_streaming.sh
+│   ├── test_stream_updates.sh
+│   └── test_localhost_streaming.py
+├── integration/            # Full system integration tests
+│   ├── test_integration.sh
+│   ├── test_localhost_full.sh
+│   ├── test_ffi_integration.sh
+│   └── test_upload_download*.sh
+├── test_all.sh             # Run all tests
+├── test_go.sh              # Go-specific tests
+├── test_python.sh          # Python-specific tests
+├── test_rust.sh            # Rust-specific tests
+└── test_phase*.sh/py       # Phase-specific tests
 ```
 
 ## Quick Start
@@ -38,25 +52,29 @@ tests/
 
 **Communication Tests:**
 ```bash
-./tests/test_communication.sh   # P2P chat/voice/video
+./tests/communication/test_communication.sh   # P2P chat/voice/video
 ```
 
 **Compute Tests:**
 ```bash
-./tests/test_compute.sh         # Distributed compute
-./tests/test_ces_simple.sh      # CES pipeline wiring
-./tests/test_ffi_integration.sh # Go-Rust FFI
+./tests/compute/test_compute.sh               # Distributed compute
+```
+
+**CES Pipeline Tests:**
+```bash
+./tests/ces/test_ces_simple.sh                # CES pipeline wiring
 ```
 
 **Streaming Tests:**
 ```bash
-./tests/test_streaming.sh       # Media streaming
+./tests/streaming/test_streaming.sh           # Media streaming
 ```
 
 **Integration Tests:**
 ```bash
-./tests/test_integration.sh     # Full Go + Python connectivity
-./tests/test_localhost_full.sh  # Comprehensive multi-node test
+./tests/integration/test_integration.sh       # Full Go + Python connectivity
+./tests/integration/test_localhost_full.sh    # Comprehensive multi-node test
+./tests/integration/test_ffi_integration.sh   # Go-Rust FFI
 ```
 
 ## Golden Rule Architecture
@@ -98,7 +116,7 @@ Tests: Cargo build, FFI library, CES pipeline.
 
 ### Full Integration Test
 ```bash
-./tests/test_integration.sh
+./tests/integration/test_integration.sh
 ```
 
 Full system test with Go + Python connectivity:

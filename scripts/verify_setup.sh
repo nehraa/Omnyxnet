@@ -181,7 +181,7 @@ if [ $CHECKS_FAILED -eq 0 ]; then
     echo "You're ready to:"
     echo "  1. Run tests: ./setup.sh (option 7)"
     echo "  2. Start a node: ./scripts/easy_test.sh 1"
-    echo "  3. Run comprehensive test: bash tests/test_localhost_full.sh"
+    echo "  3. Run comprehensive test: bash tests/integration/test_localhost_full.sh"
     echo ""
     exit 0
 else

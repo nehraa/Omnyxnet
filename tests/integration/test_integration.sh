@@ -12,7 +12,7 @@ NC='\033[0m' # No Color
 
 # Get absolute paths
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 GO_DIR="$PROJECT_ROOT/go"
 PYTHON_DIR="$PROJECT_ROOT/python"
 SCHEMA_PATH="$GO_DIR/schema/schema.capnp"

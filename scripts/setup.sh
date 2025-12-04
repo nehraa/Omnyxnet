@@ -475,13 +475,13 @@ main() {
                 ;;
             5)
                 log_info "User selected: Run Integration Tests"
-                run_test "Integration Tests" "tests/test_integration.sh"
+                run_test "Integration Tests" "tests/integration/test_integration.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             6)
                 log_info "User selected: Run 2-Node StreamUpdates Test"
-                run_test "StreamUpdates Test" "tests/test_stream_updates.sh"
+                run_test "StreamUpdates Test" "tests/streaming/test_stream_updates.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
@@ -497,17 +497,17 @@ main() {
                 run_test "Go Tests" "tests/test_go.sh"
                 run_test "Python Tests" "tests/test_python.sh"
                 run_test "Rust Tests" "tests/test_rust.sh"
-                run_test "Integration Tests" "tests/test_integration.sh"
-                run_test "StreamUpdates Test" "tests/test_stream_updates.sh"
-                run_test "FFI Integration Test" "tests/test_ffi_integration.sh"
-                run_test "Upload/Download Local Test" "tests/test_upload_download_local.sh"
+                run_test "Integration Tests" "tests/integration/test_integration.sh"
+                run_test "StreamUpdates Test" "tests/streaming/test_stream_updates.sh"
+                run_test "FFI Integration Test" "tests/integration/test_ffi_integration.sh"
+                run_test "Upload/Download Local Test" "tests/integration/test_upload_download_local.sh"
                 log_success "All localhost tests completed!"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             8)
                 log_info "User selected: Run Comprehensive Localhost Test"
-                run_test "Comprehensive Localhost Test" "tests/test_localhost_full.sh"
+                run_test "Comprehensive Localhost Test" "tests/integration/test_localhost_full.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
@@ -540,7 +540,7 @@ main() {
                         ./scripts/easy_test.sh
                         ;;
                     3)
-                        run_interactive_test "Cross-Device Upload/Download Test" "tests/test_upload_download_cross_device.sh"
+                        run_interactive_test "Cross-Device Upload/Download Test" "tests/integration/test_upload_download_cross_device.sh"
                         ;;
                     *)
                         echo -e "${RED}Invalid option${NC}"
@@ -551,7 +551,7 @@ main() {
                 ;;
             10)
                 log_info "User selected: Run Upload/Download Tests (Local)"
-                run_test "Upload/Download Local Test" "tests/test_upload_download_local.sh"
+                run_test "Upload/Download Local Test" "tests/integration/test_upload_download_local.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
@@ -562,7 +562,7 @@ main() {
                 echo "Have you set up nodes on multiple devices? (y/n)"
                 read -p "> " setup_done
                 if [ "$setup_done" = "y" ]; then
-                    run_interactive_test "Cross-Device Upload/Download Test" "tests/test_upload_download_cross_device.sh"
+                    run_interactive_test "Cross-Device Upload/Download Test" "tests/integration/test_upload_download_cross_device.sh"
                 else
                     echo "Please use option 9 to setup cross-device testing first."
                 fi
@@ -571,13 +571,13 @@ main() {
                 ;;
             12)
                 log_info "User selected: Run FFI Integration Test"
-                run_test "FFI Integration Test" "tests/test_ffi_integration.sh"
+                run_test "FFI Integration Test" "tests/integration/test_ffi_integration.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
             13)
                 log_info "User selected: Run CES Wiring Test"
-                run_test "CES Wiring Test" "tests/test_ces_simple.sh"
+                run_test "CES Wiring Test" "tests/ces/test_ces_simple.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
@@ -601,7 +601,7 @@ main() {
                 ;;
             17)
                 log_info "User selected: Run Streaming & AI Wiring Test"
-                run_test "Streaming & AI Wiring Test" "tests/test_streaming.sh"
+                run_test "Streaming & AI Wiring Test" "tests/streaming/test_streaming.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
@@ -621,7 +621,7 @@ main() {
                     1)
                         echo ""
                         log_info "Running local compute tests..."
-                        run_test "Distributed Compute Test (Local)" "tests/test_compute.sh"
+                        run_test "Distributed Compute Test (Local)" "tests/compute/test_compute.sh"
                         ;;
                     2)
                         echo ""
@@ -629,7 +629,7 @@ main() {
                         # Check if a Go node is running by looking for the actual binary
                         if pgrep -f "bin/go-node" > /dev/null 2>&1; then
                             echo -e "${GREEN}✅ Go node is running${NC}"
-                            run_test "Distributed Compute Test" "tests/test_compute.sh"
+                            run_test "Distributed Compute Test" "tests/compute/test_compute.sh"
                         else
                             echo -e "${YELLOW}⚠️  No Go node running. Starting connection setup...${NC}"
                             echo ""

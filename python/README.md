@@ -2,11 +2,40 @@
 
 **Version:** 0.3.0-alpha  
 **Status:** Alpha - Local Testing  
-**Last Updated:** 2025-11-22
+**Last Updated:** 2025-12-04
 
 > ⚠️ **Development Status:** Core AI features implemented and functional for local testing. Requires validation with real network data before production use.
 
 Python AI component that monitors Go nodes and predicts network threats using 1D CNN.
+
+## Project Structure
+
+```
+python/
+├── src/
+│   ├── ai/                 # AI models and prediction
+│   │   ├── predictor.py
+│   │   ├── cnn_model.py
+│   │   └── ...
+│   ├── client/             # Go node client
+│   │   └── go_client.py
+│   ├── communication/      # P2P communication (deprecated reference)
+│   │   ├── live_chat.py
+│   │   ├── live_voice.py
+│   │   ├── live_video.py
+│   │   └── live_video_udp.py
+│   ├── compute/            # Distributed compute
+│   │   ├── job.py
+│   │   ├── client.py
+│   │   └── ...
+│   ├── data/               # Data management
+│   │   ├── peer_health.py
+│   │   └── timeseries.py
+│   └── utils/              # Utilities
+├── examples/               # Example scripts
+├── main.py                 # CLI entry point
+└── requirements.txt
+```
 
 ## Features
 

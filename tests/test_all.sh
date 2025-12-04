@@ -59,19 +59,19 @@ run_test "2" "Go Node" "tests/test_go.sh" "/tmp/test_go.log"
 run_test "3" "Rust Node" "tests/test_rust.sh" "/tmp/test_rust.log"
 
 # Test 4: Integration
-run_test "4" "Integration Tests" "tests/test_integration.sh" "/tmp/test_integration.log"
+run_test "4" "Integration Tests" "tests/integration/test_integration.sh" "/tmp/test_integration.log"
 
 # Test 5: FFI Integration
-run_test "5" "FFI Integration (Go-Rust)" "tests/test_ffi_integration.sh" "/tmp/test_ffi.log"
+run_test "5" "FFI Integration (Go-Rust)" "tests/integration/test_ffi_integration.sh" "/tmp/test_ffi.log"
 
 # Test 6: Stream Updates
-run_test "6" "Stream Updates (2-Node)" "tests/test_stream_updates.sh" "/tmp/test_stream.log"
+run_test "6" "Stream Updates (2-Node)" "tests/streaming/test_stream_updates.sh" "/tmp/test_stream.log"
 
 # Test 7: CES Wiring
-run_test "7" "CES Wiring" "tests/test_ces_simple.sh" "/tmp/test_ces.log"
+run_test "7" "CES Wiring" "tests/ces/test_ces_simple.sh" "/tmp/test_ces.log"
 
 # Test 8: Upload/Download Local
-run_test "8" "Upload/Download (Local)" "tests/test_upload_download_local.sh" "/tmp/test_upload_local.log"
+run_test "8" "Upload/Download (Local)" "tests/integration/test_upload_download_local.sh" "/tmp/test_upload_local.log"
 
 # Test 9: Compilation Check
 run_test "9" "Compilation Verification" "tests/test_compilation.sh" "/tmp/test_compilation.log"
@@ -80,7 +80,7 @@ run_test "9" "Compilation Verification" "tests/test_compilation.sh" "/tmp/test_c
 run_test "🔟" "Phase 1 Features (Brotli, Opus, Metrics)" "tests/test_phase1_features.sh" "/tmp/test_phase1.log"
 
 # Test 11: Streaming & AI Wiring Test
-run_test "1️⃣1️⃣" "Streaming & AI Wiring (Phase 1&2)" "tests/test_streaming.sh" "/tmp/test_streaming.log"
+run_test "1️⃣1️⃣" "Streaming & AI Wiring (Phase 1&2)" "tests/streaming/test_streaming.sh" "/tmp/test_streaming.log"
 
 # Test 12: Multi-node startup test (inline test)
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -186,7 +186,7 @@ if [ $FAILED_TESTS -eq 0 ]; then
     echo ""
     echo "Next steps:"
     echo "  1. For cross-device testing: Use ./scripts/easy_test.sh"
-    echo "  2. For comprehensive multi-node test: Run tests/test_localhost_full.sh"
+    echo "  2. For comprehensive multi-node test: Run tests/integration/test_localhost_full.sh"
     echo "  3. For WAN testing: Use setup.sh menu option 9"
     echo ""
     exit 0

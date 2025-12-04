@@ -289,7 +289,7 @@ run_live_chat() {
     fi
     
     is_server_lower=$([ "$is_server" = true ] && echo "true" || echo "false")
-    python3 "$PROJECT_ROOT/python/live_chat.py" "$is_server_lower" "$peer_ip"
+    python3 "$PROJECT_ROOT/python/src/communication/live_chat.py" "$is_server_lower" "$peer_ip"
 }
 
 # ============================================================
@@ -330,7 +330,7 @@ run_live_voice() {
     echo -e "${YELLOW}Press Ctrl+C to stop${NC}\n"
     
     is_server_lower=$([ "$is_server" = true ] && echo "true" || echo "false")
-    python3 "$PROJECT_ROOT/python/live_voice.py" "$is_server_lower" "$peer_ip"
+    python3 "$PROJECT_ROOT/python/src/communication/live_voice.py" "$is_server_lower" "$peer_ip"
 }
 
 # ============================================================
@@ -363,7 +363,7 @@ run_live_video() {
     echo -e "${YELLOW}Press 'q' in video window or Ctrl+C to stop${NC}\n"
     
     is_server_lower=$([ "$is_server" = true ] && echo "true" || echo "false")
-    python3 "$PROJECT_ROOT/python/live_video.py" "$is_server_lower" "$peer_ip"
+    python3 "$PROJECT_ROOT/python/src/communication/live_video.py" "$is_server_lower" "$peer_ip"
 }
 
 # ============================================================
@@ -397,7 +397,7 @@ run_live_video_udp() {
     echo -e "${YELLOW}Press 'q' in video window or Ctrl+C to stop${NC}\n"
     
     is_server_lower=$([ "$is_server" = true ] && echo "true" || echo "false")
-    python3 "$PROJECT_ROOT/python/live_video_udp.py" "$is_server_lower" "$peer_ip"
+    python3 "$PROJECT_ROOT/python/src/communication/live_video_udp.py" "$is_server_lower" "$peer_ip"
 }
 
 # ============================================================
