@@ -606,63 +606,74 @@ main() {
                 read -p "Press Enter to continue..."
                 ;;
             18)
-                log_info "User selected: Run Distributed Compute Test"
+                log_info "User selected: Run Compute Tests"
                 echo ""
                 echo -e "${BLUE}========================================${NC}"
-                echo -e "${BLUE}   Distributed Compute Test${NC}"
+                echo -e "${BLUE}   Compute Tests (organized examples)${NC}"
                 echo -e "${BLUE}========================================${NC}"
                 echo ""
-                echo "This test can run in two modes:"
-                echo "  1) Local mode (unit tests only, no connection needed)"
-                echo "  2) Distributed mode (requires connected nodes)"
+                
+                # Dynamically list all compute examples
+                EXAMPLES_DIR="$PROJECT_ROOT/tests/compute/examples"
+                if [ ! -d "$EXAMPLES_DIR" ]; then
+                    log_error "Examples directory not found: $EXAMPLES_DIR"
+                    echo ""
+                    read -p "Press Enter to continue..."
+                    continue
+                fi
+                
+                # Build array of example scripts
+                declare -a example_scripts
+                declare -a example_names
+                i=1
+                
+                for script in $(ls -1 "$EXAMPLES_DIR"/*.sh 2>/dev/null | sort); do
+                    # Extract name from filename (remove number prefix and .sh)
+                    name=$(basename "$script" .sh | sed 's/^[0-9]*_//' | tr '_' ' ')
+                    example_scripts[$i]="$script"
+                    example_names[$i]="$name"
+                    echo "  $i) $name"
+                    i=$((i+1))
+                done
+                
+                if [ $i -eq 1 ]; then
+                    echo "No compute examples found in $EXAMPLES_DIR"
+                    echo ""
+                    read -p "Press Enter to continue..."
+                    continue
+                fi
+                
+                echo "  q) Back to main menu"
                 echo ""
-                read -p "Select mode (1-2): " compute_mode
-                case $compute_mode in
-                    1)
-                        echo ""
-                        log_info "Running local compute tests..."
-                        run_test "Distributed Compute Test (Local)" "tests/compute/test_compute.sh"
-                        ;;
-                    2)
-                        echo ""
-                        echo -e "${YELLOW}Checking for connected nodes...${NC}"
-                        # Check if a Go node is running by looking for the actual binary
-                        if pgrep -f "bin/go-node" > /dev/null 2>&1; then
-                            echo -e "${GREEN}✅ Go node is running${NC}"
-                            run_test "Distributed Compute Test" "tests/compute/test_compute.sh"
-                        else
-                            echo -e "${YELLOW}⚠️  No Go node running. Starting connection setup...${NC}"
-                            echo ""
-                            echo "To run distributed compute tests, you need connected nodes."
-                            echo "Would you like to:"
-                            echo "  1) Start a local node first (launches live_test.sh)"
-                            echo "  2) Connect to an existing network (use Cross-Device setup)"
-                            echo "  3) Cancel"
-                            echo ""
-                            read -p "Select option (1-3): " node_choice
-                            case $node_choice in
-                                1)
-                                    echo ""
-                                    log_info "Starting local node via live_test.sh..."
-                                    ./scripts/live_test.sh
-                                    ;;
-                                2)
-                                    echo ""
-                                    echo "Please use the 'Setup Cross-Device/WAN Testing' option from the main menu."
-                                    ;;
-                                3)
-                                    echo "Cancelled."
-                                    ;;
-                                *)
-                                    echo -e "${RED}Invalid option${NC}"
-                                    ;;
-                            esac
-                        fi
-                        ;;
-                    *)
-                        echo -e "${RED}Invalid option${NC}"
-                        ;;
-                esac
+                read -p "Select example (1-$((i-1))) or (q) to quit: " example_choice
+                
+                if [ "$example_choice" = "q" ] || [ "$example_choice" = "Q" ]; then
+                    echo ""
+                    continue
+                fi
+                
+                # Validate choice
+                if ! [[ "$example_choice" =~ ^[0-9]+$ ]] || [ "$example_choice" -lt 1 ] || [ "$example_choice" -ge $i ]; then
+                    echo -e "${RED}Invalid selection${NC}"
+                    echo ""
+                    read -p "Press Enter to continue..."
+                    continue
+                fi
+                
+                # Run selected example
+                selected_script="${example_scripts[$example_choice]}"
+                selected_name="${example_names[$example_choice]}"
+                
+                echo ""
+                log_info "Running: $selected_name"
+                echo ""
+                
+                if [ -x "$selected_script" ]; then
+                    "$selected_script"
+                else
+                    log_error "Script not executable: $selected_script"
+                fi
+                
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
