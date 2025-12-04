@@ -395,9 +395,11 @@ show_menu() {
     echo "15) Run Phase 1 Audio Integration Test"
     echo "16) Run Phase 1 Performance Benchmarks"
     echo "17) Run Streaming & AI Wiring Test (Phase 1&2)"
-    echo "18) View Setup Log"
-    echo "19) View Test Log"
-    echo "20) Clean Build Artifacts"
+    echo "18) Run Distributed Compute Test"
+    echo "19) Run Live P2P Test (Chat/Voice/Video)"
+    echo "20) View Setup Log"
+    echo "21) View Test Log"
+    echo "22) Clean Build Artifacts"
     echo "0) Exit"
     echo ""
     echo -n "Select an option: "
@@ -604,14 +606,90 @@ main() {
                 read -p "Press Enter to continue..."
                 ;;
             18)
+                log_info "User selected: Run Distributed Compute Test"
+                echo ""
+                echo -e "${BLUE}========================================${NC}"
+                echo -e "${BLUE}   Distributed Compute Test${NC}"
+                echo -e "${BLUE}========================================${NC}"
+                echo ""
+                echo "This test can run in two modes:"
+                echo "  1) Local mode (unit tests only, no connection needed)"
+                echo "  2) Distributed mode (requires connected nodes)"
+                echo ""
+                read -p "Select mode (1-2): " compute_mode
+                case $compute_mode in
+                    1)
+                        echo ""
+                        log_info "Running local compute tests..."
+                        run_test "Distributed Compute Test (Local)" "tests/test_compute.sh"
+                        ;;
+                    2)
+                        echo ""
+                        echo -e "${YELLOW}Checking for connected nodes...${NC}"
+                        # Check if a Go node is running by looking for the actual binary
+                        if pgrep -f "bin/go-node" > /dev/null 2>&1; then
+                            echo -e "${GREEN}✅ Go node is running${NC}"
+                            run_test "Distributed Compute Test" "tests/test_compute.sh"
+                        else
+                            echo -e "${YELLOW}⚠️  No Go node running. Starting connection setup...${NC}"
+                            echo ""
+                            echo "To run distributed compute tests, you need connected nodes."
+                            echo "Would you like to:"
+                            echo "  1) Start a local node first (launches live_test.sh)"
+                            echo "  2) Connect to an existing network (use Cross-Device setup)"
+                            echo "  3) Cancel"
+                            echo ""
+                            read -p "Select option (1-3): " node_choice
+                            case $node_choice in
+                                1)
+                                    echo ""
+                                    log_info "Starting local node via live_test.sh..."
+                                    ./scripts/live_test.sh
+                                    ;;
+                                2)
+                                    echo ""
+                                    echo "Please use the 'Setup Cross-Device/WAN Testing' option from the main menu."
+                                    ;;
+                                3)
+                                    echo "Cancelled."
+                                    ;;
+                                *)
+                                    echo -e "${RED}Invalid option${NC}"
+                                    ;;
+                            esac
+                        fi
+                        ;;
+                    *)
+                        echo -e "${RED}Invalid option${NC}"
+                        ;;
+                esac
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            19)
+                log_info "User selected: Run Live P2P Test"
+                echo ""
+                echo -e "${BLUE}========================================${NC}"
+                echo -e "${BLUE}   Live P2P Test (Chat/Voice/Video)${NC}"
+                echo -e "${BLUE}========================================${NC}"
+                echo ""
+                echo "This launches the interactive live_test.sh script."
+                echo "You can test Chat, Voice, and Video streaming."
+                echo ""
+                read -p "Press Enter to start live test..."
+                ./scripts/live_test.sh
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            20)
                 log_info "User selected: View Setup Log"
                 less "$LOG_FILE"
                 ;;
-            19)
+            21)
                 log_info "User selected: View Test Log"
                 less "$TEST_LOG_FILE"
                 ;;
-            20)
+            22)
                 log_info "User selected: Clean Build Artifacts"
                 clean_builds
                 echo ""
