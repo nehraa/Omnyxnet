@@ -1,13 +1,16 @@
 # 🎯 Live Streaming Test - Quick Reference
 
-**One script. Two devices. Select 1/2/3 and GO!**
+**One script. Two devices. Select 1/2/3/4 and GO!**
+
+> **Note:** This script uses the **Go libp2p implementation** for all networking.
+> Python files (live_chat.py, live_video.py, etc.) are deprecated reference implementations only.
 
 ## 🚀 Quick Start
 
 ### Device 1 (First Device / Bootstrap)
 
 ```bash
-cd /home/home/Desktop/WGT
+cd /path/to/WGT
 ./scripts/live_test.sh
 ```
 
@@ -15,18 +18,18 @@ cd /home/home/Desktop/WGT
 2. Wait for the connection info to appear:
    ```
    ╔══════════════════════════════════════════════════════════════════╗
-   ║  CONNECTION INFORMATION                                          ║
+   ║   🌍 PANGEA NET - CONNECTION INFORMATION                        ║
    ╠══════════════════════════════════════════════════════════════════╣
-   ║  ✓ Peer ID: 12D3KooWNN2GVrf...
-   ║  ✓ P2P Port: 44119 (dynamically assigned)
-   ║  ✓ IP Address: 192.168.1.100
-   ║
-   ║  ℹ  Note: Port and Peer ID change on each restart
+   ║  ✓ Peer ID:   12D3KooWNN2GVrf...
+   ║  ✓ P2P Port:  44119 (dynamically assigned)
+   ║  ✓ Your IP:   192.168.1.100
+   ║                                                                  ║
+   ║  ℹ️  Note: Port and Peer ID change on each restart              ║
    ╠══════════════════════════════════════════════════════════════════╣
-   ║  📋 COPY THIS FULL ADDRESS TO OTHER DEVICE:
-   ║
-   ║  /ip4/192.168.1.100/tcp/44119/p2p/12D3KooWNN2GVrf...
-   ║
+   ║  📋 COPY THIS FULL ADDRESS TO OTHER DEVICE:                     ║
+   ║                                                                  ║
+   ║  /ip4/192.168.1.100/tcp/44119/p2p/12D3KooWNN2GVrf...            ║
+   ║                                                                  ║
    ╚══════════════════════════════════════════════════════════════════╝
    ```
 3. Copy the full `/ip4/...` address and share it with Device 2
@@ -48,10 +51,11 @@ cd /path/to/WGT
 ```
   1 - 💬 Live Chat      (text messaging)
   2 - 🎤 Live Voice     (audio call)
-  3 - 🎥 Live Video     (video call)
+  3 - 🎥 Live Video     (video call, TCP)
+  4 - 🎥 Live Video     (low-latency, UDP)
 ```
 
-Just press **1**, **2**, or **3** and BOOM - it works!
+Just press **1**, **2**, **3**, or **4** and BOOM - it works!
 
 ---
 
