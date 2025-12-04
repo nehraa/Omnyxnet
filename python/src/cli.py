@@ -1034,6 +1034,297 @@ def capacity(host, port):
         client.disconnect()
 
 
+# ============================================================================
+# TEST COMMANDS - Easy execution of compute and communication tests
+# ============================================================================
+
+@cli.group()
+def test():
+    """Run tests for compute and communication."""
+    pass
+
+
+@test.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+def all(host, port):
+    """
+    Run all tests (communication + compute).
+    
+    Example:
+        python main.py test all
+    """
+    click.echo("\n🚀 Running All Tests")
+    click.echo("=" * 60)
+    
+    # Run communication test
+    ctx = click.get_current_context()
+    ctx.invoke(communication, host=host, port=port)
+    
+    # Run compute test
+    ctx.invoke(ces, host=host, port=port)
+    
+    click.echo("\n" + "=" * 60)
+    click.echo("✅ All tests completed!")
+    click.echo("=" * 60)
+
+
+@test.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+def communication(host, port):
+    """
+    Test P2P communication (connection, peers, metrics).
+    
+    Example:
+        python main.py test communication
+    """
+    click.echo("\n📡 Communication Test")
+    click.echo("=" * 60)
+    
+    client = GoNodeClient(host, port)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect to Go node at {host}:{port}")
+        click.echo("   Make sure go-node is running:")
+        click.echo("   cd go && ./bin/go-node -node-id=1 -capnp-addr=:8080 -libp2p=true -local")
+        sys.exit(1)
+    
+    click.echo(f"✅ Connected to Go node at {host}:{port}")
+    
+    # Get nodes
+    nodes = client.get_all_nodes()
+    click.echo(f"\n📊 Found {len(nodes)} node(s):")
+    for node in nodes:
+        click.echo(f"   Node {node['id']}: latency={node['latencyMs']:.1f}ms, threat={node['threatScore']:.3f}")
+    
+    # Get peers
+    peers = client.get_connected_peers()
+    click.echo(f"\n🔗 Connected peers: {peers}")
+    
+    # Network metrics
+    metrics = client.get_network_metrics()
+    if metrics:
+        click.echo(f"\n📈 Network metrics:")
+        click.echo(f"   Avg RTT: {metrics.get('avgRttMs', 0):.1f}ms")
+        click.echo(f"   Bandwidth: {metrics.get('bandwidthMbps', 0):.1f} Mbps")
+        click.echo(f"   Peer count: {metrics.get('peerCount', 0)}")
+    
+    client.disconnect()
+    click.echo("\n✅ Communication test PASSED!")
+
+
+@test.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--size', default=5000, help='Test data size in bytes')
+def ces(host, port, size):
+    """
+    Test CES compute pipeline (Compress → Encrypt → Shard).
+    
+    Example:
+        python main.py test ces
+        python main.py test ces --size 10000
+    """
+    click.echo("\n🖥️  CES Compute Test")
+    click.echo("=" * 60)
+    
+    client = GoNodeClient(host, port)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect to Go node at {host}:{port}")
+        sys.exit(1)
+    
+    click.echo(f"✅ Connected to Go node")
+    
+    # Generate test data
+    test_data = b"Hello World! " * (size // 13 + 1)
+    test_data = test_data[:size]
+    click.echo(f"\n📦 Test data size: {len(test_data)} bytes")
+    
+    # CES process
+    click.echo("\n🔄 Running CES process...")
+    start = time.time()
+    shards = client.ces_process(test_data, compression_level=3)
+    elapsed = time.time() - start
+    
+    if shards is None:
+        click.echo("❌ CES process failed")
+        client.disconnect()
+        sys.exit(1)
+    
+    total_size = sum(len(s) for s in shards)
+    ratio = len(test_data) / total_size if total_size > 0 else 0
+    
+    click.echo(f"✅ Created {len(shards)} shards in {elapsed*1000:.1f}ms")
+    click.echo(f"   Total shard size: {total_size} bytes")
+    click.echo(f"   Compression ratio: {ratio:.2f}x")
+    
+    # Reconstruct
+    click.echo("\n🔄 Reconstructing data...")
+    start = time.time()
+    shard_present = [True] * len(shards)
+    reconstructed = client.ces_reconstruct(shards, shard_present, compression_level=3)
+    elapsed = time.time() - start
+    
+    if reconstructed is None:
+        click.echo("❌ CES reconstruct failed")
+        client.disconnect()
+        sys.exit(1)
+    
+    if reconstructed == test_data:
+        click.echo(f"✅ Reconstructed in {elapsed*1000:.1f}ms")
+        click.echo("✅ Data integrity verified!")
+    else:
+        click.echo(f"❌ Data mismatch! Original: {len(test_data)}, Reconstructed: {len(reconstructed)}")
+        client.disconnect()
+        sys.exit(1)
+    
+    client.disconnect()
+    click.echo("\n✅ CES compute test PASSED!")
+
+
+@test.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.argument('peer_address', required=False)
+def manual_connect(host, port, peer_address):
+    """
+    Manually connect to a peer (use when mDNS fails).
+    
+    ONLY NEED IP:PORT - peer ID is auto-detected!
+    
+    Example:
+        python main.py test manual-connect 192.168.1.100:9081
+        python main.py test manual-connect 10.0.0.5:9081
+        python main.py test manual-connect  # Interactive mode
+    """
+    
+    # Connect to local Go node first
+    click.echo("\n🔗 Manual Peer Connection")
+    click.echo("=" * 60)
+    
+    client = GoNodeClient(host, port)
+    if not client.connect():
+        click.echo(f"\n❌ Failed to connect to local Go node at {host}:{port}")
+        click.echo("\n📖 Make sure Go node is running:")
+        click.echo("   cd go && ./bin/go-node -node-id=1 -capnp-addr=:8080 -libp2p=true -local")
+        sys.exit(1)
+    
+    click.echo(f"✅ Connected to local node\n")
+    
+    # If no address provided, show interactive help
+    if not peer_address:
+        click.echo("📋 To connect to a remote node, you need:")
+        click.echo("   1. The remote node's IP address")
+        click.echo("   2. The remote node's libp2p port (usually 9081, 9082, etc.)\n")
+        click.echo("📍 How to find this on the REMOTE MACHINE:")
+        click.echo("   Run: ./go/bin/go-node -node-id=2 -capnp-addr=:8081 -libp2p=true")
+        click.echo("   Look for a line with 'listening' or 'multiaddr'")
+        click.echo("   Example: /ip4/192.168.1.100/tcp/9081/p2p/...\n")
+        click.echo("📝 Copy the IP and port from that output\n")
+        
+        peer_address = click.prompt("Enter peer address (IP:port)", type=str)
+        if not peer_address:
+            click.echo("❌ Cancelled")
+            client.disconnect()
+            sys.exit(1)
+    
+    # Parse address
+    if ":" not in peer_address:
+        click.echo(f"❌ Invalid format. Use IP:port (e.g., 192.168.1.100:9081)")
+        client.disconnect()
+        sys.exit(1)
+    
+    try:
+        peer_host, peer_port_str = peer_address.rsplit(":", 1)
+        peer_port_num = int(peer_port_str)
+    except ValueError:
+        click.echo(f"❌ Invalid port number")
+        client.disconnect()
+        sys.exit(1)
+    
+    click.echo(f"🔍 Looking for peer at {peer_host}:{peer_port_num}...")
+    
+    # Try to auto-detect peer ID by trying different IDs (2-10)
+    peer_id = None
+    for candidate_id in range(2, 11):
+        click.echo(f"   Trying peer ID {candidate_id}...", nl=False)
+        success, quality = client.connect_to_peer(candidate_id, peer_host, peer_port_num)
+        if success:
+            peer_id = candidate_id
+            click.echo(f" ✅ Connected!")
+            break
+        else:
+            click.echo(f" ✗", nl=False)
+    
+    if peer_id is None:
+        click.echo(f"\n\n❌ Could not connect to {peer_host}:{peer_port_num}")
+        click.echo("\n🔧 Troubleshooting:")
+        click.echo(f"   • Check the remote node is running on port {peer_port_num}")
+        click.echo(f"   • Verify IP address is correct: ping {peer_host}")
+        click.echo(f"   • Check firewall settings on both machines")
+        click.echo(f"   • Try a different port (maybe 9082, 9083, etc.)")
+        client.disconnect()
+        sys.exit(1)
+    
+    # Show connection details
+    click.echo(f"\n✅ Successfully connected to peer {peer_id}!")
+    click.echo(f"   Address: {peer_host}:{peer_port_num}")
+    quality = client.get_connection_quality(peer_id)
+    if quality:
+        click.echo(f"\n📊 Connection Quality:")
+        click.echo(f"   Latency: {quality['latencyMs']:.1f}ms")
+        click.echo(f"   Jitter: {quality['jitterMs']:.1f}ms")
+        click.echo(f"   Packet Loss: {quality['packetLoss']*100:.2f}%")
+    
+    # Send test message
+    click.echo(f"\n📤 Sending test message...")
+    msg_success = client.send_message(peer_id, b"Hello from manual connection!")
+    if msg_success:
+        click.echo("✅ Test message sent!")
+    else:
+        click.echo("⚠️  Message send returned false (peer may not accept messages)")
+    
+    # Show status
+    peers = client.get_connected_peers()
+    click.echo(f"\n🔗 Connected peers: {peers}")
+    
+    click.echo("\n" + "=" * 60)
+    click.echo("✅ Ready to use! Try:")
+    click.echo("   - python main.py chat send <message>")
+    click.echo("   - python main.py streaming start video")
+    click.echo("=" * 60)
+    
+    client.disconnect()
+
+
+@test.command()
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.argument('peer_id', default=2, type=int)
+@click.option('--message', '-m', default='Hello from CLI!', help='Message to send')
+def send(host, port, peer_id, message):
+    """
+    Send a test message to a peer.
+    
+    Example:
+        python main.py test send 2
+        python main.py test send 2 -m "Custom message"
+    """
+    client = GoNodeClient(host, port)
+    if not client.connect():
+        click.echo(f"❌ Failed to connect to Go node")
+        sys.exit(1)
+    
+    click.echo(f"📤 Sending to node {peer_id}: {message}")
+    
+    if client.send_message(peer_id, message.encode()):
+        click.echo("✅ Message sent!")
+    else:
+        click.echo("❌ Failed to send message")
+    
+    client.disconnect()
+
+
 if __name__ == '__main__':
     cli()
 

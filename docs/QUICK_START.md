@@ -41,6 +41,34 @@
 - **Status:** Alpha - works locally
 
 ### 4. Run Tests
+
+**Easiest Way (Interactive Menu):**
+```bash
+# Interactive test menu - tests communication, compute, messaging
+./scripts/test_pangea.sh
+
+# Run all tests automatically
+./scripts/test_pangea.sh --all
+```
+
+**Python CLI Tests:**
+```bash
+cd python && source .venv/bin/activate
+
+# Test communication (P2P connection)
+python main.py test communication
+
+# Test compute (CES pipeline)
+python main.py test ces
+
+# Test all
+python main.py test all
+
+# Manual peer connection (when mDNS fails)
+python main.py test manual-connect 192.168.1.100:9081
+```
+
+**Component Tests:**
 ```bash
 # Run all tests
 ./tests/test_all.sh
