@@ -23,18 +23,43 @@ if pgrep -f "bin/go-node" > /dev/null 2>&1 && nc -z localhost 8080 2>/dev/null; 
     NODE1_OK=true
 else
     echo "  ⚠️  Go node not found on :8080"
-    echo "     Start with: ./bin/go-node -node-id=1 -capnp-addr=:8080 -libp2p=true"
+    echo "  ⏳ Starting Go node automatically..."
+    
+    # Build if needed
+    if [ ! -f "$PROJECT_ROOT/go/bin/go-node" ]; then
+        echo "  🔨 Building go-node..."
+        cd "$PROJECT_ROOT/go" && make build > /dev/null 2>&1 && cd "$PROJECT_ROOT"
+    fi
+    
+    # Set library path for Rust
+    export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
+    export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
+    
+    # Start node in background
+    "$PROJECT_ROOT/go/bin/go-node" -node-id=1 -capnp-addr=:8080 -libp2p=true -local > /tmp/go_node_1.log 2>&1 &
+    NODE_PID=$!
+    
+    echo "  Started (PID: $NODE_PID)"
+    echo "  ⏳ Waiting for node to initialize..."
+    
+    # Wait for node to be ready
+    sleep 3
+    
+    # Check if it's running
+    if pgrep -f "bin/go-node.*node-id=1" > /dev/null 2>&1 && nc -z localhost 8080 2>/dev/null; then
+        echo "  ✅ Go node running on :8080"
+        NODE1_OK=true
+    else
+        echo "  ❌ Failed to start Go node"
+        echo "  Check log: tail /tmp/go_node_1.log"
+        exit 1
+    fi
 fi
 
 echo ""
 
-if [ "$NODE1_OK" = false ]; then
-    echo "❌ Go node required. Cannot proceed."
-    exit 1
-fi
 
-
-echo "✅ Go node running"
+echo "✅ Go node ready"
 echo ""
 
 # Run matrix multiplication
