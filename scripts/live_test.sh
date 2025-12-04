@@ -226,7 +226,7 @@ start_bootstrap_node() {
     echo -e "║  📋 COPY THIS FULL ADDRESS TO OTHER DEVICE:                     ║"
     echo -e "║                                                                  ║"
     echo -e "║  ${CYAN}${peer_addr}${NC}"
-    echo -e "║                                                                  ║"
+    echo -e "║  (Address shown above - copy the entire line)                   ║"
     echo -e "╚══════════════════════════════════════════════════════════════════╝"
     echo ""
     
