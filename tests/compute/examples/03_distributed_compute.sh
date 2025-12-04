@@ -71,7 +71,8 @@ echo "⚙️  Running Distributed Matrix Multiplication"
 echo "=============================================="
 echo ""
 
-python3 examples/distributed_matrix_multiply.py --size 5 --generate --verify
+# Use --connect to actually use the Go node for distributed compute
+python3 examples/distributed_matrix_multiply.py --size 5 --generate --verify --connect --host localhost --port 8080
 
 echo ""
 echo "✅ Matrix multiplication distributed compute test completed!"
