@@ -66,6 +66,13 @@ func main() {
 			log.Fatalf("❌ Failed to start libp2p node: %v", err)
 		}
 
+		// Note: The communication service (go/pkg/communication/communication.go)
+		// provides always-on chat/voice/video message handling.
+		// It can be integrated by calling:
+		//   commService := communication.NewCommunicationService(libp2pNode.GetHost(), communication.Config{})
+		//   commService.Start()
+		// Messages are automatically stored in ~/.pangea/communication/chat_history.json
+
 		// Create network adapter for libp2p
 		networkAdapter = NewLibP2PAdapter(libp2pNode, store)
 
