@@ -116,9 +116,9 @@ func (c *CESPipeline) Process(data []byte) ([]ShardData, error) {
 	totalSize := uint64(0)
 
 	// Pre-validate all shards before processing
-	// Use a smaller backing array size for the slice header
+	// Use maxShardCount for the backing array to match the validation above
 	shardCount := int(ffiShards.count)
-	cShards := (*[1000]C.FFIShard)(unsafe.Pointer(ffiShards.shards))[:shardCount:shardCount]
+	cShards := (*[maxShardCount]C.FFIShard)(unsafe.Pointer(ffiShards.shards))[:shardCount:shardCount]
 
 	for i := 0; i < shardCount; i++ {
 		if cShards[i].data == nil {

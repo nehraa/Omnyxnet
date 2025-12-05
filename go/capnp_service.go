@@ -416,11 +416,14 @@ func (s *nodeServiceServer) GetNetworkMetrics(ctx context.Context, call NodeServ
 		metrics.SetPacketLoss(0.0)
 	}
 
-	// Bandwidth estimation requires active measurement - use conservative estimate based on peer count
-	// More peers typically means more available network capacity
-	estimatedBandwidth := float32(10.0) // Base 10 Mbps
+	// Bandwidth estimation: Since actual bandwidth measurement requires active probing
+	// (which adds network overhead), we use a heuristic based on peer count.
+	// Assumption: More connected peers indicate a well-connected node with higher capacity.
+	// Base: 10 Mbps (typical home internet), scaling linearly with peers up to 1 Gbps max.
+	// For production, consider implementing actual bandwidth probing or using libp2p metrics.
+	estimatedBandwidth := float32(10.0) // Base 10 Mbps for isolated node
 	if peerCount > 0 {
-		estimatedBandwidth = float32(peerCount) * 10.0 // Scale with peer count
+		estimatedBandwidth = float32(peerCount) * 10.0
 		if estimatedBandwidth > 1000.0 {
 			estimatedBandwidth = 1000.0 // Cap at 1 Gbps
 		}

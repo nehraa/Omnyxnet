@@ -47,7 +47,9 @@ impl Default for SandboxConfig {
             max_cpu_cycles: 1_000_000_000,        // 1 billion
             max_execution_time_ms: 30_000,        // 30 seconds
             enable_wasi: false,
-            simulation_mode: true, // Default to simulation for safety
+            // SECURITY: Default to simulation for safety - MUST be set to false in production
+            // environments after Wasmtime integration is complete
+            simulation_mode: true,
         }
     }
 }
@@ -213,7 +215,7 @@ impl WasmSandbox {
         } else {
             // Production mode: would use Wasmtime here
             // For now, return an error indicating real execution is not yet implemented
-            Err(ComputeError::ExecutionError(
+            Err(ComputeError::WasmExecutionError(
                 "Production WASM execution not yet implemented. Enable simulation_mode for testing or integrate Wasmtime.".into()
             ))
         }

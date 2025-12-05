@@ -60,6 +60,7 @@ impl ComputeEngine {
             max_cpu_cycles: config.max_cpu_cycles,
             max_execution_time_ms: config.max_execution_time_ms,
             enable_wasi: config.enable_wasi,
+            simulation_mode: true, // Default to simulation mode for safety
         };
         
         let sandbox = WasmSandbox::new(sandbox_config)?;

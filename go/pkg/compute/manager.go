@@ -827,8 +827,9 @@ func executeMatrixBlockMultiply(data []byte) ([]byte, error) {
 	log.Printf("   📊 [COMPUTE] Parsed dimensions: aRows=%d, aCols=%d", aRows, aCols)
 
 	// Check for integer overflow before multiplication: aRows * aCols * 8
-	// Maximum safe value: math.MaxInt / 8 to prevent overflow when multiplied by 8
-	const maxMatrixElements = math.MaxInt32 / 8
+	// Use uint64 arithmetic and cap at MaxInt32/8 to ensure the result fits in int
+	// (int is 32-bit on some platforms, and we need safe bounds for slice operations)
+	const maxMatrixElements uint64 = math.MaxInt32 / 8
 	if uint64(aRows)*uint64(aCols) > maxMatrixElements {
 		return nil, fmt.Errorf("matrix A dimensions too large: %d x %d would overflow", aRows, aCols)
 	}
