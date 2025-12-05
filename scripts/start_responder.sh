@@ -108,14 +108,27 @@ sleep 5
 PEER_COUNT=$(grep "Connected peers: [1-9]" "$LOG_FILE" 2>/dev/null | tail -1 | grep -o '[0-9]*$' || echo "0")
 
 if [ "$PEER_COUNT" -gt 0 ]; then
+    # Extract connected peer info from logs
+    CONNECTED_PEER=$(grep "PEER CONNECTED" "$LOG_FILE" 2>/dev/null | tail -1)
+    PEER_IP=$(echo "$CONNECTED_PEER" | grep -o 'IP=[^ ]*' | sed 's/IP=//')
+    PEER_ID=$(echo "$CONNECTED_PEER" | grep -o 'PeerID=[^ ]*' | sed 's/PeerID=//' | cut -c1-12)
+    
     echo -e "${GREEN}✅ Connected to initiator!${NC}"
     echo ""
     echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
     echo -e "${GREEN}🎉 CONNECTION ESTABLISHED!${NC}"
     echo ""
-    echo -e "Initiator IP: ${GREEN}${INITIATOR_IP}${NC}"
+    echo -e "  ${CYAN}This Node (Responder/Worker):${NC}"
+    echo -e "    Role: WORKER - will execute tasks sent by initiator"
+    echo -e "    Libp2p Port: 7778"
     echo ""
-    echo -e "You can now run tests from setup.sh on either device:"
+    echo -e "  ${CYAN}Connected To (Initiator/Manager):${NC}"
+    echo -e "    IP Address: ${GREEN}${INITIATOR_IP}${NC}"
+    echo -e "    Peer ID: ${GREEN}${PEER_ID}...${NC}"
+    echo ""
+    echo -e "  ${YELLOW}When initiator sends a task, you will see execution logs below.${NC}"
+    echo ""
+    echo -e "You can now run tests from setup.sh on the INITIATOR device:"
     echo -e "  ${YELLOW}→ Option 18 → Run Distributed Test${NC}"
     echo ""
     echo -e "Or directly (from initiator device):"

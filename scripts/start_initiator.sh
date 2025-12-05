@@ -139,21 +139,35 @@ echo -e "${YELLOW}Waiting for connections... (Ctrl+C to stop)${NC}"
 echo ""
 
 LAST_PEER_COUNT=0
+LAST_WORKER_LINE=0
 while true; do
     PEER_COUNT=$(grep "Connected peers: [0-9]" "$LOG_FILE" 2>/dev/null | tail -1 | grep -o '[0-9]*$' || echo "0")
     
     if [ "$PEER_COUNT" != "$LAST_PEER_COUNT" ]; then
         if [ "$PEER_COUNT" -gt 0 ]; then
+            # Get worker info
+            WORKER_INFO=$(grep "PEER CONNECTED" "$LOG_FILE" 2>/dev/null | tail -1)
+            WORKER_IP=$(echo "$WORKER_INFO" | grep -o 'IP=[^ ]*' | sed 's/IP=//')
+            WORKER_PEER_ID=$(echo "$WORKER_INFO" | grep -o 'PeerID=[^ ]*' | sed 's/PeerID=//' | cut -c1-12)
+            
             echo -e "${GREEN}✅ Connected peers: ${PEER_COUNT}${NC}"
             echo ""
             echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
-            echo -e "${GREEN}🎉 RESPONDER CONNECTED!${NC}"
+            echo -e "${GREEN}🎉 WORKER CONNECTED!${NC}"
+            echo ""
+            echo -e "  ${CYAN}This Node (Initiator/Manager):${NC}"
+            echo -e "    Role: MANAGER - will send tasks to workers"
+            echo -e "    IP: ${LOCAL_IP}"
+            echo ""
+            echo -e "  ${CYAN}Connected Worker:${NC}"
+            echo -e "    IP Address: ${GREEN}${WORKER_IP}${NC}"
+            echo -e "    Peer ID: ${GREEN}${WORKER_PEER_ID}...${NC}"
             echo ""
             echo -e "You can now run tests from setup.sh:"
             echo -e "  ${YELLOW}→ Option 18 → Run Distributed Test${NC}"
             echo ""
             echo -e "Or directly:"
-            echo -e "  ${YELLOW}python3 python/examples/distributed_matrix_multiply.py --connect --host ${LOCAL_IP} --port 8080 --size 100 --generate --verify${NC}"
+            echo -e "  ${YELLOW}python3 python/examples/distributed_matrix_multiply.py --connect --host localhost --port 8080 --size 100 --generate --verify${NC}"
             echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
         else
             echo -e "${YELLOW}⏳ Connected peers: ${PEER_COUNT}${NC}"

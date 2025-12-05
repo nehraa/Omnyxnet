@@ -25,6 +25,8 @@ import (
 	"github.com/libp2p/go-libp2p/p2p/security/noise"
 	quic "github.com/libp2p/go-libp2p/p2p/transport/quic"
 	"github.com/libp2p/go-libp2p/p2p/transport/tcp"
+
+	"github.com/pangea-net/go-node/pkg/compute"
 )
 
 const (
@@ -320,7 +322,41 @@ func (n *LibP2PPangeaNode) connectPeerInfo(pi peer.AddrInfo) (bool, error) {
 		return false, err
 	}
 
-	log.Printf("✅ Connected to peer %s", shortPeerID(pi.ID))
+	// Get the peer's IP address for logging
+	peerIP := "unknown"
+	if len(pi.Addrs) > 0 {
+		for _, addr := range pi.Addrs {
+			addrStr := addr.String()
+			// Extract IP from multiaddr like /ip4/192.168.1.5/tcp/7777
+			if strings.Contains(addrStr, "/ip4/") {
+				parts := strings.Split(addrStr, "/")
+				for i, p := range parts {
+					if p == "ip4" && i+1 < len(parts) {
+						peerIP = parts[i+1]
+						break
+					}
+				}
+			}
+		}
+	}
+
+	log.Printf("✅ Connected to peer %s (IP: %s)", shortPeerID(pi.ID), peerIP)
+	log.Printf("🔗 PEER CONNECTED: PeerID=%s IP=%s", pi.ID.String(), peerIP)
+
+	// Register this peer as a compute worker
+	if n.computeProtocol != nil {
+		// Default capacity for now - in the future we can query the peer
+		defaultCapacity := compute.ComputeCapacity{
+			CPUCores:      4,
+			RAMMB:         8192,
+			CurrentLoad:   0.0,
+			DiskMB:        10240,
+			BandwidthMbps: 100.0,
+		}
+		n.computeProtocol.RegisterWorker(pi.ID, defaultCapacity)
+		log.Printf("👷 Registered peer %s (IP: %s) as compute worker", shortPeerID(pi.ID), peerIP)
+	}
+
 	go n.testConnection(pi.ID)
 	return true, nil
 }

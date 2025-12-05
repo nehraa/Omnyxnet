@@ -287,6 +287,12 @@ func (cp *ComputeProtocol) RegisterWorker(peerID peer.ID, capacity compute.Compu
 		TrustScore: 1.0,
 	}
 
+	// Also register with the manager so jobs get delegated
+	if cp.manager != nil {
+		cp.manager.RegisterWorker(peerID.String(), capacity)
+		log.Printf("👷 [COMPUTE] Registered worker with manager: %s", peerID.String()[:12])
+	}
+
 	log.Printf("👷 [COMPUTE] Registered worker: %s (CPUs: %d, RAM: %dMB)",
 		peerID.String()[:12], capacity.CPUCores, capacity.RAMMB)
 }

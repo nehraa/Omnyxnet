@@ -16,36 +16,21 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Default values
-HOST="${1:-auto}"
+HOST="${1:-localhost}"
 PORT="${2:-8080}"
 SIZE="${3:-100}"
-
-# AUTO-DETECT: Check for saved connection info first
-CONNECTION_FILE="$HOME/.pangea/distributed/connection.txt"
-if [ "$HOST" = "auto" ] && [ -f "$CONNECTION_FILE" ]; then
-    source "$CONNECTION_FILE"
-    if [ -n "$INITIATOR_IP" ]; then
-        HOST="$INITIATOR_IP"
-        echo -e "${CYAN}Auto-detected initiator: ${HOST}:${PORT}${NC}"
-        sleep 1
-    fi
-fi
-
-# If still no host, ask user
-if [ "$HOST" = "auto" ] || [ -z "$HOST" ]; then
-    echo -e "${YELLOW}No initiator connection detected.${NC}"
-    echo -e "${YELLOW}Enter initiator IP (or press Enter for localhost):${NC}"
-    read -p "> " HOST
-    HOST="${HOST:-localhost}"
-fi
 
 echo -e "${CYAN}"
 echo "╔════════════════════════════════════════════════════════════╗"
 echo "║         DISTRIBUTED MATRIX MULTIPLICATION TEST            ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
-echo -e "   Target: ${GREEN}${HOST}:${PORT}${NC}"
-echo -e "   Matrix: ${GREEN}${SIZE}x${SIZE}${NC}"
+echo ""
+echo -e "${YELLOW}NOTE: Run this test on the INITIATOR device.${NC}"
+echo -e "${YELLOW}      The initiator will delegate the task to connected workers.${NC}"
+echo ""
+echo -e "   Connecting to local Go node: ${GREEN}${HOST}:${PORT}${NC}"
+echo -e "   Matrix size: ${GREEN}${SIZE}x${SIZE}${NC}"
 echo ""
 
 # Setup Python
