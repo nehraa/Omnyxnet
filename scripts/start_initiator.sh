@@ -82,6 +82,8 @@ fi
 
 # Kill any existing nodes
 pkill -f "go-node.*node-id=1" 2>/dev/null || true
+# Also kill any process on port 8080 just in case
+lsof -ti:8080 | xargs kill -9 2>/dev/null || true
 sleep 1
 
 # Start node

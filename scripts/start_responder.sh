@@ -68,6 +68,8 @@ fi
 
 # Kill any existing nodes
 pkill -f "go-node.*node-id=2" 2>/dev/null || true
+# Also kill any process on port 8081 just in case
+lsof -ti:8081 | xargs kill -9 2>/dev/null || true
 sleep 1
 
 # Get peer address from user
