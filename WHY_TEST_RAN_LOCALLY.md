@@ -15,6 +15,7 @@ In `~/.pangea/compute_test/node.log`:
 ```
 Connected peers: 0
 ...
+💻 [COMPUTE] No remote workers available, executing job <job-id> locally
 ✅ [COMPUTE] Chunk 0 completed locally: 416 bytes → 208 bytes
 ```
 
@@ -72,6 +73,39 @@ You only did Terminal 1. Terminal 2 never ran.
 
 ---
 
+## Bug Fix Applied (December 2025)
+
+The compute manager has been fixed to properly delegate tasks to remote workers:
+
+### Old Behavior (BROKEN)
+```go
+// Delegate ONLY if complexity > threshold AND workers registered
+if complexity > m.config.ComplexityThreshold && len(m.workers) > 0 {
+    // This rarely triggered because:
+    // 1. Small test data = low complexity
+    // 2. Workers might not be registered in time
+}
+```
+
+### New Behavior (FIXED)
+```go
+// Check if delegator (libp2p) has any connected peers
+if delegator != nil && delegator.HasWorkers() {
+    // ALWAYS delegate when remote workers are available
+    // This is the whole point of distributed compute!
+}
+```
+
+**Key improvements:**
+1. Now checks `delegator.HasWorkers()` which queries actual libp2p peer connections
+2. ALL chunks are sent to remote workers (no mixed local/remote)
+3. Clear logging shows whether execution is LOCAL or REMOTE:
+   - `💻 [COMPUTE] No remote workers available, executing locally`
+   - `📤 [COMPUTE] Delegating job to remote workers`
+   - `✅ [COMPUTE] Chunk X completed by worker Y`
+
+---
+
 ## How to Test Properly (Two Devices or Two Tabs)
 
 ### Option 1: Two Separate Machines (Cross-Device)
@@ -106,86 +140,39 @@ This requires careful port management:
 
 **Tab 2 (Responder on port 8081):**
 ```bash
-./tests/compute/examples/03_distributed_compute_responder.sh
-# MODIFY: Change capnp-addr to :8081 before running
-```
-
-The current responder script uses port 8080 (hardcoded), so both on same machine won't work - second binding fails.
-
----
-
-## What I've Fixed
-
-I've updated the test scripts to be **more explicit** about execution mode:
-
-### Before (Confusing)
-```
-Waiting for responder to connect...
-
-[test runs]
-
-✅ Distributed compute test completed!
-```
-→ No way to know if it was remote or local
-
-### After (Clear)
-```
-Waiting for responder to connect...
-⚠️  No responder connected yet
-The test will run LOCALLY on this machine
-
-[test runs]
-
-💻 Execution Mode: LOCAL (this machine)
-```
-
-OR (if responder connects):
-```
-✅ Responder is connected
-The test will run REMOTELY on the responder node
-
-[test runs]
-
-🌐 Execution Mode: REMOTE (distributed)
-   Executed on: localhost:8080
+./tests/compute/examples/03_distributed_compute_responder.sh 8081
+# Pass 8081 as argument for different port
 ```
 
 ---
 
-## Updated Scripts
+## Logs to Look For
 
-**Modified Files:**
-- `tests/compute/examples/03_distributed_compute_initiator.sh` - Better warnings
-- `python/examples/distributed_matrix_multiply.py` - Clear execution mode logging
-- `DISTRIBUTED_COMPUTE_VERIFICATION.md` - New debugging guide
+### When Connection is Working (REMOTE execution)
+```
+🔗 PEER CONNECTED: PeerID=12D3KooW... IP=192.168.1.X
+👷 [COMPUTE] Registered peer 12D3KooW... as compute worker
+🌐 [COMPUTE] Delegator reports 1 remote workers available for job job-123
+📤 [COMPUTE] Delegating job job-123 to remote workers
+📤 [COMPUTE] Sending chunk 0 to remote worker 12D3KooW...
+✅ [COMPUTE] Chunk 0 completed by worker 12D3KooW... in 50ms
+```
 
----
-
-## Next Steps to Test Properly
-
-### If testing on SAME machine (2 tabs):
-1. Modify responder script to use different port (e.g., :8081)
-2. Run initiator in Tab 1
-3. Run modified responder in Tab 2
-4. Wait for connection message in Tab 1
-5. Watch for "REMOTE" execution mode
-
-### If testing on DIFFERENT machines:
-1. Start initiator on Device 1
-2. Note the peer address (looks like `/ip4/192.168.1.X/tcp/7777/p2p/QmXXX`)
-3. Start responder on Device 2
-4. Paste peer address when prompted
-5. Wait for connection in Device 1
-6. See "REMOTE" in test output
+### When No Workers (LOCAL execution)
+```
+📊 Connected peers: 0
+💻 [COMPUTE] No remote workers available, executing locally
+✅ [COMPUTE] Chunk 0 completed locally
+```
 
 ---
 
 ## TL;DR
 
 - **Your test ran locally** because no responder was connected
-- **You only ran the initiator**, not the responder
-- **New logging** now clearly shows: LOCAL or REMOTE
+- **Bug fixed**: Tasks now ALWAYS go to remote workers when available
+- **New logging** clearly shows: LOCAL or REMOTE execution
 - **To test distributed**: Run TWO scripts (initiator + responder)
-- **Verification guide** at: `DISTRIBUTED_COMPUTE_VERIFICATION.md`
+- **Look for**: `🌐 Delegator reports X remote workers` in logs
 
 Ready to try again with both scripts? 🚀

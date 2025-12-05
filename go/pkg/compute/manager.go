@@ -463,17 +463,44 @@ func (m *Manager) processJob(jobID string) {
 
 	state.status = TaskComputing
 	manifest := state.manifest
+	delegator := m.delegator
 	m.mu.Unlock()
 
 	// Calculate complexity
 	complexity := m.calculateComplexity(manifest)
+	log.Printf("📊 [COMPUTE] Job %s complexity: %.4f (threshold: %.4f)", jobID, complexity, m.config.ComplexityThreshold)
+
+	// Check if we have remote workers available
+	// Primary: Use the delegator interface (libp2p peers) which is the recommended way
+	// Fallback: Check manager's registered workers (for backwards compatibility or custom setups)
+	hasRemoteWorkers := false
+	if delegator != nil && delegator.HasWorkers() {
+		// Delegator (libp2p) has connected peers - use this as primary source
+		hasRemoteWorkers = true
+		workers := delegator.GetAvailableWorkers()
+		log.Printf("🌐 [COMPUTE] Delegator reports %d remote workers available for job %s", len(workers), jobID)
+	} else if delegator == nil {
+		// No delegator configured - check if workers were manually registered
+		// This fallback supports test setups and custom worker registration
+		m.mu.RLock()
+		workerCount := len(m.workers)
+		m.mu.RUnlock()
+		if workerCount > 0 {
+			hasRemoteWorkers = true
+			log.Printf("🌐 [COMPUTE] Registered workers available for job %s: %d (no delegator)", jobID, workerCount)
+		}
+	}
 
 	// Decide: delegate or execute locally
-	if complexity > m.config.ComplexityThreshold && len(m.workers) > 0 {
-		// Delegate to workers
+	// When remote workers are available, ALWAYS delegate to them for distributed computing
+	// This ensures P2P distributed compute works as expected
+	if hasRemoteWorkers {
+		// Delegate to workers - this is the point of distributed compute!
+		log.Printf("📤 [COMPUTE] Delegating job %s to remote workers (complexity: %.4f, threshold: %.4f)", jobID, complexity, m.config.ComplexityThreshold)
 		m.delegateJob(jobID, manifest)
 	} else {
-		// Execute locally
+		// No workers available, execute locally
+		log.Printf("💻 [COMPUTE] No remote workers available, executing job %s locally (complexity: %.4f)", jobID, complexity)
 		m.executeJobLocally(jobID, manifest)
 	}
 }
@@ -512,20 +539,29 @@ func (m *Manager) delegateJob(jobID string, manifest *JobManifest) {
 		log.Printf("🌐 [COMPUTE] Found %d remote workers for job %s", len(workers), jobID)
 	}
 
-	// Delegate chunks to workers (remote or local)
+	// Delegate ALL chunks to remote workers for true distributed computing
+	// Only fall back to local execution if no workers are available
 	var wg sync.WaitGroup
 	for i, chunk := range chunks {
 		wg.Add(1)
-		workerIdx := i % (len(workers) + 1) // +1 to include local
 
-		if workerIdx < len(workers) && delegator != nil {
-			// Delegate to remote worker
-			go func(index int, data []byte, workerID string) {
+		if len(workers) > 0 {
+			// Delegate to remote worker using round-robin across available workers
+			workerIdx := i % len(workers)
+			workerID := workers[workerIdx]
+			// Safe truncation of worker ID for logging
+			shortID := workerID
+			if len(workerID) > 12 {
+				shortID = workerID[:12]
+			}
+			log.Printf("📤 [COMPUTE] Sending chunk %d to remote worker %s", i, shortID)
+			go func(index int, data []byte, wID string, d TaskDelegator) {
 				defer wg.Done()
-				m.executeChunkRemote(jobID, uint32(index), manifest, data, workerID, delegator)
-			}(i, chunk, workers[workerIdx])
+				m.executeChunkRemote(jobID, uint32(index), manifest, data, wID, d)
+			}(i, chunk, workerID, delegator)
 		} else {
-			// Execute locally
+			// No remote workers, execute locally
+			log.Printf("💻 [COMPUTE] No remote workers, executing chunk %d locally", i)
 			go func(index int, data []byte) {
 				defer wg.Done()
 				m.executeChunk(jobID, uint32(index), manifest, data)
