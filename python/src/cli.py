@@ -1036,6 +1036,315 @@ def capacity(host, port):
         client.disconnect()
 
 
+@compute.command('matrix-multiply')
+@click.option('--host', default='localhost', help='Go node host')
+@click.option('--port', default=8080, help='Go node RPC port')
+@click.option('--size', '-s', default=10, type=int, help='Matrix size for generation (NxN)')
+@click.option('--file-a', '-a', type=click.Path(exists=True), help='Path to matrix A file (JSON, CSV, or .npy)')
+@click.option('--file-b', '-b', type=click.Path(exists=True), help='Path to matrix B file (optional, uses transpose of A if not provided)')
+@click.option('--output', '-o', type=click.Path(), help='Output file path to save result')
+@click.option('--generate', '-g', is_flag=True, help='Generate random matrices instead of using files')
+@click.option('--verify', '-v', is_flag=True, help='Verify result with NumPy (requires numpy)')
+@click.option('--connect', '-c', is_flag=True, help='Connect to remote node for distributed execution')
+@click.option('--peer-address', default=None, help='Manual peer multiaddr for mDNS bypass (e.g., /ip4/X.X.X.X/tcp/YYYY/p2p/QmID)')
+def matrix_multiply(host, port, size, file_a, file_b, output, generate, verify, connect, peer_address):
+    """
+    Perform distributed matrix multiplication.
+    
+    This command multiplies two matrices either locally or across the distributed
+    compute network. Supports random generation, file input, and NumPy verification.
+    
+    \b
+    Examples:
+        # Generate and multiply random 10x10 matrices locally
+        pangea compute matrix-multiply --size 10 --generate
+        
+        # Generate and multiply 100x100 matrices with verification
+        pangea compute matrix-multiply --size 100 --generate --verify
+        
+        # Use file input
+        pangea compute matrix-multiply --file-a matrix_a.json --file-b matrix_b.json
+        
+        # Distributed execution with auto peer discovery
+        pangea compute matrix-multiply --size 50 --generate --connect
+        
+        # Distributed with manual peer address (bypass mDNS)
+        pangea compute matrix-multiply --size 50 --generate --connect \\
+            --peer-address /ip4/192.168.1.100/tcp/9081/p2p/QmXYZ...
+        
+        # Save result to file
+        pangea compute matrix-multiply --size 20 --generate --output result.json
+    """
+    import time
+    from src.compute import Job, ComputeClient
+    from src.matrix_utils import (
+        serialize_matrix, deserialize_matrix, matrix_multiply_block,
+        generate_random_matrix, add_matrices, matrix_to_string,
+        load_matrix_file, save_matrix_file, verify_with_numpy, has_numpy
+    )
+    import struct
+    from typing import List
+    
+    click.echo("=" * 60)
+    click.echo("🧮 DISTRIBUTED MATRIX MULTIPLICATION")
+    click.echo("=" * 60)
+    
+    # Get input matrices
+    if generate:
+        click.echo(f"\n🎲 Generating {size}x{size} random matrices...")
+        matrix_a = generate_random_matrix(size, size, seed=42)
+        matrix_b = generate_random_matrix(size, size, seed=43)
+        click.echo(f"   Matrix A: {size}x{size}")
+        click.echo(f"   Matrix B: {size}x{size}")
+    elif file_a:
+        click.echo(f"\n📂 Loading matrix A from: {file_a}")
+        matrix_a = load_matrix_file(file_a)
+        a_rows, a_cols = len(matrix_a), len(matrix_a[0])
+        click.echo(f"   Dimensions: {a_rows}x{a_cols}")
+        
+        if file_b:
+            click.echo(f"📂 Loading matrix B from: {file_b}")
+            matrix_b = load_matrix_file(file_b)
+        else:
+            click.echo("📂 Using transpose of A as matrix B")
+            matrix_b = [[matrix_a[j][i] for j in range(len(matrix_a))] for i in range(len(matrix_a[0]))]
+        
+        b_rows, b_cols = len(matrix_b), len(matrix_b[0])
+        click.echo(f"   Matrix B dimensions: {b_rows}x{b_cols}")
+        
+        # Verify dimensions
+        if a_cols != b_rows:
+            click.echo(f"❌ Matrix dimensions incompatible: {a_rows}x{a_cols} * {b_rows}x{b_cols}", err=True)
+            sys.exit(1)
+    else:
+        # Demo mode with small matrices
+        click.echo("\n🎯 Running demo with small 3x3 matrices...")
+        matrix_a = [
+            [1, 2, 3],
+            [4, 5, 6],
+            [7, 8, 9],
+        ]
+        matrix_b = [
+            [9, 8, 7],
+            [6, 5, 4],
+            [3, 2, 1],
+        ]
+    
+    a_rows = len(matrix_a)
+    a_cols = len(matrix_a[0])
+    b_rows = len(matrix_b)
+    b_cols = len(matrix_b[0])
+    
+    click.echo(f"\n📊 Expected result dimensions: {a_rows}x{b_cols}")
+    
+    # Serialize input
+    input_data = serialize_matrix(matrix_a, a_rows, a_cols)
+    input_data += serialize_matrix(matrix_b, b_rows, b_cols)
+    click.echo(f"📦 Serialized input: {len(input_data)} bytes")
+    
+    # Define the distributed matrix multiplication job
+    @Job.define
+    def distributed_matrix_multiply():
+        @Job.split
+        def split(data: bytes) -> List[bytes]:
+            # Find where matrix A ends
+            a_r, a_c = struct.unpack('>II', data[:8])
+            a_size = 8 + a_r * a_c * 8
+            
+            matrix_a_data = data[:a_size]
+            matrix_b_data = data[a_size:]
+            
+            ma, ar, ac = deserialize_matrix(matrix_a_data)
+            mb, br, bc = deserialize_matrix(matrix_b_data)
+            
+            # Determine block size
+            block_rows = max(1, ar // 4)
+            block_cols = max(1, bc // 4)
+            block_k = max(1, ac // 4)
+            
+            chunks = []
+            for i in range(0, ar, block_rows):
+                for j in range(0, bc, block_cols):
+                    for k in range(0, ac, block_k):
+                        a_block = []
+                        for row in range(i, min(i + block_rows, ar)):
+                            a_row = []
+                            for col in range(k, min(k + block_k, ac)):
+                                a_row.append(ma[row][col])
+                            a_block.append(a_row)
+                        
+                        b_block = []
+                        for row in range(k, min(k + block_k, br)):
+                            b_row = []
+                            for col in range(j, min(j + block_cols, bc)):
+                                b_row.append(mb[row][col])
+                            b_block.append(b_row)
+                        
+                        b_block_cols = len(b_block[0]) if b_block and len(b_block) > 0 else 0
+                        chunk = struct.pack('>IIII', i, j, len(a_block), b_block_cols)
+                        a_block_cols = len(a_block[0]) if a_block and len(a_block) > 0 else 0
+                        chunk += serialize_matrix(a_block, len(a_block), a_block_cols)
+                        chunk += serialize_matrix(b_block, len(b_block), b_block_cols)
+                        chunks.append(chunk)
+            
+            return chunks
+        
+        @Job.execute
+        def execute(chunk: bytes) -> bytes:
+            i, j, a_rows_blk, b_cols_blk = struct.unpack('>IIII', chunk[:16])
+            
+            offset = 16
+            block_a_header = chunk[offset:offset+8]
+            ba_rows, ba_cols = struct.unpack('>II', block_a_header)
+            ba_size = 8 + ba_rows * ba_cols * 8
+            block_a, _, _ = deserialize_matrix(chunk[offset:offset+ba_size])
+            offset += ba_size
+            
+            block_b, _, _ = deserialize_matrix(chunk[offset:])
+            
+            result_block = matrix_multiply_block(block_a, block_b)
+            
+            result = struct.pack('>II', i, j)
+            result += serialize_matrix(result_block, len(result_block), 
+                                       len(result_block[0]) if result_block else 0)
+            return result
+        
+        @Job.merge
+        def merge(results: List[bytes]) -> bytes:
+            blocks = {}
+            max_i = 0
+            max_j = 0
+            
+            for result in results:
+                i, j = struct.unpack('>II', result[:8])
+                matrix, rows, cols = deserialize_matrix(result[8:])
+                
+                key = (i, j)
+                if key in blocks:
+                    blocks[key] = add_matrices(blocks[key], matrix)
+                else:
+                    blocks[key] = matrix
+                
+                max_i = max(max_i, i + rows)
+                max_j = max(max_j, j + cols)
+            
+            final_matrix = [[0.0 for _ in range(max_j)] for _ in range(max_i)]
+            
+            for (i, j), block in blocks.items():
+                for bi, row in enumerate(block):
+                    for bj, val in enumerate(row):
+                        if i + bi < max_i and j + bj < max_j:
+                            final_matrix[i + bi][j + bj] = val
+            
+            return serialize_matrix(final_matrix, max_i, max_j)
+    
+    job = distributed_matrix_multiply
+    execution_mode = None
+    worker_node = None
+    result_data = None
+    
+    start_time = time.time()
+    
+    if connect:
+        click.echo(f"\n🌐 Connecting to compute node at {host}:{port}...")
+        
+        # Log peer address if provided
+        if peer_address:
+            click.echo(f"   Using manual peer address: {peer_address[:50]}...")
+        
+        client = ComputeClient(host, port)
+        connection_successful = client.connect()
+        
+        if not connection_successful:
+            click.echo(f"❌ Failed to connect to remote node at {host}:{port}")
+            click.echo("⚠️  FALLING BACK TO LOCAL EXECUTION")
+            connect = False
+        else:
+            click.echo(f"✅ Successfully connected to remote node")
+    
+    if connect:
+        execution_mode = "REMOTE"
+        click.echo("\n⚡ Submitting job to DISTRIBUTED NETWORK...")
+        click.echo(f"   Target: {host}:{port}")
+        
+        try:
+            job_id = client.submit_job(job, input_data)
+            click.echo(f"   ✅ Job submitted successfully")
+            click.echo(f"   Job ID: {job_id}")
+            
+            click.echo("   Waiting for remote execution...")
+            result_data, worker_node = client.get_result(job_id)
+            click.echo(f"   ✅ Result received from remote node")
+            client.disconnect()
+        except Exception as e:
+            click.echo(f"❌ Remote execution failed: {e}")
+            click.echo("⚠️  FALLING BACK TO LOCAL EXECUTION")
+            execution_mode = None
+            connect = False
+    
+    if not connect:
+        execution_mode = "LOCAL"
+        click.echo("\n⚡ Running computation LOCALLY on this machine...")
+        
+        click.echo("\n--- SPLIT Phase ---")
+        chunks = job.split(input_data)
+        click.echo(f"   📊 Split into {len(chunks)} block multiplications")
+        
+        click.echo(f"\n--- EXECUTE Phase ({len(chunks)} blocks) ---")
+        results = []
+        for i, chunk in enumerate(chunks):
+            result = job.execute(chunk)
+            results.append(result)
+            if (i + 1) % 10 == 0 or i == len(chunks) - 1:
+                click.echo(f"   🔢 Computed block {i+1}/{len(chunks)}")
+        
+        click.echo("\n--- MERGE Phase ---")
+        result_data = job.merge(results)
+        click.echo(f"   ✅ Merged into final result matrix")
+    
+    elapsed = time.time() - start_time
+    
+    # Deserialize result
+    result_matrix, r_rows, r_cols = deserialize_matrix(result_data)
+    
+    click.echo(f"\n{'=' * 60}")
+    click.echo("✅ COMPUTATION COMPLETE")
+    click.echo(f"{'=' * 60}")
+    click.echo(f"   Result dimensions: {r_rows}x{r_cols}")
+    click.echo(f"   Computation time: {elapsed:.3f} seconds")
+    click.echo(f"   Result size: {len(result_data)} bytes")
+    
+    if execution_mode == "REMOTE":
+        click.echo(f"   🌐 Execution Mode: REMOTE (distributed)")
+        if worker_node and worker_node != "local":
+            click.echo(f"      Executed by Worker: {worker_node}")
+        else:
+            click.echo(f"      Connected via: {host}:{port}")
+    else:
+        click.echo(f"   💻 Execution Mode: LOCAL (this machine)")
+    
+    # Save result if requested
+    if output:
+        save_matrix_file(output, result_matrix)
+        click.echo(f"   💾 Saved to: {output}")
+    
+    # Verify with numpy if requested
+    if verify:
+        if has_numpy():
+            click.echo("\n🔍 Verifying with NumPy...")
+            matches, max_diff = verify_with_numpy(result_matrix, matrix_a, matrix_b)
+            if matches:
+                click.echo("   ✅ Result matches NumPy computation!")
+            else:
+                click.echo(f"   ❌ Result differs from NumPy! Max difference: {max_diff}")
+        else:
+            click.echo("\n⚠️  NumPy not installed, skipping verification")
+            click.echo("   Install with: pip install numpy")
+    
+    # Show preview
+    click.echo(f"\n{matrix_to_string(result_matrix)}")
+
+
 # ============================================================================
 # TEST COMMANDS - Easy execution of compute and communication tests
 # ============================================================================
