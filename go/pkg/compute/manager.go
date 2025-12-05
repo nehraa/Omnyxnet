@@ -471,19 +471,23 @@ func (m *Manager) processJob(jobID string) {
 	log.Printf("📊 [COMPUTE] Job %s complexity: %.4f (threshold: %.4f)", jobID, complexity, m.config.ComplexityThreshold)
 
 	// Check if we have remote workers available
-	// Use the delegator interface if available, otherwise fall back to local worker count
+	// Primary: Use the delegator interface (libp2p peers) which is the recommended way
+	// Fallback: Check manager's registered workers (for backwards compatibility or custom setups)
 	hasRemoteWorkers := false
 	if delegator != nil && delegator.HasWorkers() {
+		// Delegator (libp2p) has connected peers - use this as primary source
 		hasRemoteWorkers = true
 		workers := delegator.GetAvailableWorkers()
 		log.Printf("🌐 [COMPUTE] Delegator reports %d remote workers available for job %s", len(workers), jobID)
-	} else {
+	} else if delegator == nil {
+		// No delegator configured - check if workers were manually registered
+		// This fallback supports test setups and custom worker registration
 		m.mu.RLock()
 		workerCount := len(m.workers)
 		m.mu.RUnlock()
 		if workerCount > 0 {
 			hasRemoteWorkers = true
-			log.Printf("🌐 [COMPUTE] Registered workers available for job %s: %d", jobID, workerCount)
+			log.Printf("🌐 [COMPUTE] Registered workers available for job %s: %d (no delegator)", jobID, workerCount)
 		}
 	}
 
@@ -541,15 +545,20 @@ func (m *Manager) delegateJob(jobID string, manifest *JobManifest) {
 	for i, chunk := range chunks {
 		wg.Add(1)
 
-		if len(workers) > 0 && delegator != nil {
+		if len(workers) > 0 {
 			// Delegate to remote worker using round-robin across available workers
 			workerIdx := i % len(workers)
 			workerID := workers[workerIdx]
-			log.Printf("📤 [COMPUTE] Sending chunk %d to remote worker %s", i, workerID[:12])
-			go func(index int, data []byte, wID string) {
+			// Safe truncation of worker ID for logging
+			shortID := workerID
+			if len(workerID) > 12 {
+				shortID = workerID[:12]
+			}
+			log.Printf("📤 [COMPUTE] Sending chunk %d to remote worker %s", i, shortID)
+			go func(index int, data []byte, wID string, d TaskDelegator) {
 				defer wg.Done()
-				m.executeChunkRemote(jobID, uint32(index), manifest, data, wID, delegator)
-			}(i, chunk, workerID)
+				m.executeChunkRemote(jobID, uint32(index), manifest, data, wID, d)
+			}(i, chunk, workerID, delegator)
 		} else {
 			// No remote workers, execute locally
 			log.Printf("💻 [COMPUTE] No remote workers, executing chunk %d locally", i)
