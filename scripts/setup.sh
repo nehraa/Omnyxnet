@@ -644,9 +644,7 @@ main() {
                     3)
                         log_info "Running Distributed Test"
                         echo ""
-                        read -p "Enter initiator IP (or press Enter for localhost): " test_host
-                        test_host="${test_host:-localhost}"
-                        "$PROJECT_ROOT/scripts/run_distributed_test.sh" "$test_host" 8080 100
+                        "$PROJECT_ROOT/scripts/run_distributed_test.sh"
                         echo ""
                         read -p "Press Enter to continue..."
                         ;;

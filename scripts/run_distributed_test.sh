@@ -16,18 +16,27 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Default values
-HOST="${1:-localhost}"
+HOST="${1:-auto}"
 PORT="${2:-8080}"
 SIZE="${3:-100}"
 
-# Check for saved connection info
+# AUTO-DETECT: Check for saved connection info first
 CONNECTION_FILE="$HOME/.pangea/distributed/connection.txt"
-if [ -f "$CONNECTION_FILE" ] && [ "$HOST" = "localhost" ]; then
+if [ "$HOST" = "auto" ] && [ -f "$CONNECTION_FILE" ]; then
     source "$CONNECTION_FILE"
     if [ -n "$INITIATOR_IP" ]; then
         HOST="$INITIATOR_IP"
-        echo -e "${CYAN}Using saved connection: ${HOST}:${PORT}${NC}"
+        echo -e "${CYAN}Auto-detected initiator: ${HOST}:${PORT}${NC}"
+        sleep 1
     fi
+fi
+
+# If still no host, ask user
+if [ "$HOST" = "auto" ] || [ -z "$HOST" ]; then
+    echo -e "${YELLOW}No initiator connection detected.${NC}"
+    echo -e "${YELLOW}Enter initiator IP (or press Enter for localhost):${NC}"
+    read -p "> " HOST
+    HOST="${HOST:-localhost}"
 fi
 
 echo -e "${CYAN}"
