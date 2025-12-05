@@ -17,8 +17,12 @@ package compute
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log"
+	"math"
+	"runtime"
 	"sync"
 	"time"
 	"unsafe"
@@ -285,15 +289,30 @@ func (m *Manager) SetDelegator(delegator TaskDelegator) {
 
 }
 
-// probeCapacity probes the system for compute capacity
+// probeCapacity probes the system for compute capacity using actual system info
 func probeCapacity() ComputeCapacity {
-	// In a real implementation, this would use sysinfo or similar
+	numCPU := runtime.NumCPU()
+
+	// Get memory stats
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	// Use total system memory approximated from heap stats
+	// HeapSys is a rough approximation of available memory
+	ramMB := memStats.HeapSys / (1024 * 1024)
+	if ramMB < 512 {
+		ramMB = 512 // Minimum reasonable value
+	}
+
+	// Estimate current load based on number of goroutines vs available CPUs
+	numGoroutines := runtime.NumGoroutine()
+	currentLoad := math.Min(float64(numGoroutines)/float64(numCPU*10), 1.0)
+
 	return ComputeCapacity{
-		CPUCores:      4,
-		RAMMB:         8192,
-		CurrentLoad:   0.1,
-		DiskMB:        100000,
-		BandwidthMbps: 100.0,
+		CPUCores:      uint32(numCPU),
+		RAMMB:         ramMB,
+		CurrentLoad:   float32(currentLoad),
+		DiskMB:        100000,       // Disk probing requires OS-specific code
+		BandwidthMbps: 100.0,        // Network probing requires active measurement
 	}
 }
 
@@ -746,6 +765,13 @@ func executeMatrixBlockMultiply(data []byte) ([]byte, error) {
 
 	log.Printf("   📊 [COMPUTE] Parsed dimensions: aRows=%d, aCols=%d", aRows, aCols)
 
+	// Check for integer overflow before multiplication: aRows * aCols * 8
+	// Maximum safe value: math.MaxInt / 8 to prevent overflow when multiplied by 8
+	const maxMatrixElements = math.MaxInt32 / 8
+	if uint64(aRows)*uint64(aCols) > maxMatrixElements {
+		return nil, fmt.Errorf("matrix A dimensions too large: %d x %d would overflow", aRows, aCols)
+	}
+
 	aDataSize := int(aRows * aCols * 8)
 	if len(data) < 8+aDataSize+8 {
 		return nil, fmt.Errorf("input data incomplete for matrix A: need %d, have %d", 8+aDataSize+8, len(data))
@@ -755,6 +781,11 @@ func executeMatrixBlockMultiply(data []byte) ([]byte, error) {
 	bOffset := 8 + aDataSize
 	bRows := uint32(data[bOffset])<<24 | uint32(data[bOffset+1])<<16 | uint32(data[bOffset+2])<<8 | uint32(data[bOffset+3])
 	bCols := uint32(data[bOffset+4])<<24 | uint32(data[bOffset+5])<<16 | uint32(data[bOffset+6])<<8 | uint32(data[bOffset+7])
+
+	// Check for integer overflow before multiplication: bRows * bCols * 8
+	if uint64(bRows)*uint64(bCols) > maxMatrixElements {
+		return nil, fmt.Errorf("matrix B dimensions too large: %d x %d would overflow", bRows, bCols)
+	}
 
 	bDataSize := int(bRows * bCols * 8)
 	if len(data) < bOffset+8+bDataSize {
@@ -931,7 +962,6 @@ func generateJobID() string {
 
 // hashData returns the SHA256 hash of data as a hex string
 func hashData(data []byte) string {
-	// In a real implementation, use crypto/sha256
-	// For now, return a placeholder
-	return fmt.Sprintf("%x", len(data))
+	hash := sha256.Sum256(data)
+	return hex.EncodeToString(hash[:])
 }

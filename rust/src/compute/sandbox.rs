@@ -284,13 +284,11 @@ impl WasmSandbox {
             return false;
         }
         
-        // Allow both real WASM and test data
         // Real WASM starts with: 0x00 0x61 0x73 0x6D (\0asm)
         let is_wasm = bytes[0] == 0x00 && bytes[1] == 0x61 && 
                       bytes[2] == 0x73 && bytes[3] == 0x6D;
         
-        // For testing, also accept non-WASM data
-        is_wasm || !bytes.is_empty()
+        is_wasm
     }
     
     /// Get current resource usage

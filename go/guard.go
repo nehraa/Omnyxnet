@@ -51,6 +51,11 @@ type GuardObject struct {
 	
 	// CES pipeline for processing authenticated data
 	cesPipeline *CESPipeline
+	
+	// Shutdown channel for graceful cleanup goroutine termination
+	stopChan chan struct{}
+	stopped  bool
+	stopMu   sync.Mutex
 }
 
 // NewGuardObject creates a new guard with the specified configuration
@@ -61,6 +66,7 @@ func NewGuardObject(config GuardConfig, cesPipeline *CESPipeline) *GuardObject {
 		tokens:      make(map[string]time.Time),
 		peerStats:   make(map[peer.ID]*PeerStats),
 		cesPipeline: cesPipeline,
+		stopChan:    make(chan struct{}),
 	}
 	
 	// Start cleanup goroutine for expired tokens and stats
@@ -231,27 +237,46 @@ func (g *GuardObject) cleanupLoop() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 	
-	for range ticker.C {
-		now := time.Now()
-		
-		// Clean expired tokens
-		g.tokensMu.Lock()
-		for token, expiry := range g.tokens {
-			if now.After(expiry) {
-				delete(g.tokens, token)
+	for {
+		select {
+		case <-g.stopChan:
+			log.Printf("🛑 Guard cleanup goroutine stopped")
+			return
+		case <-ticker.C:
+			now := time.Now()
+			
+			// Clean expired tokens
+			g.tokensMu.Lock()
+			for token, expiry := range g.tokens {
+				if now.After(expiry) {
+					delete(g.tokens, token)
+				}
 			}
-		}
-		g.tokensMu.Unlock()
-		
-		// Clean old stats (peers not seen in 1 hour)
-		g.statsMu.Lock()
-		for peerID, stats := range g.peerStats {
-			if now.Sub(stats.LastRequestAt) > time.Hour && now.After(stats.BannedUntil) {
-				delete(g.peerStats, peerID)
+			g.tokensMu.Unlock()
+			
+			// Clean old stats (peers not seen in 1 hour)
+			g.statsMu.Lock()
+			for peerID, stats := range g.peerStats {
+				if now.Sub(stats.LastRequestAt) > time.Hour && now.After(stats.BannedUntil) {
+					delete(g.peerStats, peerID)
+				}
 			}
+			g.statsMu.Unlock()
 		}
-		g.statsMu.Unlock()
 	}
+}
+
+// Close stops the cleanup goroutine and releases resources
+func (g *GuardObject) Close() {
+	g.stopMu.Lock()
+	defer g.stopMu.Unlock()
+	
+	if g.stopped {
+		return
+	}
+	g.stopped = true
+	close(g.stopChan)
+	log.Printf("🔒 GuardObject closed")
 }
 
 // GetStats returns current statistics
