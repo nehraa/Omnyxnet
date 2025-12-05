@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"sync"
@@ -98,20 +100,30 @@ func (g *GuardObject) IsWhitelisted(peerID peer.ID) bool {
 	return g.whitelist[peerID]
 }
 
+// hashToken returns a SHA256 hash of the token for secure storage
+func hashToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
+}
+
 // RegisterToken registers a new authentication token
+// The token is hashed before storage to prevent token theft via memory dumps
 func (g *GuardObject) RegisterToken(token string, validFor time.Duration) {
 	g.tokensMu.Lock()
 	defer g.tokensMu.Unlock()
-	g.tokens[token] = time.Now().Add(validFor)
+	hashedToken := hashToken(token)
+	g.tokens[hashedToken] = time.Now().Add(validFor)
 	log.Printf("🔑 Registered auth token (expires in %v)", validFor)
 }
 
 // VerifyToken checks if a token is valid
+// The token is hashed before lookup to match the stored hash
 func (g *GuardObject) VerifyToken(token string) bool {
 	g.tokensMu.RLock()
 	defer g.tokensMu.RUnlock()
 	
-	expiry, exists := g.tokens[token]
+	hashedToken := hashToken(token)
+	expiry, exists := g.tokens[hashedToken]
 	if !exists {
 		return false
 	}

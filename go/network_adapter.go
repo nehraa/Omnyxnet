@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 )
@@ -31,13 +32,47 @@ type NetworkAdapter interface {
 type LibP2PAdapter struct {
 	node  *LibP2PPangeaNode
 	store *NodeStore
+	// Bidirectional peer ID mapping
+	peerIDToUint32 map[string]uint32
+	uint32ToPeerID map[uint32]string
+	nextPeerID     uint32
+	peerIDMu       sync.RWMutex
 }
 
 func NewLibP2PAdapter(node *LibP2PPangeaNode, store *NodeStore) *LibP2PAdapter {
 	return &LibP2PAdapter{
-		node:  node,
-		store: store,
+		node:           node,
+		store:          store,
+		peerIDToUint32: make(map[string]uint32),
+		uint32ToPeerID: make(map[uint32]string),
+		nextPeerID:     1,
 	}
+}
+
+// getPeerUint32ID returns the uint32 ID for a libp2p peer ID, creating one if needed
+func (a *LibP2PAdapter) getPeerUint32ID(peerIDStr string) uint32 {
+	a.peerIDMu.Lock()
+	defer a.peerIDMu.Unlock()
+	
+	if id, exists := a.peerIDToUint32[peerIDStr]; exists {
+		return id
+	}
+	
+	// Create new mapping
+	id := a.nextPeerID
+	a.nextPeerID++
+	a.peerIDToUint32[peerIDStr] = id
+	a.uint32ToPeerID[id] = peerIDStr
+	return id
+}
+
+// getLibp2pPeerID returns the libp2p peer ID string for a uint32 ID
+func (a *LibP2PAdapter) getLibp2pPeerID(id uint32) (string, bool) {
+	a.peerIDMu.RLock()
+	defer a.peerIDMu.RUnlock()
+	
+	peerIDStr, exists := a.uint32ToPeerID[id]
+	return peerIDStr, exists
 }
 
 func (a *LibP2PAdapter) ConnectToPeer(peerAddr string, peerID uint32) error {
@@ -62,30 +97,36 @@ func (a *LibP2PAdapter) DisconnectPeer(peerID uint32) error {
 }
 
 func (a *LibP2PAdapter) SendMessage(peerID uint32, data []byte) error {
-	// Find peer and send message through libp2p stream
-	peers := a.node.GetConnectedPeers()
-	for _, p := range peers {
-		if pid, err := peer.Decode(p.ID); err == nil {
-			stream, err := a.node.host.NewStream(a.node.ctx, pid, PangeaRPCProtocol)
-			if err != nil {
-				return err
-			}
-			defer stream.Close()
-
-			_, err = stream.Write(data)
-			return err
-		}
+	// Look up the libp2p peer ID
+	peerIDStr, exists := a.getLibp2pPeerID(peerID)
+	if !exists {
+		return fmt.Errorf("peer %d not found in mapping", peerID)
 	}
-	return nil
+	
+	pid, err := peer.Decode(peerIDStr)
+	if err != nil {
+		return fmt.Errorf("invalid peer ID: %w", err)
+	}
+	
+	stream, err := a.node.host.NewStream(a.node.ctx, pid, PangeaRPCProtocol)
+	if err != nil {
+		return err
+	}
+	defer stream.Close()
+
+	_, err = stream.Write(data)
+	return err
 }
 
 func (a *LibP2PAdapter) GetConnectedPeers() []uint32 {
 	peers := a.node.GetConnectedPeers()
-	// Convert libp2p peer IDs to uint32 (simplified)
-	// In production, maintain a bidirectional mapping
+	// Use proper bidirectional mapping
 	result := make([]uint32, 0, len(peers))
-	for i := range peers {
-		result = append(result, uint32(i+1)) // Placeholder mapping
+	for _, p := range peers {
+		if p.ID != "" {
+			id := a.getPeerUint32ID(p.ID)
+			result = append(result, id)
+		}
 	}
 	return result
 }
@@ -104,44 +145,44 @@ func (a *LibP2PAdapter) GetConnectionQuality(peerID uint32) (latencyMs, jitterMs
 }
 
 func (a *LibP2PAdapter) FetchShard(peerID uint32, shardIndex uint32) ([]byte, error) {
-	// Find peer and request shard through libp2p stream
-	peers := a.node.GetConnectedPeers()
+	// Look up the libp2p peer ID
+	peerIDStr, exists := a.getLibp2pPeerID(peerID)
+	if !exists {
+		return nil, fmt.Errorf("peer %d not found in mapping", peerID)
+	}
+	
+	pid, err := peer.Decode(peerIDStr)
+	if err != nil {
+		return nil, fmt.Errorf("invalid peer ID: %w", err)
+	}
+	
+	stream, err := a.node.host.NewStream(a.node.ctx, pid, PangeaRPCProtocol)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open stream: %w", err)
+	}
+	defer stream.Close()
 
-	// TODO: In production, maintain proper peerID <-> libp2p peer.ID mapping
-	// For now, try to fetch from any connected peer
-	for _, p := range peers {
-		if pid, err := peer.Decode(p.ID); err == nil {
-			stream, err := a.node.host.NewStream(a.node.ctx, pid, PangeaRPCProtocol)
-			if err != nil {
-				continue // Try next peer
-			}
-			defer stream.Close()
+	// Send shard request: [REQUEST_TYPE=1][SHARD_INDEX]
+	request := make([]byte, 5)
+	request[0] = 1 // Request type: fetch shard
+	request[1] = byte(shardIndex >> 24)
+	request[2] = byte(shardIndex >> 16)
+	request[3] = byte(shardIndex >> 8)
+	request[4] = byte(shardIndex)
 
-			// Send shard request: [REQUEST_TYPE=1][SHARD_INDEX]
-			request := make([]byte, 5)
-			request[0] = 1 // Request type: fetch shard
-			request[1] = byte(shardIndex >> 24)
-			request[2] = byte(shardIndex >> 16)
-			request[3] = byte(shardIndex >> 8)
-			request[4] = byte(shardIndex)
-
-			_, err = stream.Write(request)
-			if err != nil {
-				continue
-			}
-
-			// Read response
-			buffer := make([]byte, 1024*1024) // 1MB max shard size
-			n, err := stream.Read(buffer)
-			if err != nil {
-				continue
-			}
-
-			return buffer[:n], nil
-		}
+	_, err = stream.Write(request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 
-	return nil, fmt.Errorf("failed to fetch shard %d from peer %d: no route available", shardIndex, peerID)
+	// Read response
+	buffer := make([]byte, 1024*1024) // 1MB max shard size
+	n, err := stream.Read(buffer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	return buffer[:n], nil
 }
 
 // LegacyP2PAdapter wraps P2PNode to implement NetworkAdapter

@@ -552,6 +552,9 @@ func (cs *CommunicationService) handleVideoStream(stream network.Stream) {
 		stream.Close()
 	}()
 
+	// Use buffered reader for improved performance with small reads
+	reader := bufio.NewReaderSize(stream, 64*1024) // 64KB buffer
+
 	for {
 		// Check context first
 		select {
@@ -565,7 +568,7 @@ func (cs *CommunicationService) handleVideoStream(stream network.Stream) {
 
 		// Read frame header (12 bytes): frameID(4) + width(2) + height(2) + quality(1) + reserved(3)
 		header := make([]byte, 12)
-		_, err := io.ReadFull(stream, header)
+		_, err := io.ReadFull(reader, header)
 		if err != nil {
 			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 				continue
@@ -583,7 +586,7 @@ func (cs *CommunicationService) handleVideoStream(stream network.Stream) {
 
 		// Read data length (4 bytes)
 		lengthBuf := make([]byte, 4)
-		if _, err := io.ReadFull(stream, lengthBuf); err != nil {
+		if _, err := io.ReadFull(reader, lengthBuf); err != nil {
 			if cs.ctx.Err() == nil {
 				log.Printf("Video length read error: %v", err)
 			}
@@ -598,7 +601,7 @@ func (cs *CommunicationService) handleVideoStream(stream network.Stream) {
 
 		// Read frame data
 		data := make([]byte, dataLen)
-		if _, err := io.ReadFull(stream, data); err != nil {
+		if _, err := io.ReadFull(reader, data); err != nil {
 			if cs.ctx.Err() == nil {
 				log.Printf("Video data read error: %v", err)
 			}

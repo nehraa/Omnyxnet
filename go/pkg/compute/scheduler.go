@@ -91,7 +91,31 @@ func (s *Scheduler) calculateTaskComplexity(task *ComputeTask) float64 {
 }
 
 // SelectWorker selects the best worker for a task
+// It first checks the TaskDelegator for available workers (distributed compute),
+// then falls back to internal worker registry for local/test setups.
 func (s *Scheduler) SelectWorker(task *ComputeTask) string {
+	s.manager.mu.RLock()
+	delegator := s.manager.delegator
+	s.manager.mu.RUnlock()
+	
+	// Primary source: TaskDelegator (libp2p peers for distributed compute)
+	if delegator != nil && delegator.HasWorkers() {
+		workers := delegator.GetAvailableWorkers()
+		if len(workers) > 0 {
+			// For now, use round-robin. Could be enhanced with load-based selection.
+			// Hash the task ID to get consistent worker selection
+			taskHash := 0
+			for _, b := range task.TaskID {
+				taskHash = taskHash*31 + int(b)
+			}
+			if taskHash < 0 {
+				taskHash = -taskHash
+			}
+			return workers[taskHash%len(workers)]
+		}
+	}
+	
+	// Fallback: internal workers map (for testing/custom setups)
 	s.manager.mu.RLock()
 	defer s.manager.mu.RUnlock()
 	

@@ -525,11 +525,28 @@ func (m *Manager) processJob(jobID string) {
 }
 
 // calculateComplexity calculates the complexity score for a job
+// Bounds the calculation to prevent manipulation through oversized inputs
 func (m *Manager) calculateComplexity(manifest *JobManifest) float64 {
-	dataFactor := float64(len(manifest.InputData)) / (1024.0 * 1024.0) // MB
-	wasmFactor := float64(len(manifest.WASMModule)) / (64.0 * 1024.0)  // 64KB units
-
-	return dataFactor * (1.0 + wasmFactor*0.1)
+	// Cap input sizes to prevent gaming the complexity calculation
+	const maxDataMB = 1024.0   // 1GB max for calculation
+	const maxWasmKB = 10240.0  // 10MB max WASM for calculation
+	
+	dataSize := float64(len(manifest.InputData))
+	wasmSize := float64(len(manifest.WASMModule))
+	
+	// Cap the values
+	dataMB := math.Min(dataSize/(1024.0*1024.0), maxDataMB)
+	wasmKB := math.Min(wasmSize/(64.0*1024.0), maxWasmKB/64.0)
+	
+	// Calculate bounded complexity
+	complexity := dataMB * (1.0 + wasmKB*0.1)
+	
+	// Ensure minimum complexity for non-trivial inputs
+	if len(manifest.InputData) > 0 && complexity < 0.001 {
+		complexity = 0.001
+	}
+	
+	return complexity
 }
 
 // delegateJob delegates a job to workers
@@ -681,64 +698,108 @@ func (m *Manager) executeChunk(jobID string, chunkIndex uint32, manifest *JobMan
 }
 
 // executeChunkRemote executes a chunk on a remote worker
+// Handles TOCTOU by checking worker availability and retrying with fresh workers if needed
 func (m *Manager) executeChunkRemote(jobID string, chunkIndex uint32, manifest *JobManifest, data []byte, workerID string, delegator TaskDelegator) {
 	start := time.Now()
+	maxRetries := 3
+	currentWorkerID := workerID
 
-	log.Printf("📤 [COMPUTE] Delegating chunk %d to worker %s (%d bytes)",
-		chunkIndex, workerID[:12], len(data))
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		// Check if worker is still available (mitigate TOCTOU)
+		if delegator.HasWorkers() {
+			workers := delegator.GetAvailableWorkers()
+			workerAvailable := false
+			for _, w := range workers {
+				if w == currentWorkerID {
+					workerAvailable = true
+					break
+				}
+			}
+			if !workerAvailable && len(workers) > 0 {
+				// Worker disconnected, select a new one
+				log.Printf("🔄 [COMPUTE] Worker %s disconnected, selecting new worker for chunk %d", 
+					currentWorkerID[:min(12, len(currentWorkerID))], chunkIndex)
+				currentWorkerID = workers[int(chunkIndex)%len(workers)]
+			}
+		}
 
-	// Create compute task for remote execution
-	task := &ComputeTask{
-		TaskID:          fmt.Sprintf("%s:%d", jobID, chunkIndex),
-		ParentJobID:     jobID,
-		ChunkIndex:      chunkIndex,
-		WASMModule:      manifest.WASMModule,
-		InputData:       data,
-		FunctionName:    "matrix_block_multiply",
-		DelegationDepth: 0,
-		TimeoutMs:       uint64(manifest.TimeoutSecs) * 1000,
+		shortID := currentWorkerID
+		if len(shortID) > 12 {
+			shortID = shortID[:12]
+		}
+		log.Printf("📤 [COMPUTE] Delegating chunk %d to worker %s (%d bytes, attempt %d)",
+			chunkIndex, shortID, len(data), attempt+1)
+
+		// Create compute task for remote execution
+		task := &ComputeTask{
+			TaskID:          fmt.Sprintf("%s:%d", jobID, chunkIndex),
+			ParentJobID:     jobID,
+			ChunkIndex:      chunkIndex,
+			WASMModule:      manifest.WASMModule,
+			InputData:       data,
+			FunctionName:    "matrix_block_multiply",
+			DelegationDepth: 0,
+			TimeoutMs:       uint64(manifest.TimeoutSecs) * 1000,
+		}
+
+		// Execute on remote worker via delegator
+		ctx, cancel := context.WithTimeout(m.ctx, time.Duration(manifest.TimeoutSecs)*time.Second)
+		remoteResult, err := delegator.DelegateTask(ctx, currentWorkerID, task)
+		cancel()
+
+		if err != nil {
+			log.Printf("❌ [COMPUTE] Remote chunk %d failed on %s: %v (attempt %d)", 
+				chunkIndex, shortID, err, attempt+1)
+			
+			// Refresh worker list for next attempt
+			if delegator.HasWorkers() {
+				workers := delegator.GetAvailableWorkers()
+				if len(workers) > 0 {
+					// Pick a different worker for retry
+					currentWorkerID = workers[(int(chunkIndex)+attempt+1)%len(workers)]
+					continue
+				}
+			}
+			
+			// No more workers available, fall back to local execution
+			log.Printf("🔄 [COMPUTE] No workers available, falling back to local execution for chunk %d", chunkIndex)
+			m.executeChunk(jobID, chunkIndex, manifest, data)
+			return
+		}
+
+		if remoteResult.Status == TaskCompleted {
+			log.Printf("✅ [COMPUTE] Chunk %d completed by worker %s in %dms: %d bytes",
+				chunkIndex, shortID, remoteResult.ExecutionTimeMs, len(remoteResult.ResultData))
+			
+			result := remoteResult
+			result.WorkerID = currentWorkerID
+			result.ExecutionTimeMs = uint64(time.Since(start).Milliseconds())
+
+			m.mu.Lock()
+			state := m.jobs[jobID]
+			state.results[chunkIndex] = result
+			state.chunks[chunkIndex].Status = TaskCompleted
+			state.lastUpdate = time.Now()
+			m.mu.Unlock()
+			return
+		}
+
+		log.Printf("❌ [COMPUTE] Remote chunk %d returned failure: %s (attempt %d)", 
+			chunkIndex, remoteResult.Error, attempt+1)
+		
+		// Try to get a different worker for retry
+		if delegator.HasWorkers() {
+			workers := delegator.GetAvailableWorkers()
+			if len(workers) > 0 {
+				currentWorkerID = workers[(int(chunkIndex)+attempt+1)%len(workers)]
+				continue
+			}
+		}
 	}
 
-	// Execute on remote worker via delegator
-	ctx, cancel := context.WithTimeout(m.ctx, time.Duration(manifest.TimeoutSecs)*time.Second)
-	defer cancel()
-
-	remoteResult, err := delegator.DelegateTask(ctx, workerID, task)
-
-	var result *TaskResult
-	if err != nil {
-		log.Printf("❌ [COMPUTE] Remote chunk %d failed on %s: %v", chunkIndex, workerID[:12], err)
-		// Fall back to local execution
-		log.Printf("🔄 [COMPUTE] Falling back to local execution for chunk %d", chunkIndex)
-		m.executeChunk(jobID, chunkIndex, manifest, data)
-		return
-	}
-
-	if remoteResult.Status == TaskCompleted {
-		log.Printf("✅ [COMPUTE] Chunk %d completed by worker %s in %dms: %d bytes",
-			chunkIndex, workerID[:12], remoteResult.ExecutionTimeMs, len(remoteResult.ResultData))
-		result = remoteResult
-		result.WorkerID = workerID
-	} else {
-		log.Printf("❌ [COMPUTE] Remote chunk %d returned failure: %s", chunkIndex, remoteResult.Error)
-		// Fall back to local execution
-		log.Printf("🔄 [COMPUTE] Falling back to local execution for chunk %d", chunkIndex)
-		m.executeChunk(jobID, chunkIndex, manifest, data)
-		return
-	}
-
-	result.ExecutionTimeMs = uint64(time.Since(start).Milliseconds())
-
-	m.mu.Lock()
-	state := m.jobs[jobID]
-	state.results[chunkIndex] = result
-	if result.Status == TaskCompleted {
-		state.chunks[chunkIndex].Status = TaskCompleted
-	} else {
-		state.chunks[chunkIndex].Status = TaskFailed
-	}
-	state.lastUpdate = time.Now()
-	m.mu.Unlock()
+	// All retries exhausted, fall back to local execution
+	log.Printf("🔄 [COMPUTE] All remote attempts failed, falling back to local execution for chunk %d", chunkIndex)
+	m.executeChunk(jobID, chunkIndex, manifest, data)
 }
 
 // ExecuteMatrixBlockMultiply executes matrix block multiplication (exported for compute protocol)
