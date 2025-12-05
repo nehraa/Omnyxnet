@@ -1,8 +1,13 @@
 #!/bin/bash
 # Comprehensive test suite for all Pangea Net components
 # This runs ALL localhost tests that don't require cross-device setup
+#
+# Usage:
+#   ./tests/test_all.sh              # Run standard tests
+#   ./tests/test_all.sh --with-containers  # Include container tests
+#   ./tests/test_all.sh --containers-only  # Only container tests
 
-set -e
+# Don't use set -e since we handle errors manually
 
 echo "========================================"
 echo "🧪 Pangea Net - Full Test Suite"
@@ -20,6 +25,27 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$PROJECT_ROOT"
+
+# Parse arguments
+WITH_CONTAINERS=false
+CONTAINERS_ONLY=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --with-containers)
+            WITH_CONTAINERS=true
+            shift
+            ;;
+        --containers-only)
+            CONTAINERS_ONLY=true
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
 
 TOTAL_TESTS=0
 PASSED_TESTS=0
@@ -48,6 +74,12 @@ run_test() {
     fi
     echo ""
 }
+
+# Skip standard tests if containers-only mode
+if [ "$CONTAINERS_ONLY" = true ]; then
+    echo -e "${BLUE}Running container tests only...${NC}"
+    echo ""
+else
 
 # Test 1: Python
 run_test "1" "Python Component" "tests/test_python.sh" "/tmp/test_python.log"
@@ -153,6 +185,26 @@ if [ -n "$GO_BINARY" ]; then
 fi
 echo ""
 
+fi  # End of containers-only skip
+
+# ============================================================================
+# Container Tests (optional)
+# ============================================================================
+
+if [ "$WITH_CONTAINERS" = true ] || [ "$CONTAINERS_ONLY" = true ]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🐳 Container Tests"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    # Test: Network Connection
+    run_test "C1" "Network Connection" "scripts/container_tests/test_network_connection.sh" "/tmp/test_network.log"
+    
+    # Test: Matrix CLI
+    run_test "C2" "Matrix CLI (Local)" "scripts/container_tests/test_matrix_cli.sh --local-only --size 5" "/tmp/test_matrix_cli.log"
+    
+    echo ""
+fi
+
 # Summary
 echo "========================================"
 echo "📊 Test Summary"
@@ -170,24 +222,30 @@ echo ""
 if [ $FAILED_TESTS -eq 0 ]; then
     echo -e "${GREEN}✅ ALL TESTS PASSED!${NC}"
     echo ""
-    echo "All localhost components are working correctly:"
-    echo "  • Python:      Syntax and structure validated"
-    echo "  • Go:          Build, binary, and CLI working"
-    echo "  • Rust:        Build, tests (12/12), binary working"
-    echo "  • Integration: All components can communicate"
-    echo "  • FFI:         Go-Rust FFI working"
-    echo "  • Streaming:   Shared memory and updates working"
-    echo "  • CES:         Compression/Encryption/Sharding pipeline"
-    echo "  • Upload/Download: Local file operations"
-    echo "  • Phase 1:     Brotli compression, Opus codec, Metrics tracking"
-    echo "  • Phase 2:     AI modules wired (translation, lipsync, federated learning)"
-    echo "  • Streaming:   Go handles networking (UDP/TCP per Golden Rule)"
-    echo "  • Multi-node:  Both Go and Rust nodes can start"
+    if [ "$CONTAINERS_ONLY" = false ]; then
+        echo "All localhost components are working correctly:"
+        echo "  • Python:      Syntax and structure validated"
+        echo "  • Go:          Build, binary, and CLI working"
+        echo "  • Rust:        Build, tests (12/12), binary working"
+        echo "  • Integration: All components can communicate"
+        echo "  • FFI:         Go-Rust FFI working"
+        echo "  • Streaming:   Shared memory and updates working"
+        echo "  • CES:         Compression/Encryption/Sharding pipeline"
+        echo "  • Upload/Download: Local file operations"
+        echo "  • Phase 1:     Brotli compression, Opus codec, Metrics tracking"
+        echo "  • Phase 2:     AI modules wired (translation, lipsync, federated learning)"
+        echo "  • Streaming:   Go handles networking (UDP/TCP per Golden Rule)"
+        echo "  • Multi-node:  Both Go and Rust nodes can start"
+    fi
+    if [ "$WITH_CONTAINERS" = true ] || [ "$CONTAINERS_ONLY" = true ]; then
+        echo "  • Containers:  Network registry and Matrix CLI working"
+    fi
     echo ""
     echo "Next steps:"
-    echo "  1. For cross-device testing: Use ./scripts/easy_test.sh"
-    echo "  2. For comprehensive multi-node test: Run tests/integration/test_localhost_full.sh"
-    echo "  3. For WAN testing: Use setup.sh menu option 9"
+    echo "  1. For cross-device testing: Use ./scripts/setup.sh → Option 2"
+    echo "  2. For matrix multiplication: python main.py compute matrix-multiply"
+    echo "  3. For container tests: ./scripts/run_container_tests.sh --quick"
+    echo "  4. For comprehensive multi-node test: Run tests/integration/test_localhost_full.sh"
     echo ""
     exit 0
 else
