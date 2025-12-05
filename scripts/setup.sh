@@ -640,6 +640,8 @@ main() {
                         log_info "Starting Responder Node"
                         echo ""
                         "$PROJECT_ROOT/scripts/start_responder.sh"
+                        echo ""
+                        read -p "Press Enter to continue..."
                         ;;
                     3)
                         log_info "Running Distributed Test"

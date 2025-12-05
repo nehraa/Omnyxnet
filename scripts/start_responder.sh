@@ -92,7 +92,7 @@ export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
 
 "$PROJECT_ROOT/go/bin/go-node" \
     -node-id=2 \
-    -capnp-addr=0.0.0.0:8080 \
+    -capnp-addr=0.0.0.0:8081 \
     -libp2p=true \
     -libp2p-port=7778 \
     -test \
@@ -155,7 +155,10 @@ while true; do
     fi
     pid=$(cat "$NODE_PID_FILE")
     if ! ps -p "$pid" > /dev/null 2>&1; then
-        echo -e "${RED}Node stopped unexpectedly. Check log: $LOG_FILE${NC}"
+        echo -e "${RED}Node stopped unexpectedly. Log output:${NC}"
+        echo "------------------------------------------------"
+        cat "$LOG_FILE"
+        echo "------------------------------------------------"
         break
     fi
     
