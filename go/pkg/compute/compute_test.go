@@ -1,6 +1,8 @@
 package compute
 
 import (
+	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -357,5 +359,137 @@ func TestSchedulerUpdateWorkerTrust(t *testing.T) {
 	
 	if finalTrust >= newTrust {
 		t.Error("Trust should decrease after failed task")
+	}
+}
+
+// MockDelegator implements TaskDelegator for testing
+type MockDelegator struct {
+	workers      []string
+	delegateCalled atomic.Int32
+}
+
+func (m *MockDelegator) DelegateTask(ctx context.Context, workerID string, task *ComputeTask) (*TaskResult, error) {
+	m.delegateCalled.Add(1)
+	// Simulate successful remote execution
+	return &TaskResult{
+		TaskID:          task.TaskID,
+		Status:          TaskCompleted,
+		ResultData:      []byte("mock result"),
+		ResultHash:      "mockhash",
+		ExecutionTimeMs: 100,
+		WorkerID:        workerID,
+	}, nil
+}
+
+func (m *MockDelegator) GetAvailableWorkers() []string {
+	return m.workers
+}
+
+func (m *MockDelegator) HasWorkers() bool {
+	return len(m.workers) > 0
+}
+
+func TestDelegationWithDelegator(t *testing.T) {
+	config := DefaultConfig()
+	manager := NewManager(config)
+	defer manager.Close()
+
+	// Create a mock delegator with a worker
+	mockDelegator := &MockDelegator{
+		workers: []string{"remote-worker-1"},
+	}
+	manager.SetDelegator(mockDelegator)
+
+	// Submit a small job - should still delegate when workers are available
+	manifest := &JobManifest{
+		JobID:        "test-delegation-job",
+		InputData:    []byte("small data"), // Small data = low complexity
+		MinChunkSize: 1,                     // Allow small chunks for testing
+		MaxChunkSize: 100,
+		TimeoutSecs:  60,
+	}
+
+	_, err := manager.SubmitJob(manifest)
+	if err != nil {
+		t.Fatalf("SubmitJob failed: %v", err)
+	}
+
+	// Wait for job processing
+	time.Sleep(200 * time.Millisecond)
+
+	// Verify that delegation was attempted even with low complexity
+	// because remote workers are available
+	delegateCount := mockDelegator.delegateCalled.Load()
+	if delegateCount == 0 {
+		t.Error("Expected DelegateTask to be called when remote workers are available")
+	}
+}
+
+func TestLocalExecutionWithoutDelegator(t *testing.T) {
+	config := DefaultConfig()
+	manager := NewManager(config)
+	defer manager.Close()
+
+	// No delegator set - should execute locally
+
+	manifest := &JobManifest{
+		JobID:        "test-local-job",
+		InputData:    []byte("small data"),
+		MinChunkSize: 1,
+		MaxChunkSize: 100,
+		TimeoutSecs:  60,
+	}
+
+	_, err := manager.SubmitJob(manifest)
+	if err != nil {
+		t.Fatalf("SubmitJob failed: %v", err)
+	}
+
+	// Wait for job processing
+	time.Sleep(200 * time.Millisecond)
+
+	// Get status - should complete (locally) even without delegator
+	status, err := manager.GetJobStatus("test-local-job")
+	if err != nil {
+		t.Fatalf("GetJobStatus failed: %v", err)
+	}
+
+	// Job should have completed or be in progress
+	if status.Status == TaskPending {
+		t.Error("Expected job to have started processing")
+	}
+}
+
+func TestDelegatorHasWorkersCheck(t *testing.T) {
+	config := DefaultConfig()
+	manager := NewManager(config)
+	defer manager.Close()
+
+	// Create delegator with no workers
+	emptyDelegator := &MockDelegator{
+		workers: []string{}, // No workers
+	}
+	manager.SetDelegator(emptyDelegator)
+
+	manifest := &JobManifest{
+		JobID:        "test-empty-delegator-job",
+		InputData:    []byte("data"),
+		MinChunkSize: 1,
+		MaxChunkSize: 100,
+		TimeoutSecs:  60,
+	}
+
+	_, err := manager.SubmitJob(manifest)
+	if err != nil {
+		t.Fatalf("SubmitJob failed: %v", err)
+	}
+
+	// Wait for job processing
+	time.Sleep(200 * time.Millisecond)
+
+	// With no workers, DelegateTask should not be called
+	delegateCount := emptyDelegator.delegateCalled.Load()
+	if delegateCount != 0 {
+		t.Errorf("Expected DelegateTask not to be called when no workers, but called %d times", delegateCount)
 	}
 }
