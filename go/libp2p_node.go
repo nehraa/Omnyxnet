@@ -76,11 +76,11 @@ type LibP2PPangeaNode struct {
 
 // NewLibP2PPangeaNode creates a new libp2p-powered Pangea node
 func NewLibP2PPangeaNode(nodeID uint32, store *NodeStore) (*LibP2PPangeaNode, error) {
-	return NewLibP2PPangeaNodeWithOptions(nodeID, store, false, false)
+	return NewLibP2PPangeaNodeWithOptions(nodeID, store, false, false, 7777)
 }
 
 // NewLibP2PPangeaNodeWithOptions creates a new libp2p node with specific options
-func NewLibP2PPangeaNodeWithOptions(nodeID uint32, store *NodeStore, localMode, testMode bool) (*LibP2PPangeaNode, error) {
+func NewLibP2PPangeaNodeWithOptions(nodeID uint32, store *NodeStore, localMode, testMode bool, port int) (*LibP2PPangeaNode, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Create connection manager with limits
@@ -129,8 +129,8 @@ func NewLibP2PPangeaNodeWithOptions(nodeID uint32, store *NodeStore, localMode, 
 		// WAN mode: bind to all interfaces with NAT traversal
 		libp2pOptions = append(libp2pOptions,
 			libp2p.ListenAddrStrings(
-				"/ip4/0.0.0.0/tcp/0",      // All interfaces TCP
-				"/ip4/0.0.0.0/udp/0/quic", // All interfaces QUIC
+				fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port),      // All interfaces TCP - FIXED PORT
+				fmt.Sprintf("/ip4/0.0.0.0/udp/%d/quic", port), // All interfaces QUIC - FIXED PORT
 			),
 
 			// NAT traversal - THE KEY PART! 🔥
@@ -138,7 +138,7 @@ func NewLibP2PPangeaNodeWithOptions(nodeID uint32, store *NodeStore, localMode, 
 			libp2p.EnableHolePunching(), // Attempt direct connections through NAT
 		)
 		if testMode {
-			log.Printf("🌐 WAN MODE: Full NAT traversal enabled")
+			log.Printf("🌐 WAN MODE: Listening on port %d with NAT traversal", port)
 		}
 	}
 

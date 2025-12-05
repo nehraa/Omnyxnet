@@ -15,13 +15,14 @@ import (
 
 func main() {
 	var (
-		nodeID    = flag.Uint("node-id", 1, "Node ID for this instance")
-		capnpAddr = flag.String("capnp-addr", ":8080", "Cap'n Proto server address")
-		p2pAddr   = flag.String("p2p-addr", ":9090", "P2P network listener address (legacy mode)")
-		peerAddrs = flag.String("peers", "", "Comma-separated list of peer addresses")
-		useLibp2p = flag.Bool("libp2p", true, "Use libp2p for P2P networking (recommended)")
-		localMode = flag.Bool("local", false, "Local testing mode (mDNS discovery only)")
-		testMode  = flag.Bool("test", false, "Enable testing mode with debug output")
+		nodeID     = flag.Uint("node-id", 1, "Node ID for this instance")
+		capnpAddr  = flag.String("capnp-addr", ":8080", "Cap'n Proto server address")
+		p2pAddr    = flag.String("p2p-addr", ":9090", "P2P network listener address (legacy mode)")
+		libp2pPort = flag.Int("libp2p-port", 7777, "Libp2p listener port")
+		peerAddrs  = flag.String("peers", "", "Comma-separated list of peer addresses")
+		useLibp2p  = flag.Bool("libp2p", true, "Use libp2p for P2P networking (recommended)")
+		localMode  = flag.Bool("local", false, "Local testing mode (mDNS discovery only)")
+		testMode   = flag.Bool("test", false, "Enable testing mode with debug output")
 	)
 	flag.Parse()
 
@@ -56,7 +57,7 @@ func main() {
 	// Choose P2P implementation
 	if *useLibp2p {
 		// Use libp2p (recommended for production)
-		libp2pNode, err := NewLibP2PPangeaNodeWithOptions(uint32(*nodeID), store, *localMode, *testMode)
+		libp2pNode, err := NewLibP2PPangeaNodeWithOptions(uint32(*nodeID), store, *localMode, *testMode, *libp2pPort)
 		if err != nil {
 			log.Fatalf("❌ Failed to create libp2p node: %v", err)
 		}
