@@ -648,8 +648,9 @@ start_worker_node() {
     # Get local IP
     local LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
     
-    # Create peer address for manager (libp2p port, not RPC port)
-    local MANAGER_P2P_PORT=$((MANAGER_PORT + 1001))  # Estimate: 8080 -> 9081
+    # Prompt for Manager's libp2p port (default: 9081)
+    read -p "Manager's libp2p port [9081]: " input_manager_p2p_port
+    local MANAGER_P2P_PORT="${input_manager_p2p_port:-9081}"
     local MANAGER_PEER="/ip4/${MANAGER_IP}/tcp/${MANAGER_P2P_PORT}"
     
     cd "$PROJECT_ROOT/go"

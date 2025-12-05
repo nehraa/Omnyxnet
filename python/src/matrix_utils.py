@@ -16,7 +16,7 @@ import struct
 import json
 import random
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import Tuple, Optional
 
 # Try to import numpy, but provide fallback
 try:
@@ -81,6 +81,10 @@ def deserialize_matrix(data: bytes) -> Tuple[list, int, int]:
 def matrix_multiply_block(a: list, b: list) -> list:
     """Multiply two matrices (block multiplication).
     
+    Uses naive O(n³) algorithm. For matrices larger than 100x100,
+    consider using NumPy with optimized BLAS implementations for
+    significantly better performance.
+    
     A: m x k matrix
     B: k x n matrix
     Result: m x n matrix
@@ -91,6 +95,11 @@ def matrix_multiply_block(a: list, b: list) -> list:
         
     Returns:
         Result matrix
+        
+    Note:
+        Performance degrades significantly for large matrices.
+        For production use with large matrices, install numpy:
+            pip install numpy
     """
     m = len(a)
     k = len(a[0]) if m > 0 else 0
@@ -99,7 +108,7 @@ def matrix_multiply_block(a: list, b: list) -> list:
     # Initialize result matrix with zeros
     result = [[0.0 for _ in range(n)] for _ in range(m)]
     
-    # Standard matrix multiplication
+    # Standard matrix multiplication (O(n³) complexity)
     for i in range(m):
         for j in range(n):
             for p in range(k):

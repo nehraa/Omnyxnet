@@ -9,8 +9,9 @@
 #
 # =============================================================================
 
-# Don't use set -e since we handle errors manually
-# set -e
+# Error handling: We don't use 'set -e' since we track test failures manually
+# Using 'set -u' to catch undefined variables
+set -u
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"

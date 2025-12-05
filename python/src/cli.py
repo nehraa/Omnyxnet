@@ -1252,10 +1252,20 @@ def matrix_multiply(host, port, size, file_a, file_b, output, generate, verify, 
             click.echo(f"   Using manual peer address: {peer_address[:50]}...")
         
         client = ComputeClient(host, port)
-        connection_successful = client.connect()
+        connection_successful = False
+        connection_error = None
+        try:
+            connection_successful = client.connect()
+        except Exception as e:
+            connection_error = str(e)
         
         if not connection_successful:
             click.echo(f"❌ Failed to connect to remote node at {host}:{port}")
+            if connection_error:
+                click.echo(f"   Connection error: {connection_error}")
+            else:
+                click.echo("   Unable to establish connection. Is the node running?")
+            click.echo("   For troubleshooting, try: ./scripts/check_network.sh --status")
             click.echo("⚠️  FALLING BACK TO LOCAL EXECUTION")
             connect = False
         else:

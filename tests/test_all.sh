@@ -8,6 +8,8 @@
 #   ./tests/test_all.sh --containers-only  # Only container tests
 
 # Don't use set -e since we handle errors manually
+# Using set -u to catch undefined variable usage
+set -u
 
 echo "========================================"
 echo "🧪 Pangea Net - Full Test Suite"

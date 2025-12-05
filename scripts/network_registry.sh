@@ -149,7 +149,9 @@ try:
         print(json.dumps(registry["local_node"]))
     else:
         print("")
-except Exception:
+except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+    import sys
+    print(f"Warning: Could not read registry: {e}", file=sys.stderr)
     print("")
 EOF
 }
@@ -172,11 +174,13 @@ save_peer() {
     
     python3 << EOF
 import json
+import sys
 
 try:
     with open("${NETWORK_REGISTRY}", 'r') as f:
         registry = json.load(f)
-except Exception:
+except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+    print(f"Creating new registry (previous read failed: {e})", file=sys.stderr)
     registry = {"version": "1.0.0", "created_at": "${timestamp}", "peers": [], "local_node": None}
 
 registry["updated_at"] = "${timestamp}"
@@ -230,12 +234,14 @@ get_peers() {
     
     python3 << EOF
 import json
+import sys
 try:
     with open("${NETWORK_REGISTRY}", 'r') as f:
         registry = json.load(f)
     peers = registry.get("peers", [])
     print(json.dumps(peers))
-except Exception:
+except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+    print(f"Warning: Could not read registry: {e}", file=sys.stderr)
     print("[]")
 EOF
 }
@@ -253,6 +259,7 @@ get_peer_by_id() {
     
     python3 << EOF
 import json
+import sys
 try:
     with open("${NETWORK_REGISTRY}", 'r') as f:
         registry = json.load(f)
@@ -262,7 +269,8 @@ try:
             break
     else:
         print("")
-except Exception:
+except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+    print(f"Warning: Could not read registry: {e}", file=sys.stderr)
     print("")
 EOF
 }
@@ -277,6 +285,7 @@ get_first_peer() {
     
     python3 << EOF
 import json
+import sys
 try:
     with open("${NETWORK_REGISTRY}", 'r') as f:
         registry = json.load(f)
@@ -285,7 +294,8 @@ try:
         print(peers[0].get("multiaddr", ""))
     else:
         print("")
-except Exception:
+except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+    print(f"Warning: Could not read registry: {e}", file=sys.stderr)
     print("")
 EOF
 }
@@ -348,12 +358,14 @@ is_connected() {
     
     local peer_count=$(python3 << EOF
 import json
+import sys
 try:
     with open("${NETWORK_REGISTRY}", 'r') as f:
         registry = json.load(f)
     peers = [p for p in registry.get("peers", []) if p.get("status") == "connected"]
     print(len(peers))
-except Exception:
+except (FileNotFoundError, json.JSONDecodeError, IOError) as e:
+    print(f"Warning: Could not read registry: {e}", file=sys.stderr)
     print("0")
 EOF
 )
