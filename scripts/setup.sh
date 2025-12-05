@@ -395,7 +395,7 @@ show_menu() {
     echo "15) Run Phase 1 Audio Integration Test"
     echo "16) Run Phase 1 Performance Benchmarks"
     echo "17) Run Streaming & AI Wiring Test (Phase 1&2)"
-    echo "18) Run Distributed Compute Test"
+    echo "18) Distributed Compute Menu"
     echo "19) Run Live P2P Test (Chat/Voice/Video)"
     echo "20) View Setup Log"
     echo "21) View Test Log"
@@ -606,76 +606,86 @@ main() {
                 read -p "Press Enter to continue..."
                 ;;
             18)
-                log_info "User selected: Run Compute Tests"
+                log_info "User selected: Distributed Compute Menu"
                 echo ""
-                echo -e "${BLUE}========================================${NC}"
-                echo -e "${BLUE}   Compute Tests (organized examples)${NC}"
-                echo -e "${BLUE}========================================${NC}"
+                echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+                echo -e "${BLUE}   DISTRIBUTED COMPUTE MENU${NC}"
+                echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
                 echo ""
-                
-                # Dynamically list all compute examples
-                EXAMPLES_DIR="$PROJECT_ROOT/tests/compute/examples"
-                if [ ! -d "$EXAMPLES_DIR" ]; then
-                    log_error "Examples directory not found: $EXAMPLES_DIR"
-                    echo ""
-                    read -p "Press Enter to continue..."
-                    continue
-                fi
-                
-                # Build array of example scripts
-                declare -a example_scripts
-                declare -a example_names
-                i=1
-                
-                for script in $(ls -1 "$EXAMPLES_DIR"/*.sh 2>/dev/null | sort); do
-                    # Extract name from filename (remove number prefix and .sh)
-                    name=$(basename "$script" .sh | sed 's/^[0-9]*_//' | tr '_' ' ')
-                    example_scripts[$i]="$script"
-                    example_names[$i]="$name"
-                    echo "  $i) $name"
-                    i=$((i+1))
-                done
-                
-                if [ $i -eq 1 ]; then
-                    echo "No compute examples found in $EXAMPLES_DIR"
-                    echo ""
-                    read -p "Press Enter to continue..."
-                    continue
-                fi
-                
+                echo -e "${CYAN}Connection Setup:${NC}"
+                echo "  1) Start Node (Initiator) - Run on Device 1 first"
+                echo "  2) Start Node (Responder) - Run on Device 2, connect to Initiator"
+                echo ""
+                echo -e "${CYAN}Run Tests (after connection established):${NC}"
+                echo "  3) Run Distributed Test - Matrix multiplication"
+                echo "  4) Run Distributed Test (Custom) - Specify host/port/size"
+                echo ""
+                echo -e "${CYAN}Local Tests (no connection needed):${NC}"
+                echo "  5) Run Local Compute Tests - Unit tests, single node"
+                echo ""
                 echo "  q) Back to main menu"
                 echo ""
-                read -p "Select example (1-$((i-1))) or (q) to quit: " example_choice
+                read -p "Select option: " dc_choice
                 
-                if [ "$example_choice" = "q" ] || [ "$example_choice" = "Q" ]; then
-                    echo ""
-                    continue
-                fi
-                
-                # Validate choice
-                if ! [[ "$example_choice" =~ ^[0-9]+$ ]] || [ "$example_choice" -lt 1 ] || [ "$example_choice" -ge $i ]; then
-                    echo -e "${RED}Invalid selection${NC}"
-                    echo ""
-                    read -p "Press Enter to continue..."
-                    continue
-                fi
-                
-                # Run selected example
-                selected_script="${example_scripts[$example_choice]}"
-                selected_name="${example_names[$example_choice]}"
-                
-                echo ""
-                log_info "Running: $selected_name"
-                echo ""
-                
-                if [ -x "$selected_script" ]; then
-                    "$selected_script"
-                else
-                    log_error "Script not executable: $selected_script"
-                fi
-                
-                echo ""
-                read -p "Press Enter to continue..."
+                case "$dc_choice" in
+                    1)
+                        log_info "Starting Initiator Node"
+                        echo ""
+                        echo -e "${YELLOW}Starting initiator node...${NC}"
+                        echo -e "${YELLOW}Keep this running and note the peer address${NC}"
+                        echo ""
+                        "$PROJECT_ROOT/scripts/start_initiator.sh"
+                        ;;
+                    2)
+                        log_info "Starting Responder Node"
+                        echo ""
+                        "$PROJECT_ROOT/scripts/start_responder.sh"
+                        ;;
+                    3)
+                        log_info "Running Distributed Test"
+                        echo ""
+                        read -p "Enter initiator IP (or press Enter for localhost): " test_host
+                        test_host="${test_host:-localhost}"
+                        "$PROJECT_ROOT/scripts/run_distributed_test.sh" "$test_host" 8080 100
+                        echo ""
+                        read -p "Press Enter to continue..."
+                        ;;
+                    4)
+                        log_info "Running Custom Distributed Test"
+                        echo ""
+                        read -p "Enter host (default: localhost): " custom_host
+                        read -p "Enter port (default: 8080): " custom_port
+                        read -p "Enter matrix size (default: 100): " custom_size
+                        custom_host="${custom_host:-localhost}"
+                        custom_port="${custom_port:-8080}"
+                        custom_size="${custom_size:-100}"
+                        "$PROJECT_ROOT/scripts/run_distributed_test.sh" "$custom_host" "$custom_port" "$custom_size"
+                        echo ""
+                        read -p "Press Enter to continue..."
+                        ;;
+                    5)
+                        log_info "Running Local Compute Tests"
+                        echo ""
+                        # Run local tests from examples directory
+                        if [ -x "$PROJECT_ROOT/tests/compute/examples/01_local_unit_tests.sh" ]; then
+                            "$PROJECT_ROOT/tests/compute/examples/01_local_unit_tests.sh"
+                        elif [ -x "$PROJECT_ROOT/tests/compute/examples/02_single_node_compute.sh" ]; then
+                            "$PROJECT_ROOT/tests/compute/examples/02_single_node_compute.sh"
+                        else
+                            echo "No local tests found"
+                        fi
+                        echo ""
+                        read -p "Press Enter to continue..."
+                        ;;
+                    q|Q)
+                        continue
+                        ;;
+                    *)
+                        echo -e "${RED}Invalid option${NC}"
+                        echo ""
+                        read -p "Press Enter to continue..."
+                        ;;
+                esac
                 ;;
             19)
                 log_info "User selected: Run Live P2P Test"
