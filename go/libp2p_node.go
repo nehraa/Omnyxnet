@@ -318,11 +318,36 @@ func (n *LibP2PPangeaNode) connectPeerInfo(pi peer.AddrInfo) (bool, error) {
 		return false, nil
 	}
 
-	ctx, cancel := context.WithTimeout(n.ctx, 10*time.Second)
-	defer cancel()
+	// Log connection attempt details
+	log.Printf("🔄 Attempting to connect to peer %s", shortPeerID(pi.ID))
+	for _, addr := range pi.Addrs {
+		log.Printf("   Address: %s", addr.String())
+	}
 
-	if err := n.host.Connect(ctx, pi); err != nil {
-		return false, err
+	// Try connection with retries and increasing timeout
+	var lastErr error
+	for attempt := 1; attempt <= 3; attempt++ {
+		timeout := time.Duration(10*attempt) * time.Second
+		ctx, cancel := context.WithTimeout(n.ctx, timeout)
+
+		log.Printf("   Attempt %d/3 (timeout: %v)", attempt, timeout)
+		if err := n.host.Connect(ctx, pi); err != nil {
+			lastErr = err
+			log.Printf("   ❌ Attempt %d failed: %v", attempt, err)
+			cancel()
+			// Wait before retry
+			if attempt < 3 {
+				time.Sleep(2 * time.Second)
+			}
+			continue
+		}
+		cancel()
+		lastErr = nil
+		break
+	}
+
+	if lastErr != nil {
+		return false, lastErr
 	}
 
 	// Get the peer's IP address for logging
