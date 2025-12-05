@@ -1,6 +1,44 @@
 # Quick Start: Cross-Device Distributed Compute Testing
 
-## 3-Minute Setup
+## New: Matrix Multiply CLI
+
+The easiest way to test distributed compute is now the Matrix Multiply CLI:
+
+```bash
+# Activate Python environment
+cd python && source .venv/bin/activate
+
+# Local test (no network needed)
+python main.py compute matrix-multiply --size 10 --generate --verify
+
+# Distributed test (requires network connection)
+python main.py compute matrix-multiply --size 50 --generate --verify --connect
+```
+
+See [CLI_MATRIX_MULTIPLY.md](CLI_MATRIX_MULTIPLY.md) for full documentation.
+
+---
+
+## 3-Minute Setup (Traditional Method)
+
+### Option 1: Using setup.sh Menu (Recommended)
+
+**Device 1 (Manager):**
+```bash
+./scripts/setup.sh
+# Select: 2) Establish Network Connection
+# Select: 1) Manager (Initiator)
+```
+
+**Device 2 (Worker):**
+```bash
+./scripts/setup.sh
+# Select: 2) Establish Network Connection
+# Select: 2) Worker (Responder)
+# Enter Manager's IP address when prompted
+```
+
+### Option 2: Using Example Scripts
 
 ### Device 1 (Initiator)
 ```bash

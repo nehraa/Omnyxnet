@@ -1,0 +1,119 @@
+# =============================================================================
+# Docker Compose - 3-Node Mesh Test Environment
+# =============================================================================
+# Sets up a 3-node mesh network for testing peer discovery and routing
+#
+# Usage:
+#   docker-compose -f docker-compose.test.3node.yml up -d
+#   docker-compose -f docker-compose.test.3node.yml logs -f
+#   docker-compose -f docker-compose.test.3node.yml down
+#
+# =============================================================================
+
+version: "3.8"
+
+services:
+  # Node 1 - Bootstrap node
+  node1:
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    container_name: wgt-node1
+    hostname: node1
+    command: >
+      ./go-node 
+      -node-id=1 
+      -capnp-addr=:8080 
+      -libp2p=true 
+      -libp2p-port=9081
+      -mdns=true
+      -local
+    ports:
+      - "8080:8080"
+      - "9081:9081"
+    networks:
+      wgt-mesh:
+        ipv4_address: 172.29.0.10
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      - NODE_ID=1
+      - NODE_ROLE=bootstrap
+
+  # Node 2 - Connects to Node 1
+  node2:
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    container_name: wgt-node2
+    hostname: node2
+    command: >
+      ./go-node 
+      -node-id=2 
+      -capnp-addr=:8080 
+      -libp2p=true 
+      -libp2p-port=9082
+      -mdns=true
+      -peers=/ip4/172.29.0.10/tcp/9081
+      -local
+    ports:
+      - "8081:8080"
+      - "9082:9082"
+    networks:
+      wgt-mesh:
+        ipv4_address: 172.29.0.11
+    depends_on:
+      node1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      - NODE_ID=2
+
+  # Node 3 - Connects to both Node 1 and Node 2
+  node3:
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    container_name: wgt-node3
+    hostname: node3
+    command: >
+      ./go-node 
+      -node-id=3 
+      -capnp-addr=:8080 
+      -libp2p=true 
+      -libp2p-port=9083
+      -mdns=true
+      -peers=/ip4/172.29.0.10/tcp/9081,/ip4/172.29.0.11/tcp/9082
+      -local
+    ports:
+      - "8082:8080"
+      - "9083:9083"
+    networks:
+      wgt-mesh:
+        ipv4_address: 172.29.0.12
+    depends_on:
+      node1:
+        condition: service_healthy
+      node2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      - NODE_ID=3
+
+networks:
+  wgt-mesh:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.0.0/16

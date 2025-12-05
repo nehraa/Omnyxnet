@@ -1,0 +1,118 @@
+# =============================================================================
+# Docker Compose - 2-Node Test Environment
+# =============================================================================
+# Sets up a Manager (Node 1) and Worker (Node 2) for distributed compute testing
+#
+# Usage:
+#   docker-compose -f docker-compose.test.2node.yml up -d
+#   docker-compose -f docker-compose.test.2node.yml logs -f
+#   docker-compose -f docker-compose.test.2node.yml down
+#
+# =============================================================================
+
+version: "3.8"
+
+services:
+  # Manager Node (Node 1) - Orchestrates compute tasks
+  manager:
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    container_name: wgt-manager
+    hostname: manager
+    command: >
+      ./go-node 
+      -node-id=1 
+      -capnp-addr=:8080 
+      -libp2p=true 
+      -libp2p-port=9081
+      -mdns=true
+      -local
+    ports:
+      - "8080:8080"   # Cap'n Proto RPC
+      - "9081:9081"   # libp2p P2P
+    networks:
+      wgt-net:
+        ipv4_address: 172.28.0.10
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      - NODE_ROLE=manager
+      - NODE_ID=1
+    volumes:
+      - manager-logs:/root/.wgt/logs
+
+  # Worker Node (Node 2) - Executes compute tasks
+  worker:
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    container_name: wgt-worker
+    hostname: worker
+    command: >
+      ./go-node 
+      -node-id=2 
+      -capnp-addr=:8080 
+      -libp2p=true 
+      -libp2p-port=9082
+      -mdns=true
+      -peers=/ip4/172.28.0.10/tcp/9081
+      -local
+    ports:
+      - "8081:8080"   # Cap'n Proto RPC
+      - "9082:9082"   # libp2p P2P
+    networks:
+      wgt-net:
+        ipv4_address: 172.28.0.11
+    depends_on:
+      manager:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      - NODE_ROLE=worker
+      - NODE_ID=2
+      - MANAGER_ADDR=172.28.0.10:9081
+    volumes:
+      - worker-logs:/root/.wgt/logs
+
+  # Python CLI test runner
+  python-cli:
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    container_name: wgt-python-cli
+    hostname: python-cli
+    command: sleep infinity
+    networks:
+      wgt-net:
+        ipv4_address: 172.28.0.20
+    depends_on:
+      - manager
+      - worker
+    environment:
+      - MANAGER_HOST=172.28.0.10
+      - MANAGER_PORT=8080
+      - WORKER_HOST=172.28.0.11
+      - WORKER_PORT=8080
+    volumes:
+      - ./python:/app
+      - cli-results:/app/results
+
+networks:
+  wgt-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+volumes:
+  manager-logs:
+  worker-logs:
+  cli-results:

@@ -6,6 +6,21 @@
 
 ## ⚡ Super Quick Start
 
+### Step 1: Establish Network Connection
+
+```bash
+./scripts/setup.sh
+# Select: 2) Establish Network Connection
+# Choose: Manager (Device 1) or Worker (Device 2+)
+```
+
+### Step 2: Run Matrix Multiply (Test Distributed Compute)
+
+```bash
+cd python && source .venv/bin/activate
+python main.py compute matrix-multiply --size 10 --generate --verify
+```
+
 ### Test Everything on Localhost (30 seconds)
 
 ```bash
@@ -16,18 +31,21 @@ This verifies all components work on your machine before testing across devices.
 
 ### Test on 3+ Devices (2 minutes)
 
-**Device 1:**
+**Device 1 (Manager):**
 ```bash
-./scripts/easy_test.sh
+./scripts/setup.sh
+# Select: 2) Establish Network Connection
+# Select: 1) Manager (Initiator)
+# Note the IP address shown
 ```
-→ Select option "1" (first device)  
-→ Copy the connection command it shows
 
-**Devices 2, 3, ...:**
+**Devices 2, 3, ... (Workers):**
 ```bash
-./scripts/easy_test.sh 2 /ip4/192.168.1.100/tcp/9180
+./scripts/setup.sh
+# Select: 2) Establish Network Connection
+# Select: 2) Worker (Responder)
+# Enter Manager's IP address
 ```
-→ Use the command from Device 1
 
 **Done.** Nodes are connected and running.
 
@@ -35,19 +53,21 @@ This verifies all components work on your machine before testing across devices.
 
 ## 📚 Documentation Structure
 
-We have three guides:
+We have five guides:
 
 | Guide | When to Use | What's Inside |
 |-------|-------------|---------------|
 | **[TESTING_QUICK_START.md](TESTING_QUICK_START.md)** | You want TL;DR | Commands only, no fluff |
 | **[CROSS_DEVICE_TESTING.md](CROSS_DEVICE_TESTING.md)** | You want details | Architecture, data flows, debugging |
-| **START_HERE.md** (this file) | You're reading it | Overview and navigation |
+| **[CLI_MATRIX_MULTIPLY.md](CLI_MATRIX_MULTIPLY.md)** | Matrix multiply | CLI reference, examples |
+| **[NETWORK_CONNECTION.md](NETWORK_CONNECTION.md)** | Network setup | Registry, Manager/Worker modes |
+| **[CONTAINERIZED_TESTING.md](CONTAINERIZED_TESTING.md)** | Docker tests | Container testing guide |
 
 ---
 
 ## 🎮 What You Can Do
 
-After running `easy_test.sh`, you get helper commands:
+After running `setup.sh` → Option 2, you get:
 
 ```bash
 # On each device, set up the alias:

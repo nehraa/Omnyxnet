@@ -1,0 +1,163 @@
+# =============================================================================
+# Docker Compose - Multi-Node Compute Test Environment
+# =============================================================================
+# Sets up a compute cluster for testing distributed matrix multiplication
+# Includes 1 Manager and 3 Workers
+#
+# Usage:
+#   docker-compose -f docker-compose.test.compute.yml up -d
+#   docker-compose -f docker-compose.test.compute.yml logs -f manager
+#   docker-compose -f docker-compose.test.compute.yml down
+#
+# =============================================================================
+
+version: "3.8"
+
+services:
+  # Manager Node - Orchestrates compute tasks
+  manager:
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    container_name: wgt-compute-manager
+    hostname: compute-manager
+    command: >
+      ./go-node 
+      -node-id=1 
+      -capnp-addr=:8080 
+      -libp2p=true 
+      -libp2p-port=9081
+      -mdns=true
+      -local
+    ports:
+      - "8080:8080"
+      - "9081:9081"
+    networks:
+      wgt-compute:
+        ipv4_address: 172.30.0.10
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      - NODE_ROLE=manager
+      - NODE_ID=1
+
+  # Worker 1
+  worker1:
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    container_name: wgt-compute-worker1
+    hostname: compute-worker1
+    command: >
+      ./go-node 
+      -node-id=2 
+      -capnp-addr=:8080 
+      -libp2p=true 
+      -libp2p-port=9082
+      -mdns=true
+      -peers=/ip4/172.30.0.10/tcp/9081
+      -local
+    ports:
+      - "8081:8080"
+    networks:
+      wgt-compute:
+        ipv4_address: 172.30.0.11
+    depends_on:
+      manager:
+        condition: service_healthy
+    environment:
+      - NODE_ROLE=worker
+      - NODE_ID=2
+
+  # Worker 2
+  worker2:
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    container_name: wgt-compute-worker2
+    hostname: compute-worker2
+    command: >
+      ./go-node 
+      -node-id=3 
+      -capnp-addr=:8080 
+      -libp2p=true 
+      -libp2p-port=9083
+      -mdns=true
+      -peers=/ip4/172.30.0.10/tcp/9081
+      -local
+    ports:
+      - "8082:8080"
+    networks:
+      wgt-compute:
+        ipv4_address: 172.30.0.12
+    depends_on:
+      manager:
+        condition: service_healthy
+    environment:
+      - NODE_ROLE=worker
+      - NODE_ID=3
+
+  # Worker 3
+  worker3:
+    build:
+      context: ./go
+      dockerfile: Dockerfile
+    container_name: wgt-compute-worker3
+    hostname: compute-worker3
+    command: >
+      ./go-node 
+      -node-id=4 
+      -capnp-addr=:8080 
+      -libp2p=true 
+      -libp2p-port=9084
+      -mdns=true
+      -peers=/ip4/172.30.0.10/tcp/9081
+      -local
+    ports:
+      - "8083:8080"
+    networks:
+      wgt-compute:
+        ipv4_address: 172.30.0.13
+    depends_on:
+      manager:
+        condition: service_healthy
+    environment:
+      - NODE_ROLE=worker
+      - NODE_ID=4
+
+  # Python test runner
+  test-runner:
+    build:
+      context: ./python
+      dockerfile: Dockerfile
+    container_name: wgt-compute-test
+    hostname: compute-test
+    working_dir: /app
+    command: sleep infinity
+    networks:
+      wgt-compute:
+        ipv4_address: 172.30.0.100
+    depends_on:
+      - manager
+      - worker1
+      - worker2
+      - worker3
+    environment:
+      - MANAGER_HOST=172.30.0.10
+      - MANAGER_PORT=8080
+    volumes:
+      - ./python:/app
+      - test-results:/app/results
+
+networks:
+  wgt-compute:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+
+volumes:
+  test-results:

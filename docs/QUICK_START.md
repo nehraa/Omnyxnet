@@ -40,7 +40,18 @@
 - **Doc:** [python/README.md](python/README.md)
 - **Status:** Alpha - works locally
 
-### 4. Run Tests
+### 4. Establish Network Connection
+
+```bash
+# Use the setup menu
+./scripts/setup.sh
+# Select: 2) Establish Network Connection
+
+# Or check network status
+./scripts/check_network.sh --status
+```
+
+### 5. Run Tests
 
 **Easiest Way (Interactive Menu):**
 ```bash
@@ -49,6 +60,17 @@
 
 # Run all tests automatically
 ./scripts/test_pangea.sh --all
+```
+
+**Matrix Multiply CLI:**
+```bash
+cd python && source .venv/bin/activate
+
+# Generate and multiply random matrices
+python main.py compute matrix-multiply --size 10 --generate --verify
+
+# Distributed execution (requires network connection)
+python main.py compute matrix-multiply --size 50 --generate --connect
 ```
 
 **Python CLI Tests:**
@@ -66,6 +88,15 @@ python main.py test all
 
 # Manual peer connection (when mDNS fails)
 python main.py test manual-connect 192.168.1.100:9081
+```
+
+**Container Tests:**
+```bash
+# Quick tests (no Docker)
+./scripts/run_container_tests.sh --quick
+
+# Full test suite (requires Docker)
+./scripts/run_container_tests.sh --full
 ```
 
 **Component Tests:**

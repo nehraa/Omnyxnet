@@ -379,27 +379,29 @@ show_menu() {
     echo -e "${BLUE}========================================${NC}"
     echo ""
     echo "1) Full Installation (Install all dependencies)"
-    echo "2) Run Go Tests"
-    echo "3) Run Python Tests"
-    echo "4) Run Rust Tests"
-    echo "5) Run Integration Tests"
-    echo "6) Run 2-Node StreamUpdates Test"
-    echo "7) Run All Localhost Tests"
-    echo "8) Run Comprehensive Localhost Test (Multi-node)"
-    echo "9) Setup Cross-Device/WAN Testing"
-    echo "10) Run Upload/Download Tests (Local)"
-    echo "11) Run Upload/Download Tests (Cross-Device)"
-    echo "12) Run FFI Integration Test"
-    echo "13) Run CES Wiring Test"
-    echo "14) Run Phase 1 Features Test (Brotli, Opus, Metrics)"
-    echo "15) Run Phase 1 Audio Integration Test"
-    echo "16) Run Phase 1 Performance Benchmarks"
-    echo "17) Run Streaming & AI Wiring Test (Phase 1&2)"
-    echo "18) Distributed Compute Menu"
-    echo "19) Run Live P2P Test (Chat/Voice/Video)"
-    echo "20) View Setup Log"
-    echo "21) View Test Log"
-    echo "22) Clean Build Artifacts"
+    echo -e "${GREEN}2) Establish Network Connection (Manager/Worker)${NC}"
+    echo "3) Run Go Tests"
+    echo "4) Run Python Tests"
+    echo "5) Run Rust Tests"
+    echo "6) Run Integration Tests"
+    echo "7) Run 2-Node StreamUpdates Test"
+    echo "8) Run All Localhost Tests"
+    echo "9) Run Comprehensive Localhost Test (Multi-node)"
+    echo "10) Setup Cross-Device/WAN Testing"
+    echo "11) Run Upload/Download Tests (Local)"
+    echo "12) Run Upload/Download Tests (Cross-Device)"
+    echo "13) Run FFI Integration Test"
+    echo "14) Run CES Wiring Test"
+    echo "15) Run Phase 1 Features Test (Brotli, Opus, Metrics)"
+    echo "16) Run Phase 1 Audio Integration Test"
+    echo "17) Run Phase 1 Performance Benchmarks"
+    echo "18) Run Streaming & AI Wiring Test (Phase 1&2)"
+    echo "19) Distributed Compute Menu"
+    echo "20) Run Live P2P Test (Chat/Voice/Video)"
+    echo "21) Check Network Status"
+    echo "22) View Setup Log"
+    echo "23) View Test Log"
+    echo "24) Clean Build Artifacts"
     echo "0) Exit"
     echo ""
     echo -n "Select an option: "
@@ -430,6 +432,280 @@ clean_builds() {
     log_success "Build artifacts cleaned"
 }
 
+# =============================================================================
+# Network Connection - Establish peer connections for distributed computing
+# =============================================================================
+
+# Source the network registry module
+source "$SCRIPT_DIR/network_registry.sh" 2>/dev/null || true
+
+establish_network_connection() {
+    clear
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${BLUE}   ESTABLISH NETWORK CONNECTION${NC}"
+    echo -e "${BLUE}═══════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo "This will connect your node to the WGT distributed network."
+    echo ""
+    echo -e "${CYAN}Choose your role:${NC}"
+    echo ""
+    echo "  1) ${GREEN}Manager (Initiator)${NC}"
+    echo "     - Start first on the primary device"
+    echo "     - Wait for Workers to connect"
+    echo "     - Orchestrates distributed compute jobs"
+    echo ""
+    echo "  2) ${YELLOW}Worker (Responder)${NC}"
+    echo "     - Connect to an existing Manager"
+    echo "     - Execute compute tasks"
+    echo "     - Requires Manager's peer address"
+    echo ""
+    echo "  3) ${BLUE}Check Network Status${NC}"
+    echo "     - View connected peers"
+    echo "     - Show network health"
+    echo ""
+    echo "  q) Back to main menu"
+    echo ""
+    read -p "Select role (1/2/3/q): " role_choice
+    
+    case "$role_choice" in
+        1)
+            start_manager_node
+            ;;
+        2)
+            start_worker_node
+            ;;
+        3)
+            "$SCRIPT_DIR/check_network.sh" --status
+            echo ""
+            read -p "Press Enter to continue..."
+            ;;
+        q|Q)
+            return
+            ;;
+        *)
+            echo -e "${RED}Invalid option${NC}"
+            sleep 1
+            ;;
+    esac
+}
+
+start_manager_node() {
+    echo ""
+    echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}   Starting Manager Node${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
+    echo ""
+    
+    # Initialize registry
+    init_registry
+    
+    # Build Go node if needed
+    if [ ! -f "$PROJECT_ROOT/go/bin/go-node" ]; then
+        log_info "Building Go node..."
+        build_go
+    fi
+    
+    # Default ports
+    local CAPNP_PORT=8080
+    local LIBP2P_PORT=9081
+    
+    echo "Using default ports:"
+    echo "  Cap'n Proto RPC: ${CAPNP_PORT}"
+    echo "  libp2p:          ${LIBP2P_PORT}"
+    echo ""
+    read -p "Change ports? (y/N): " change_ports
+    
+    if [ "$change_ports" = "y" ] || [ "$change_ports" = "Y" ]; then
+        read -p "Cap'n Proto port [8080]: " new_capnp
+        read -p "libp2p port [9081]: " new_libp2p
+        CAPNP_PORT="${new_capnp:-8080}"
+        LIBP2P_PORT="${new_libp2p:-9081}"
+    fi
+    
+    # Set library path
+    export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
+    export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
+    
+    echo ""
+    log_info "Starting Manager node on port ${CAPNP_PORT}..."
+    echo ""
+    
+    # Start Go node as Manager
+    cd "$PROJECT_ROOT/go"
+    
+    # Run node in background with mDNS discovery
+    ./bin/go-node \
+        -node-id=1 \
+        -capnp-addr=":${CAPNP_PORT}" \
+        -libp2p=true \
+        -libp2p-port="${LIBP2P_PORT}" \
+        -mdns=true \
+        -local \
+        2>&1 | tee -a "$HOME/.wgt/logs/network.log" &
+    
+    local NODE_PID=$!
+    
+    # Wait for node to start
+    echo ""
+    echo "Waiting for node to initialize..."
+    sleep 3
+    
+    # Check if process is running
+    if ! kill -0 $NODE_PID 2>/dev/null; then
+        log_error "Node failed to start. Check logs at ~/.wgt/logs/network.log"
+        return 1
+    fi
+    
+    # Get local IP for display
+    local LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
+    
+    echo ""
+    echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}   ✅ Manager Node Started!${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo "   Node ID:     1"
+    echo "   RPC Address: ${LOCAL_IP}:${CAPNP_PORT}"
+    echo "   P2P Port:    ${LIBP2P_PORT}"
+    echo "   Mode:        MANAGER (Initiator)"
+    echo ""
+    echo -e "${YELLOW}📋 Share this with Workers:${NC}"
+    echo ""
+    echo "   IP Address: ${LOCAL_IP}"
+    echo "   RPC Port:   ${CAPNP_PORT}"
+    echo ""
+    echo "   Workers should run: setup.sh → Option 2 → Worker"
+    echo ""
+    
+    # Save to registry
+    save_local_node "node-1" "/ip4/${LOCAL_IP}/tcp/${LIBP2P_PORT}" "${CAPNP_PORT}" "manager"
+    
+    echo "   Process ID: ${NODE_PID}"
+    echo "   Logs: ~/.wgt/logs/network.log"
+    echo ""
+    echo -e "${CYAN}Press Ctrl+C to stop the node${NC}"
+    echo ""
+    
+    # Wait for user or process to exit
+    wait $NODE_PID 2>/dev/null || true
+    
+    echo ""
+    log_info "Manager node stopped"
+}
+
+start_worker_node() {
+    echo ""
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${YELLOW}   Starting Worker Node${NC}"
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
+    echo ""
+    
+    # Initialize registry
+    init_registry
+    
+    # Build Go node if needed
+    if [ ! -f "$PROJECT_ROOT/go/bin/go-node" ]; then
+        log_info "Building Go node..."
+        build_go
+    fi
+    
+    echo "Enter the Manager's connection info:"
+    echo ""
+    read -p "Manager IP address: " MANAGER_IP
+    read -p "Manager RPC port [8080]: " MANAGER_PORT
+    MANAGER_PORT="${MANAGER_PORT:-8080}"
+    
+    # Worker ports (offset from manager)
+    local CAPNP_PORT=8081
+    local LIBP2P_PORT=9082
+    local NODE_ID=2
+    
+    echo ""
+    echo "Worker node configuration:"
+    echo "  Node ID:     ${NODE_ID}"
+    echo "  RPC Port:    ${CAPNP_PORT}"
+    echo "  P2P Port:    ${LIBP2P_PORT}"
+    echo ""
+    read -p "Change Worker ports? (y/N): " change_ports
+    
+    if [ "$change_ports" = "y" ] || [ "$change_ports" = "Y" ]; then
+        read -p "Node ID [2]: " new_id
+        read -p "RPC port [8081]: " new_capnp
+        read -p "P2P port [9082]: " new_libp2p
+        NODE_ID="${new_id:-2}"
+        CAPNP_PORT="${new_capnp:-8081}"
+        LIBP2P_PORT="${new_libp2p:-9082}"
+    fi
+    
+    # Set library path
+    export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
+    export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
+    
+    echo ""
+    log_info "Starting Worker node, connecting to Manager at ${MANAGER_IP}:${MANAGER_PORT}..."
+    echo ""
+    
+    # Get local IP
+    local LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
+    
+    # Prompt for Manager's libp2p port (default: 9081)
+    read -p "Manager's libp2p port [9081]: " input_manager_p2p_port
+    local MANAGER_P2P_PORT="${input_manager_p2p_port:-9081}"
+    local MANAGER_PEER="/ip4/${MANAGER_IP}/tcp/${MANAGER_P2P_PORT}"
+    
+    cd "$PROJECT_ROOT/go"
+    
+    # Start Worker node with connection to Manager
+    ./bin/go-node \
+        -node-id="${NODE_ID}" \
+        -capnp-addr=":${CAPNP_PORT}" \
+        -libp2p=true \
+        -libp2p-port="${LIBP2P_PORT}" \
+        -mdns=true \
+        -peers="${MANAGER_PEER}" \
+        -local \
+        2>&1 | tee -a "$HOME/.wgt/logs/network.log" &
+    
+    local NODE_PID=$!
+    
+    # Wait for connection
+    echo ""
+    echo "Connecting to Manager..."
+    sleep 3
+    
+    if ! kill -0 $NODE_PID 2>/dev/null; then
+        log_error "Worker failed to start. Check logs at ~/.wgt/logs/network.log"
+        return 1
+    fi
+    
+    echo ""
+    echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${GREEN}   ✅ Worker Node Started!${NC}"
+    echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
+    echo ""
+    echo "   Node ID:       ${NODE_ID}"
+    echo "   Local Address: ${LOCAL_IP}:${CAPNP_PORT}"
+    echo "   Manager:       ${MANAGER_IP}:${MANAGER_PORT}"
+    echo "   Mode:          WORKER (Responder)"
+    echo ""
+    
+    # Save to registry
+    save_local_node "node-${NODE_ID}" "/ip4/${LOCAL_IP}/tcp/${LIBP2P_PORT}" "${CAPNP_PORT}" "worker"
+    save_peer "manager" "/ip4/${MANAGER_IP}/tcp/${MANAGER_P2P_PORT}" "${MANAGER_PORT}" "connected"
+    
+    echo "   Process ID: ${NODE_PID}"
+    echo "   Logs: ~/.wgt/logs/network.log"
+    echo ""
+    echo -e "${CYAN}Press Ctrl+C to stop the node${NC}"
+    echo ""
+    
+    # Wait for user or process to exit
+    wait $NODE_PID 2>/dev/null || true
+    
+    echo ""
+    log_info "Worker node stopped"
+}
+
 # Main CLI loop
 main() {
     # Create log files if they don't exist
@@ -450,6 +726,12 @@ main() {
                 read -p "Press Enter to continue..."
                 ;;
             2)
+                log_info "User selected: Establish Network Connection"
+                establish_network_connection
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            3)
                 log_info "User selected: Run Go Tests"
                 # Build Rust library first (required for Go)
                 log_info "Building Rust library (required for Go)..."
@@ -461,31 +743,31 @@ main() {
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            3)
+            4)
                 log_info "User selected: Run Python Tests"
                 run_test "Python Tests" "tests/test_python.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            4)
+            5)
                 log_info "User selected: Run Rust Tests"
                 run_test "Rust Tests" "tests/test_rust.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            5)
+            6)
                 log_info "User selected: Run Integration Tests"
                 run_test "Integration Tests" "tests/integration/test_integration.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            6)
+            7)
                 log_info "User selected: Run 2-Node StreamUpdates Test"
                 run_test "StreamUpdates Test" "tests/streaming/test_stream_updates.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            7)
+            8)
                 log_info "User selected: Run All Localhost Tests"
                 echo "Running complete test suite..."
                 # Build Rust library first (required for Go tests)
@@ -505,13 +787,13 @@ main() {
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            8)
+            9)
                 log_info "User selected: Run Comprehensive Localhost Test"
                 run_test "Comprehensive Localhost Test" "tests/integration/test_localhost_full.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            9)
+            10)
                 log_info "User selected: Setup Cross-Device/WAN Testing"
                 echo ""
                 echo -e "${BLUE}========================================${NC}"
@@ -549,13 +831,13 @@ main() {
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            10)
+            11)
                 log_info "User selected: Run Upload/Download Tests (Local)"
                 run_test "Upload/Download Local Test" "tests/integration/test_upload_download_local.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            11)
+            12)
                 log_info "User selected: Run Upload/Download Tests (Cross-Device)"
                 echo ""
                 echo -e "${YELLOW}Note: This requires nodes already running on different devices.${NC}"
@@ -564,48 +846,48 @@ main() {
                 if [ "$setup_done" = "y" ]; then
                     run_interactive_test "Cross-Device Upload/Download Test" "tests/integration/test_upload_download_cross_device.sh"
                 else
-                    echo "Please use option 9 to setup cross-device testing first."
+                    echo "Please use option 10 to setup cross-device testing first."
                 fi
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            12)
+            13)
                 log_info "User selected: Run FFI Integration Test"
                 run_test "FFI Integration Test" "tests/integration/test_ffi_integration.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            13)
+            14)
                 log_info "User selected: Run CES Wiring Test"
                 run_test "CES Wiring Test" "tests/ces/test_ces_simple.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            14)
+            15)
                 log_info "User selected: Run Phase 1 Features Test"
                 run_test "Phase 1 Features Test" "tests/test_phase1_features.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            15)
+            16)
                 log_info "User selected: Run Phase 1 Audio Integration Test"
                 run_interactive_test "Phase 1 Audio Integration Test" "tests/test_phase1_audio.py"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            16)
+            17)
                 log_info "User selected: Run Phase 1 Performance Benchmarks"
                 run_interactive_test "Phase 1 Performance Benchmarks" "tests/test_phase1_benchmarks.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            17)
+            18)
                 log_info "User selected: Run Streaming & AI Wiring Test"
                 run_test "Streaming & AI Wiring Test" "tests/streaming/test_streaming.sh"
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            18)
+            19)
                 log_info "User selected: Distributed Compute Menu"
                 echo ""
                 echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
@@ -619,9 +901,10 @@ main() {
                 echo -e "${CYAN}Run Tests (after connection established):${NC}"
                 echo "  3) Run Distributed Test - Matrix multiplication"
                 echo "  4) Run Distributed Test (Custom) - Specify host/port/size"
+                echo "  5) Run Matrix Multiply CLI (New!)"
                 echo ""
                 echo -e "${CYAN}Local Tests (no connection needed):${NC}"
-                echo "  5) Run Local Compute Tests - Unit tests, single node"
+                echo "  6) Run Local Compute Tests - Unit tests, single node"
                 echo ""
                 echo "  q) Back to main menu"
                 echo ""
@@ -664,6 +947,17 @@ main() {
                         read -p "Press Enter to continue..."
                         ;;
                     5)
+                        log_info "Running Matrix Multiply CLI"
+                        echo ""
+                        cd "$PROJECT_ROOT/python"
+                        source .venv/bin/activate 2>/dev/null || python3 -m venv .venv && source .venv/bin/activate
+                        read -p "Matrix size (default: 10): " mm_size
+                        mm_size="${mm_size:-10}"
+                        python main.py compute matrix-multiply --size "$mm_size" --generate --verify
+                        echo ""
+                        read -p "Press Enter to continue..."
+                        ;;
+                    6)
                         log_info "Running Local Compute Tests"
                         echo ""
                         # Run local tests from examples directory
@@ -687,7 +981,7 @@ main() {
                         ;;
                 esac
                 ;;
-            19)
+            20)
                 log_info "User selected: Run Live P2P Test"
                 echo ""
                 echo -e "${BLUE}========================================${NC}"
@@ -702,15 +996,21 @@ main() {
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            20)
+            21)
+                log_info "User selected: Check Network Status"
+                "$SCRIPT_DIR/check_network.sh" --status
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            22)
                 log_info "User selected: View Setup Log"
                 less "$LOG_FILE"
                 ;;
-            21)
+            23)
                 log_info "User selected: View Test Log"
                 less "$TEST_LOG_FILE"
                 ;;
-            22)
+            24)
                 log_info "User selected: Clean Build Artifacts"
                 clean_builds
                 echo ""
