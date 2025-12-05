@@ -208,6 +208,9 @@ func NewLibP2PPangeaNodeWithOptions(nodeID uint32, store *NodeStore, localMode, 
 	// Set stream handler for Pangea RPC protocol
 	host.SetStreamHandler(protocol.ID(PangeaRPCProtocol), node.handlePangeaRPC)
 
+	// Register network notifier to handle incoming connections
+	host.Network().Notify(&networkNotifee{node: node})
+
 	return node, nil
 }
 
@@ -684,4 +687,47 @@ func shortPeerID(id peer.ID) string {
 		return value
 	}
 	return value[:8]
+}
+
+// networkNotifee handles network connection events
+type networkNotifee struct {
+	node *LibP2PPangeaNode
+}
+
+func (n *networkNotifee) Listen(network.Network, multiaddr.Multiaddr)      {}
+func (n *networkNotifee) ListenClose(network.Network, multiaddr.Multiaddr) {}
+func (n *networkNotifee) Disconnected(_ network.Network, conn network.Conn) {
+	log.Printf("🔌 PEER DISCONNECTED: PeerID=%s", conn.RemotePeer().String())
+}
+
+func (n *networkNotifee) Connected(_ network.Network, conn network.Conn) {
+	peerID := conn.RemotePeer()
+	remoteAddr := conn.RemoteMultiaddr().String()
+
+	// Extract IP from multiaddr
+	peerIP := "unknown"
+	if strings.Contains(remoteAddr, "/ip4/") {
+		parts := strings.Split(remoteAddr, "/")
+		for i, p := range parts {
+			if p == "ip4" && i+1 < len(parts) {
+				peerIP = parts[i+1]
+				break
+			}
+		}
+	}
+
+	log.Printf("🔗 PEER CONNECTED: PeerID=%s IP=%s", peerID.String(), peerIP)
+
+	// Register this peer as a compute worker
+	if n.node != nil && n.node.computeProtocol != nil {
+		defaultCapacity := compute.ComputeCapacity{
+			CPUCores:      4,
+			RAMMB:         8192,
+			CurrentLoad:   0.0,
+			DiskMB:        10240,
+			BandwidthMbps: 100.0,
+		}
+		n.node.computeProtocol.RegisterWorker(peerID, defaultCapacity)
+		log.Printf("👷 Registered peer %s (IP: %s) as compute worker", shortPeerID(peerID), peerIP)
+	}
 }
