@@ -128,6 +128,18 @@ echo -e "${CYAN}║         Running Distributed Matrix Multiplication         �
 echo -e "${CYAN}╚════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
+# Check if responder connected
+ACTUAL_PEER_COUNT=$(grep "Connected peers: [1-9]" "$LOG_FILE" 2>/dev/null | tail -1 | grep -o '[0-9]*$' || echo "0")
+if [ "$ACTUAL_PEER_COUNT" -eq 0 ]; then
+    echo -e "${YELLOW}⚠️  No responder connected yet${NC}"
+    echo -e "${YELLOW}The test will run LOCALLY on this machine${NC}"
+    echo ""
+else
+    echo -e "${GREEN}✅ Responder is connected${NC}"
+    echo -e "${GREEN}The test will run REMOTELY on the responder node${NC}"
+    echo ""
+fi
+
 # Run the compute test
 cd "$PROJECT_ROOT/python"
 source .venv/bin/activate

@@ -350,25 +350,45 @@ def compute_from_file(
     job = distributed_matrix_multiply
     
     # Execute
+    execution_mode = None  # Track whether we executed remotely or locally
+    
     if connect:
         print(f"\n🌐 Connecting to compute node at {host}:{port}...")
         client = ComputeClient(host, port)
-        if not client.connect():
-            print("❌ Failed to connect. Running locally instead.")
+        connection_successful = client.connect()
+        
+        if not connection_successful:
+            print(f"❌ Failed to connect to remote node at {host}:{port}")
+            print("⚠️  FALLING BACK TO LOCAL EXECUTION")
             connect = False
+        else:
+            print(f"✅ Successfully connected to remote node")
     
     start_time = time.time()
     
     if connect:
-        print("\n⚡ Submitting job to distributed network...")
-        job_id = client.submit_job(job, input_data)
-        print(f"   Job ID: {job_id}")
-        
-        # Wait for result
-        result_data = client.get_result(job_id)
-        client.disconnect()
-    else:
-        print("\n⚡ Running computation locally...")
+        execution_mode = "REMOTE"
+        print("\n⚡ Submitting job to DISTRIBUTED NETWORK...")
+        print(f"   Target: {host}:{port}")
+        try:
+            job_id = client.submit_job(job, input_data)
+            print(f"   ✅ Job submitted successfully")
+            print(f"   Job ID: {job_id}")
+            
+            # Wait for result
+            print("   Waiting for remote execution...")
+            result_data = client.get_result(job_id)
+            print(f"   ✅ Result received from remote node")
+            client.disconnect()
+        except Exception as e:
+            print(f"❌ Remote execution failed: {e}")
+            print("⚠️  FALLING BACK TO LOCAL EXECUTION")
+            execution_mode = None
+            connect = False
+    
+    if not connect:
+        execution_mode = "LOCAL"
+        print("\n⚡ Running computation LOCALLY on this machine...")
         print("\n--- SPLIT Phase ---")
         chunks = job.split(input_data)
         
@@ -392,6 +412,13 @@ def compute_from_file(
     print(f"   Result dimensions: {r_rows} x {r_cols}")
     print(f"   Computation time: {elapsed:.3f} seconds")
     print(f"   Result size: {len(result_data)} bytes")
+    
+    # Show execution mode used
+    if execution_mode == "REMOTE":
+        print(f"   🌐 Execution Mode: REMOTE (distributed)")
+        print(f"      Executed on: {host}:{port}")
+    elif execution_mode == "LOCAL":
+        print(f"   💻 Execution Mode: LOCAL (this machine)")
     
     # Save result if requested
     if output_file:
