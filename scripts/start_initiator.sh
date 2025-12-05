@@ -57,10 +57,27 @@ echo "║   This just starts the node - run tests separately        ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
-# Build if needed
+# Build if needed (or if source files changed)
+NEED_BUILD=false
 if [ ! -f "$PROJECT_ROOT/go/bin/go-node" ]; then
+    NEED_BUILD=true
+else
+    # Check if any Go source files are newer than the binary
+    NEWEST_GO=$(find "$PROJECT_ROOT/go" -name "*.go" -newer "$PROJECT_ROOT/go/bin/go-node" 2>/dev/null | head -1)
+    if [ -n "$NEWEST_GO" ]; then
+        echo -e "${YELLOW}Source files changed, rebuilding...${NC}"
+        NEED_BUILD=true
+    fi
+fi
+
+if [ "$NEED_BUILD" = true ]; then
     echo -e "${YELLOW}Building Go node...${NC}"
     cd "$PROJECT_ROOT/go" && go build -o bin/go-node . && cd "$PROJECT_ROOT"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Build failed${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ Build complete${NC}"
 fi
 
 # Kill any existing nodes
@@ -74,8 +91,9 @@ export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
 
 "$PROJECT_ROOT/go/bin/go-node" \
     -node-id=1 \
-    -capnp-addr=:8080 \
+    -capnp-addr=0.0.0.0:8080 \
     -libp2p=true \
+    -libp2p-port=7777 \
     -test \
     > "$LOG_FILE" 2>&1 &
 echo $! > "$NODE_PID_FILE"
