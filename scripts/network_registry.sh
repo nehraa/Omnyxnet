@@ -105,12 +105,11 @@ save_local_node() {
     # Use Python for JSON manipulation (more reliable than jq)
     python3 << EOF
 import json
-import sys
 
 try:
     with open("${NETWORK_REGISTRY}", 'r') as f:
         registry = json.load(f)
-except:
+except (FileNotFoundError, json.JSONDecodeError, IOError):
     registry = {"version": "1.0.0", "created_at": "${timestamp}", "peers": []}
 
 registry["updated_at"] = "${timestamp}"
@@ -150,7 +149,7 @@ try:
         print(json.dumps(registry["local_node"]))
     else:
         print("")
-except:
+except Exception:
     print("")
 EOF
 }
@@ -177,7 +176,7 @@ import json
 try:
     with open("${NETWORK_REGISTRY}", 'r') as f:
         registry = json.load(f)
-except:
+except Exception:
     registry = {"version": "1.0.0", "created_at": "${timestamp}", "peers": [], "local_node": None}
 
 registry["updated_at"] = "${timestamp}"
@@ -236,7 +235,7 @@ try:
         registry = json.load(f)
     peers = registry.get("peers", [])
     print(json.dumps(peers))
-except:
+except Exception:
     print("[]")
 EOF
 }
@@ -263,7 +262,7 @@ try:
             break
     else:
         print("")
-except:
+except Exception:
     print("")
 EOF
 }
@@ -286,7 +285,7 @@ try:
         print(peers[0].get("multiaddr", ""))
     else:
         print("")
-except:
+except Exception:
     print("")
 EOF
 }
@@ -354,7 +353,7 @@ try:
         registry = json.load(f)
     peers = [p for p in registry.get("peers", []) if p.get("status") == "connected"]
     print(len(peers))
-except:
+except Exception:
     print("0")
 EOF
 )

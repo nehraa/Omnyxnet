@@ -1114,8 +1114,7 @@ def matrix_multiply(host, port, size, file_a, file_b, output, generate, verify, 
         
         # Verify dimensions
         if a_cols != b_rows:
-            click.echo(f"❌ Matrix dimensions incompatible: {a_rows}x{a_cols} * {b_rows}x{b_cols}", err=True)
-            sys.exit(1)
+            raise click.ClickException(f"Matrix dimensions incompatible: {a_rows}x{a_cols} * {b_rows}x{b_cols}")
     else:
         # Demo mode with small matrices
         click.echo("\n🎯 Running demo with small 3x3 matrices...")
