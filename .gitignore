@@ -72,6 +72,11 @@ node.log
 node.pid
 bootstrap_peer.txt
 
+# Temporary files
+temp_*.json
+*.json.tmp
+temp_*
+
 # Test files and media - DO NOT COMMIT
 test_media/
 test_results/
