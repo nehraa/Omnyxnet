@@ -77,7 +77,6 @@ export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
     -node-id=2 \
     -capnp-addr=:8080 \
     -libp2p=true \
-    -local \
     -test \
     -peers="$PEER_ADDR" \
     > "$LOG_FILE" 2>&1 &
