@@ -48,8 +48,8 @@ func DefaultConfig() ComputeConfig {
 		MaxConcurrentJobs:   10,
 		DefaultTimeout:      5 * time.Minute,
 		RetryCount:          3,
-		ComplexityThreshold: 1.0,
-		MinChunkSize:        64 * 1024,   // 64 KB
+		ComplexityThreshold: 0.000001,    // Very low threshold to prefer delegation
+		MinChunkSize:        1024,        // 1 KB - smaller chunks for testing
 		MaxChunkSize:        1024 * 1024, // 1 MB
 		VerificationMode:    VerificationHash,
 	}

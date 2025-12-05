@@ -29,8 +29,8 @@ echo ""
 echo -e "${YELLOW}NOTE: Run this test on the INITIATOR device.${NC}"
 echo -e "${YELLOW}      The initiator will delegate the task to connected workers.${NC}"
 echo ""
-echo -e "   Connecting to local Go node: ${GREEN}${HOST}:${PORT}${NC}"
-echo -e "   Matrix size: ${GREEN}${SIZE}x${SIZE}${NC}"
+echo -e "   Manager Node: ${GREEN}${HOST}:${PORT}${NC} (Initiator)"
+echo -e "   Matrix size:  ${GREEN}${SIZE}x${SIZE}${NC}"
 echo ""
 
 # Setup Python
@@ -43,7 +43,8 @@ source .venv/bin/activate
 pip install -q -r requirements.txt 2>/dev/null || pip install -q pycapnp numpy
 
 # Run test
-echo -e "${YELLOW}Running distributed compute test...${NC}"
+echo -e "${YELLOW}Submitting job to Manager Node...${NC}"
+echo -e "${YELLOW}(Manager will delegate to connected Workers)${NC}"
 echo ""
 
 python3 examples/distributed_matrix_multiply.py \
