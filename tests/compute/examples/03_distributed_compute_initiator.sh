@@ -72,7 +72,6 @@ export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
     -node-id=1 \
     -capnp-addr=:8080 \
     -libp2p=true \
-    -local \
     -test \
     > "$LOG_FILE" 2>&1 &
 echo $! > "$NODE_PID_FILE"
