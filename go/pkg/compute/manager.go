@@ -365,6 +365,12 @@ func (m *Manager) GetJobStatus(jobID string) (*JobStatus, error) {
 
 // GetJobResult returns the final result of a completed job
 func (m *Manager) GetJobResult(jobID string, timeout time.Duration) ([]byte, error) {
+	result, _, err := m.GetJobResultWithWorker(jobID, timeout)
+	return result, err
+}
+
+// GetJobResultWithWorker returns the final result and the worker ID that executed the job
+func (m *Manager) GetJobResultWithWorker(jobID string, timeout time.Duration) ([]byte, string, error) {
 	ctx, cancel := context.WithTimeout(m.ctx, timeout)
 	defer cancel()
 
@@ -375,25 +381,35 @@ func (m *Manager) GetJobResult(jobID string, timeout time.Duration) ([]byte, err
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, fmt.Errorf("timeout waiting for job %s", jobID)
+			return nil, "", fmt.Errorf("timeout waiting for job %s", jobID)
 		case <-ticker.C:
 			m.mu.RLock()
 			state, exists := m.jobs[jobID]
 			if !exists {
 				m.mu.RUnlock()
-				return nil, fmt.Errorf("job %s not found", jobID)
+				return nil, "", fmt.Errorf("job %s not found", jobID)
 			}
 
 			if state.status == TaskCompleted {
-				// Merge results and return
+				// Merge results and get worker info
 				result := m.mergeResults(state)
+
+				// Get worker ID from first chunk result
+				workerID := "local"
+				for _, taskResult := range state.results {
+					if taskResult != nil && taskResult.WorkerID != "" {
+						workerID = taskResult.WorkerID
+						break
+					}
+				}
+
 				m.mu.RUnlock()
-				return result, nil
+				return result, workerID, nil
 			}
 
 			if state.status == TaskFailed || state.status == TaskCancelled {
 				m.mu.RUnlock()
-				return nil, fmt.Errorf("job %s failed or was cancelled", jobID)
+				return nil, "", fmt.Errorf("job %s failed or was cancelled", jobID)
 			}
 			m.mu.RUnlock()
 		}

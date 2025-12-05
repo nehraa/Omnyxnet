@@ -110,11 +110,15 @@ fi
 
 echo ""
 echo -e "${YELLOW}Node running. Keep this terminal open. (Ctrl+C to stop)${NC}"
+echo -e "${CYAN}📋 Watching for incoming compute tasks...${NC}"
 echo ""
 
-# Keep running
+# Track what we've already shown
+LAST_TASK_LINE=0
+
+# Keep running and show task execution logs
 while true; do
-    sleep 2
+    sleep 1
     if [ ! -f "$NODE_PID_FILE" ]; then
         break
     fi
@@ -129,5 +133,37 @@ while true; do
     if [ "$NEW_PEER_COUNT" != "$PEER_COUNT" ]; then
         PEER_COUNT=$NEW_PEER_COUNT
         echo -e "${GREEN}Connected peers: ${PEER_COUNT}${NC}"
+    fi
+    
+    # Show compute task logs (incoming tasks and execution)
+    CURRENT_LINES=$(wc -l < "$LOG_FILE" 2>/dev/null | tr -d ' ')
+    if [ "$CURRENT_LINES" -gt "$LAST_TASK_LINE" ]; then
+        # Extract compute-related lines we haven't shown yet
+        tail -n +$((LAST_TASK_LINE + 1)) "$LOG_FILE" 2>/dev/null | while read -r line; do
+            # Show task received
+            if echo "$line" | grep -q "\[COMPUTE\] Received task"; then
+                task_id=$(echo "$line" | grep -o 'task [^ ]*' | head -1)
+                chunk=$(echo "$line" | grep -o 'chunk [0-9]*' | head -1)
+                bytes=$(echo "$line" | grep -o '[0-9]* bytes' | head -1)
+                echo ""
+                echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+                echo -e "${CYAN}📥 INCOMING TASK FROM INITIATOR${NC}"
+                echo -e "   Task: ${task_id}"
+                echo -e "   Chunk: ${chunk}"
+                echo -e "   Input: ${bytes}"
+                echo -e "${YELLOW}   ⚙️  Executing computation...${NC}"
+            fi
+            # Show task completed
+            if echo "$line" | grep -q "\[COMPUTE\] Task .* completed"; then
+                task_id=$(echo "$line" | grep -o 'Task [^ ]*' | head -1)
+                exec_time=$(echo "$line" | grep -o 'in [0-9]*ms' | head -1)
+                result_size=$(echo "$line" | grep -o 'result: [0-9]* bytes' | head -1)
+                echo -e "${GREEN}   ✅ COMPLETED!${NC}"
+                echo -e "   Execution time: ${exec_time}"
+                echo -e "   Result: ${result_size}"
+                echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+            fi
+        done
+        LAST_TASK_LINE=$CURRENT_LINES
     fi
 done

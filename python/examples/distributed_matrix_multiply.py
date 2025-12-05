@@ -370,6 +370,7 @@ def compute_from_file(
         execution_mode = "REMOTE"
         print("\n⚡ Submitting job to DISTRIBUTED NETWORK...")
         print(f"   Target: {host}:{port}")
+        worker_node = None
         try:
             job_id = client.submit_job(job, input_data)
             print(f"   ✅ Job submitted successfully")
@@ -377,7 +378,7 @@ def compute_from_file(
             
             # Wait for result
             print("   Waiting for remote execution...")
-            result_data = client.get_result(job_id)
+            result_data, worker_node = client.get_result(job_id)
             print(f"   ✅ Result received from remote node")
             client.disconnect()
         except Exception as e:
@@ -416,7 +417,10 @@ def compute_from_file(
     # Show execution mode used
     if execution_mode == "REMOTE":
         print(f"   🌐 Execution Mode: REMOTE (distributed)")
-        print(f"      Executed on: {host}:{port}")
+        if worker_node and worker_node != "local":
+            print(f"      Executed by Worker: {worker_node}")
+        else:
+            print(f"      Connected via: {host}:{port}")
     elif execution_mode == "LOCAL":
         print(f"   💻 Execution Mode: LOCAL (this machine)")
     

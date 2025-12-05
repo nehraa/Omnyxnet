@@ -237,7 +237,7 @@ interface NodeService {
     getComputeJobStatus @23 (jobId :Text) -> (status :ComputeJobStatus);
     
     # Get job result (blocks until complete or timeout)
-    getComputeJobResult @24 (jobId :Text, timeoutMs :UInt32) -> (result :Data, success :Bool, errorMsg :Text);
+    getComputeJobResult @24 (jobId :Text, timeoutMs :UInt32) -> (result :Data, success :Bool, errorMsg :Text, workerNode :Text);
     
     # Cancel a running job
     cancelComputeJob @25 (jobId :Text) -> (success :Bool);

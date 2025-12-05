@@ -55,7 +55,7 @@ def submit_job(job_definition, input_data: bytes, host: str = 'localhost', port:
         **kwargs: Additional job configuration
         
     Returns:
-        The job result as bytes
+        Tuple of (result bytes, worker_node) where worker_node indicates which node executed
     """
     client = ComputeClient(host, port)
     try:

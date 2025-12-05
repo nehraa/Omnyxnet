@@ -1228,7 +1228,7 @@ func (s *nodeServiceServer) GetComputeJobResult(ctx context.Context, call NodeSe
 		timeout = 5 * time.Minute // Default timeout
 	}
 
-	result, err := s.computeManager.GetJobResult(jobID, timeout)
+	result, workerID, err := s.computeManager.GetJobResultWithWorker(jobID, timeout)
 	if err != nil {
 		log.Printf("❌ [COMPUTE] Failed to get job result for %s: %v", jobID, err)
 		results.SetSuccess(false)
@@ -1236,10 +1236,20 @@ func (s *nodeServiceServer) GetComputeJobResult(ctx context.Context, call NodeSe
 		return nil
 	}
 
-	log.Printf("✅ [COMPUTE] Job %s completed with result size: %d bytes", jobID, len(result))
+	// Format worker info - show IP if remote, "local" if local
+	workerNode := workerID
+	if workerID == "local" {
+		workerNode = "local (this node)"
+	} else if len(workerID) > 20 {
+		// It's a peer ID, show abbreviated version
+		workerNode = "remote:" + workerID[:12] + "..."
+	}
+
+	log.Printf("✅ [COMPUTE] Job %s completed by %s, result size: %d bytes", jobID, workerNode, len(result))
 	results.SetResult(result)
 	results.SetSuccess(true)
 	results.SetErrorMsg("")
+	results.SetWorkerNode(workerNode)
 	return nil
 }
 

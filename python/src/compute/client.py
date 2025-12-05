@@ -9,7 +9,7 @@ import logging
 import time
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 from pathlib import Path
 import sys
 
@@ -72,7 +72,8 @@ class ComputeClient:
                 break
             time.sleep(1)
         
-        result = client.get_result(job_id)
+        result, worker_node = client.get_result(job_id)
+        print(f"Executed by: {worker_node}")
         client.disconnect()
     """
     
@@ -277,7 +278,7 @@ class ComputeClient:
             error=job.get('error'),
         )
     
-    def get_result(self, job_id: str, timeout: float = 300.0) -> bytes:
+    def get_result(self, job_id: str, timeout: float = 300.0) -> Tuple[bytes, str]:
         """Get the result of a completed job from Go orchestrator.
         
         Args:
@@ -285,7 +286,8 @@ class ComputeClient:
             timeout: Maximum time to wait in seconds
             
         Returns:
-            The job result as bytes
+            Tuple of (result_bytes, worker_node)
+            worker_node is "local" or the peer ID of the remote node that executed
             
         Raises:
             ConnectionError: If not connected
@@ -300,13 +302,13 @@ class ComputeClient:
             raise KeyError(f"Job {job_id} not found")
         
         # Try to get result from Go orchestrator first
-        result_data, error_msg = self._go_client.get_compute_job_result(
+        result_data, error_msg, worker_node = self._go_client.get_compute_job_result(
             job_id, 
             timeout_ms=int(timeout * 1000)
         )
         
         if result_data:
-            return result_data
+            return result_data, worker_node
         
         if error_msg:
             logger.warning(f"Go orchestrator result fetch failed: {error_msg}")
@@ -317,7 +319,7 @@ class ComputeClient:
             job = self._jobs[job_id]
             
             if job['status'] == TaskStatus.COMPLETED:
-                return job['result']
+                return job['result'], "local"
             
             if job['status'] == TaskStatus.FAILED:
                 raise RuntimeError(f"Job failed: {job.get('error', 'Unknown error')}")

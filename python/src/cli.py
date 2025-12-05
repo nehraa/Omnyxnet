@@ -878,8 +878,10 @@ def submit(host, port, input_file, input_text, timeout, priority, schema):
         
         # Wait for result
         click.echo("⏳ Waiting for result...")
-        result = client.get_result(job_id, timeout=timeout)
+        result, worker_node = client.get_result(job_id, timeout=timeout)
         click.echo(f"✅ Job completed! Result size: {len(result)} bytes")
+        if worker_node and worker_node != "local":
+            click.echo(f"   Executed by worker: {worker_node}")
         
         # Show preview
         if len(result) < 200:
@@ -950,7 +952,7 @@ def result(host, port, output, job_id):
         sys.exit(1)
     
     try:
-        result = client.get_result(job_id, timeout=10)
+        result, worker_node = client.get_result(job_id, timeout=10)
         
         if output:
             with open(output, 'wb') as f:

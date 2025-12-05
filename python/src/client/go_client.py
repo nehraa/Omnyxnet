@@ -862,7 +862,7 @@ class GoNodeClient:
             logger.error(f"Error getting compute job status: {e}")
             return None
     
-    def get_compute_job_result(self, job_id: str, timeout_ms: int = 60000) -> Tuple[Optional[bytes], str]:
+    def get_compute_job_result(self, job_id: str, timeout_ms: int = 60000) -> Tuple[Optional[bytes], str, str]:
         """Get the result of a completed compute job.
         
         Args:
@@ -870,7 +870,8 @@ class GoNodeClient:
             timeout_ms: How long to wait for result in milliseconds
             
         Returns:
-            Tuple of (result_data, error_message)
+            Tuple of (result_data, error_message, worker_node)
+            worker_node is "local" or the peer ID of the remote node that executed
         """
         if not self._connected:
             raise RuntimeError("Not connected to Go node")
@@ -878,15 +879,16 @@ class GoNodeClient:
         async def _async_get_result():
             result = await self.service.getComputeJobResult(job_id, timeout_ms)
             if result.success:
-                return bytes(result.result), ""
-            return None, result.errorMsg
+                worker_node = result.workerNode if hasattr(result, 'workerNode') else "unknown"
+                return bytes(result.result), "", worker_node
+            return None, result.errorMsg, ""
         
         try:
             future = asyncio.run_coroutine_threadsafe(_async_get_result(), self._loop)
             return future.result(timeout=timeout_ms/1000 + 5)
         except Exception as e:
             logger.error(f"Error getting compute job result: {e}")
-            return None, str(e)
+            return None, str(e), ""
     
     def cancel_compute_job(self, job_id: str) -> bool:
         """Cancel a running compute job.
