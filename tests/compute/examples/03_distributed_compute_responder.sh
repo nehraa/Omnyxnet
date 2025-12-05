@@ -15,6 +15,9 @@ YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+# Configuration
+CAPNP_PORT="${1:-8080}"  # Can override with argument for same-machine testing
+
 # Session files
 SESSION_DIR="$HOME/.pangea/compute_test"
 mkdir -p "$SESSION_DIR"
@@ -38,6 +41,10 @@ echo "╔═══════════════════════�
 echo "║   DISTRIBUTED COMPUTE - RESPONDER (Device 2)              ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
+
+if [ "$CAPNP_PORT" != "8080" ]; then
+    echo -e "${YELLOW}📝 Custom Cap'n Proto port: :${CAPNP_PORT}${NC}"
+fi
 
 # Build if needed
 if [ ! -f "$PROJECT_ROOT/go/bin/go-node" ]; then
@@ -65,7 +72,7 @@ export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
 
 "$PROJECT_ROOT/go/bin/go-node" \
     -node-id=2 \
-    -capnp-addr=:8080 \
+    -capnp-addr=:${CAPNP_PORT} \
     -libp2p=true \
     -local \
     -test \
@@ -78,7 +85,7 @@ echo -e "${YELLOW}Connecting to initiator...${NC}"
 sleep 4
 
 # Check if connected
-if grep -q "Connecting to peer\|connected" "$LOG_FILE" 2>/dev/null; then
+if grep -q "Connected peers: [1-9]" "$LOG_FILE" 2>/dev/null; then
     echo -e "${GREEN}✅ Connected to initiator!${NC}"
 else
     echo -e "${YELLOW}⚠️  Connection in progress...${NC}"

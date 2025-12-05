@@ -98,7 +98,17 @@ echo ""
 echo -e "${CYAN}════════════════════════════════════════════════════════════${NC}"
 echo -e "${CYAN}🔗 ON THE RESPONDER DEVICE, RUN:${NC}"
 echo ""
-echo -e "${YELLOW}bash tests/compute/examples/03_distributed_compute_responder.sh${NC}"
+
+# Check if running on same machine
+if [ "$LOCAL_IP" = "127.0.0.1" ]; then
+    echo -e "${YELLOW}bash tests/compute/examples/03_distributed_compute_responder.sh 8081${NC}"
+    echo ""
+    echo -e "${CYAN}Note: Using port 8081 for same-machine testing${NC}"
+    echo -e "${CYAN}This allows two nodes on localhost without port conflicts${NC}"
+else
+    echo -e "${YELLOW}bash tests/compute/examples/03_distributed_compute_responder.sh${NC}"
+fi
+
 echo ""
 echo -e "${CYAN}Then when prompted, paste this address:${NC}"
 echo -e "${GREEN}${PEER_ADDR_EXTERNAL}${NC}"
