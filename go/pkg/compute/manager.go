@@ -869,16 +869,18 @@ func (m *Manager) splitData(data []byte, minSize, maxSize int64) [][]byte {
 		return [][]byte{}
 	}
 
-	// Calculate chunk size
-	targetChunks := 8
-	chunkSize := int64(len(data)) / int64(targetChunks)
+	// For matrix multiplication data (which has a specific header structure),
+	// arbitrary splitting will break the format.
+	// If the data fits within MaxChunkSize, keep it as one chunk.
+	// This ensures the worker receives the full matrix problem.
+	if int64(len(data)) <= maxSize {
+		return [][]byte{data}
+	}
 
-	if chunkSize < minSize {
-		chunkSize = minSize
-	}
-	if chunkSize > maxSize {
-		chunkSize = maxSize
-	}
+	// If we MUST split (data > MaxChunkSize), we use the max size.
+	// Note: This will still break matrix multiplication if the logic isn't
+	// matrix-aware, but it's better than forcing small chunks.
+	chunkSize := maxSize
 
 	var chunks [][]byte
 	for i := int64(0); i < int64(len(data)); i += chunkSize {
