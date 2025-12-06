@@ -1,0 +1,38 @@
+# DCDN Configuration Example
+# Based on dcdn_design_spec.txt
+
+[node]
+id = "node-001"
+role = "edge"  # edge | relay | origin
+
+[network]
+listen_addr = "0.0.0.0:4433"
+control_plane_addr = "control.example.com:50051"
+
+[quic]
+max_concurrent_connections = 1000
+max_streams_per_connection = 256
+congestion_algorithm = "bbr"  # bbr | cubic
+enable_gso = true
+idle_timeout_ms = 30000
+
+[storage]
+ring_buffer_size_mb = 100
+chunk_ttl_seconds = 120
+max_memory_mb = 500
+
+[fec]
+default_block_size = 16
+default_parity_count = 2
+adaptive = true
+
+[p2p]
+max_upload_mbps = 50
+max_download_mbps = 100
+unchoke_interval_seconds = 10
+regular_unchoke_count = 4
+optimistic_unchoke_count = 1
+
+[crypto]
+signature_algorithm = "ed25519"
+key_rotation_days = 30
