@@ -154,9 +154,10 @@ function initNetworkCanvas() {
   }
   
   // Initialize nodes
+  const MIN_NODE_SPACING = 80;
   function initNodes() {
     nodes = [];
-    const nodeCount = Math.min(15, Math.floor(canvas.offsetWidth / 80));
+    const nodeCount = Math.min(15, Math.floor(canvas.offsetWidth / MIN_NODE_SPACING));
     
     for (let i = 0; i < nodeCount; i++) {
       nodes.push({
