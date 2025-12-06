@@ -555,8 +555,47 @@ start_manager_node() {
         return 1
     fi
     
-    # Get local IP for display
-    local LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
+    # Extract peer info from logs (adapted from live_test.sh)
+    local LOG_FILE="$HOME/.wgt/logs/network.log"
+    local LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
+    local attempts=0
+    local peer_id=""
+    local full_multiaddr=""
+    
+    echo "Extracting peer information from logs..."
+    while [ $attempts -lt 15 ]; do
+        # Look for full multiaddr in logs
+        full_multiaddr=$(grep -oE "/ip4/[0-9.]+/tcp/[0-9]+/p2p/[a-zA-Z0-9]+" "$LOG_FILE" 2>/dev/null | \
+                        grep -v "127.0.0.1" | tail -1 || true)
+        
+        if [ -n "$full_multiaddr" ]; then
+            peer_id=$(echo "$full_multiaddr" | grep -oP '/p2p/\K[a-zA-Z0-9]+' || true)
+            break
+        fi
+        
+        # Fallback: look for peer ID in logs
+        if [ -z "$peer_id" ]; then
+            peer_id=$(grep -oP 'Node ID: \K[a-zA-Z0-9]+' "$LOG_FILE" 2>/dev/null | tail -1 || true)
+        fi
+        
+        sleep 1
+        attempts=$((attempts + 1))
+    done
+    
+    # If we got a full multiaddr, use it
+    if [ -n "$full_multiaddr" ]; then
+        local extracted_ip=$(echo "$full_multiaddr" | grep -oP '/ip4/\K[0-9.]+' || true)
+        # Replace 0.0.0.0 with actual local IP
+        if [ "$extracted_ip" = "0.0.0.0" ]; then
+            full_multiaddr=$(echo "$full_multiaddr" | sed "s|/ip4/0.0.0.0|/ip4/$LOCAL_IP|")
+        fi
+    elif [ -n "$peer_id" ]; then
+        # Construct multiaddr from components
+        full_multiaddr="/ip4/${LOCAL_IP}/tcp/${LIBP2P_PORT}/p2p/${peer_id}"
+    else
+        log_warning "Could not extract peer ID from logs. Connection may not work."
+        full_multiaddr="/ip4/${LOCAL_IP}/tcp/${LIBP2P_PORT}"
+    fi
     
     echo ""
     echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
@@ -567,17 +606,29 @@ start_manager_node() {
     echo "   RPC Address: ${LOCAL_IP}:${CAPNP_PORT}"
     echo "   P2P Port:    ${LIBP2P_PORT}"
     echo "   Mode:        MANAGER (Initiator)"
+    
+    if [ -n "$peer_id" ]; then
+        # Truncate peer_id for display if too long
+        local peer_id_display="$peer_id"
+        if [ ${#peer_id} -gt 20 ]; then
+            peer_id_display="${peer_id:0:20}..."
+        fi
+        echo "   Peer ID:     ${peer_id_display}"
+    fi
+    
     echo ""
-    echo -e "${YELLOW}📋 Share this with Workers:${NC}"
+    echo -e "${YELLOW}📋 Share this FULL ADDRESS with Workers:${NC}"
     echo ""
-    echo "   IP Address: ${LOCAL_IP}"
-    echo "   RPC Port:   ${CAPNP_PORT}"
+    echo -e "   ${CYAN}${full_multiaddr}${NC}"
+    echo ""
+    echo "   (Copy the full line above)"
     echo ""
     echo "   Workers should run: setup.sh → Option 2 → Worker"
+    echo "   and paste this address when prompted."
     echo ""
     
     # Save to registry
-    save_local_node "node-1" "/ip4/${LOCAL_IP}/tcp/${LIBP2P_PORT}" "${CAPNP_PORT}" "manager"
+    save_local_node "node-1" "$full_multiaddr" "${CAPNP_PORT}" "manager"
     
     echo "   Process ID: ${NODE_PID}"
     echo "   Logs: ~/.wgt/logs/network.log"
@@ -610,9 +661,42 @@ start_worker_node() {
     
     echo "Enter the Manager's connection info:"
     echo ""
-    read -p "Manager IP address: " MANAGER_IP
-    read -p "Manager RPC port [8080]: " MANAGER_PORT
-    MANAGER_PORT="${MANAGER_PORT:-8080}"
+    echo "You can either:"
+    echo "  1) Paste the full multiaddr (e.g., /ip4/192.168.1.100/tcp/9081/p2p/12D3...)"
+    echo "  2) Enter IP and ports separately"
+    echo ""
+    read -p "Enter full multiaddr (or press Enter to use IP/port): " MANAGER_MULTIADDR
+    
+    local MANAGER_IP=""
+    local MANAGER_PORT=""
+    local MANAGER_PEER=""
+    
+    if [ -n "$MANAGER_MULTIADDR" ]; then
+        # User provided full multiaddr
+        MANAGER_PEER="$MANAGER_MULTIADDR"
+        # Extract IP and RPC port for display (if possible)
+        MANAGER_IP=$(echo "$MANAGER_MULTIADDR" | grep -oP '/ip4/\K[0-9.]+' || echo "unknown")
+        echo ""
+        read -p "Manager RPC port [8080]: " MANAGER_PORT
+        MANAGER_PORT="${MANAGER_PORT:-8080}"
+    else
+        # Manual IP/port entry
+        read -p "Manager IP address: " MANAGER_IP
+        read -p "Manager RPC port [8080]: " MANAGER_PORT
+        MANAGER_PORT="${MANAGER_PORT:-8080}"
+        
+        # Prompt for Manager's libp2p port and peer ID
+        read -p "Manager's libp2p port [9081]: " input_manager_p2p_port
+        local MANAGER_P2P_PORT="${input_manager_p2p_port:-9081}"
+        read -p "Manager's peer ID (optional, for better connection): " MANAGER_PEER_ID
+        
+        if [ -n "$MANAGER_PEER_ID" ]; then
+            MANAGER_PEER="/ip4/${MANAGER_IP}/tcp/${MANAGER_P2P_PORT}/p2p/${MANAGER_PEER_ID}"
+        else
+            MANAGER_PEER="/ip4/${MANAGER_IP}/tcp/${MANAGER_P2P_PORT}"
+            log_warning "No peer ID provided. Connection may rely on mDNS discovery."
+        fi
+    fi
     
     # Worker ports (offset from manager)
     local CAPNP_PORT=8081
@@ -642,15 +726,11 @@ start_worker_node() {
     
     echo ""
     log_info "Starting Worker node, connecting to Manager at ${MANAGER_IP}:${MANAGER_PORT}..."
+    log_info "Using peer address: ${MANAGER_PEER}"
     echo ""
     
     # Get local IP
     local LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "localhost")
-    
-    # Prompt for Manager's libp2p port (default: 9081)
-    read -p "Manager's libp2p port [9081]: " input_manager_p2p_port
-    local MANAGER_P2P_PORT="${input_manager_p2p_port:-9081}"
-    local MANAGER_PEER="/ip4/${MANAGER_IP}/tcp/${MANAGER_P2P_PORT}"
     
     cd "$PROJECT_ROOT/go"
     
@@ -676,6 +756,48 @@ start_worker_node() {
         return 1
     fi
     
+    # Extract worker's own peer info from logs
+    local LOG_FILE="$HOME/.wgt/logs/network.log"
+    local attempts=0
+    local worker_peer_id=""
+    local worker_multiaddr=""
+    
+    echo "Extracting worker peer information..."
+    while [ $attempts -lt 15 ]; do
+        # Look for full multiaddr in logs (get the last one which should be this worker)
+        worker_multiaddr=$(grep -oE "/ip4/[0-9.]+/tcp/[0-9]+/p2p/[a-zA-Z0-9]+" "$LOG_FILE" 2>/dev/null | \
+                          tail -1 || true)
+        
+        if [ -n "$worker_multiaddr" ]; then
+            worker_peer_id=$(echo "$worker_multiaddr" | grep -oP '/p2p/\K[a-zA-Z0-9]+' || true)
+            # Check if this is actually our worker's address by verifying the port
+            local addr_port=$(echo "$worker_multiaddr" | grep -oP '/tcp/\K[0-9]+' || true)
+            if [ "$addr_port" = "$LIBP2P_PORT" ]; then
+                break
+            fi
+        fi
+        
+        sleep 1
+        attempts=$((attempts + 1))
+    done
+    
+    # Construct worker multiaddr if not found
+    if [ -z "$worker_multiaddr" ] || [ -z "$worker_peer_id" ]; then
+        # Try to get just peer ID
+        worker_peer_id=$(grep -oP 'Node ID: \K[a-zA-Z0-9]+' "$LOG_FILE" 2>/dev/null | tail -1 || true)
+        if [ -n "$worker_peer_id" ]; then
+            worker_multiaddr="/ip4/${LOCAL_IP}/tcp/${LIBP2P_PORT}/p2p/${worker_peer_id}"
+        else
+            worker_multiaddr="/ip4/${LOCAL_IP}/tcp/${LIBP2P_PORT}"
+        fi
+    else
+        # Replace 0.0.0.0 with actual local IP
+        local extracted_ip=$(echo "$worker_multiaddr" | grep -oP '/ip4/\K[0-9.]+' || true)
+        if [ "$extracted_ip" = "0.0.0.0" ]; then
+            worker_multiaddr=$(echo "$worker_multiaddr" | sed "s|/ip4/0.0.0.0|/ip4/$LOCAL_IP|")
+        fi
+    fi
+    
     echo ""
     echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
     echo -e "${GREEN}   ✅ Worker Node Started!${NC}"
@@ -683,13 +805,28 @@ start_worker_node() {
     echo ""
     echo "   Node ID:       ${NODE_ID}"
     echo "   Local Address: ${LOCAL_IP}:${CAPNP_PORT}"
+    echo "   P2P Port:      ${LIBP2P_PORT}"
+    
+    if [ -n "$worker_peer_id" ]; then
+        # Truncate peer_id for display if too long
+        local peer_id_display="$worker_peer_id"
+        if [ ${#worker_peer_id} -gt 20 ]; then
+            peer_id_display="${worker_peer_id:0:20}..."
+        fi
+        echo "   Peer ID:       ${peer_id_display}"
+    fi
+    
     echo "   Manager:       ${MANAGER_IP}:${MANAGER_PORT}"
     echo "   Mode:          WORKER (Responder)"
     echo ""
+    echo -e "${CYAN}📋 This worker's full address:${NC}"
+    echo ""
+    echo -e "   ${CYAN}${worker_multiaddr}${NC}"
+    echo ""
     
     # Save to registry
-    save_local_node "node-${NODE_ID}" "/ip4/${LOCAL_IP}/tcp/${LIBP2P_PORT}" "${CAPNP_PORT}" "worker"
-    save_peer "manager" "/ip4/${MANAGER_IP}/tcp/${MANAGER_P2P_PORT}" "${MANAGER_PORT}" "connected"
+    save_local_node "node-${NODE_ID}" "$worker_multiaddr" "${CAPNP_PORT}" "worker"
+    save_peer "manager" "${MANAGER_PEER}" "${MANAGER_PORT}" "connected"
     
     echo "   Process ID: ${NODE_PID}"
     echo "   Logs: ~/.wgt/logs/network.log"
