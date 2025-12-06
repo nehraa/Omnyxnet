@@ -1,6 +1,7 @@
 //! Integration tests for DCDN system
 
 use pangea_ces::dcdn::*;
+use pangea_ces::dcdn::config::{QuicConfig, CongestionAlgo};
 use bytes::Bytes;
 use std::time::{Duration, Instant};
 
@@ -277,8 +278,6 @@ fn test_signature_batch_verification() {
 
 #[tokio::test]
 async fn test_quic_transport_creation() {
-    use pangea_ces::dcdn::config::{QuicConfig, CongestionAlgo};
-    
     let config = QuicConfig {
         max_concurrent_connections: 100,
         max_streams_per_connection: 256,

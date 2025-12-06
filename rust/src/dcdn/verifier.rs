@@ -119,14 +119,19 @@ impl SignatureVerifier {
 
     /// Internal Ed25519 verification (placeholder - would use ed25519-dalek in production)
     fn verify_ed25519(&self, _data: &[u8], _signature: &[u8; 64], _public_key: &[u8; 32]) -> Result<bool> {
-        // In production, this would use ed25519-dalek crate:
+        // TODO: SECURITY - Implement real Ed25519 verification before production use!
+        // This is a placeholder that always returns true.
+        // 
+        // In production, uncomment and use ed25519-dalek crate:
         // use ed25519_dalek::{PublicKey, Signature, Verifier};
         // 
-        // let pk = PublicKey::from_bytes(public_key)?;
-        // let sig = Signature::from_bytes(signature)?;
+        // let pk = PublicKey::from_bytes(public_key)
+        //     .map_err(|e| anyhow::anyhow!("Invalid public key: {}", e))?;
+        // let sig = Signature::from_bytes(signature)
+        //     .map_err(|e| anyhow::anyhow!("Invalid signature: {}", e))?;
         // Ok(pk.verify(data, &sig).is_ok())
 
-        // For now, simplified verification (always true for valid keys)
+        // TEMPORARY: Always returns true for development/testing
         Ok(true)
     }
 }

@@ -154,13 +154,10 @@ impl FecEngine {
         }
 
         // Reconstruct missing shards
-        let mut shard_options: Vec<Option<Vec<u8>>> = shards.into_iter().enumerate().map(|(i, s)| {
-            if present[i] {
-                Some(s)
-            } else {
-                None
-            }
-        }).collect();
+        let mut shard_options: Vec<Option<Vec<u8>>> = shards.into_iter()
+            .zip(present.iter())
+            .map(|(s, &p)| if p { Some(s) } else { None })
+            .collect();
         
         rs.reconstruct_data(&mut shard_options)
             .context("Reed-Solomon reconstruction failed")?;

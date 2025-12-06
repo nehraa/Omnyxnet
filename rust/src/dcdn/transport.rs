@@ -73,7 +73,9 @@ impl QuicTransport {
             .await
             .context("Failed to accept connection")?;
 
-        // Generate peer ID from connection (simplified)
+        // TODO: SECURITY - Generate peer ID from connection certificate or authenticated channel
+        // This is a placeholder that uses random IDs for development.
+        // In production, derive peer ID from connection TLS certificate or authentication token.
         let peer_id = PeerId::new(rand::random());
 
         self.active_connections.insert(peer_id, conn.clone());

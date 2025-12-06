@@ -128,7 +128,8 @@ impl P2PEngine {
         if peer_scores.len() > regular_count && self.config.optimistic_unchoke_count > 0 {
             let remaining = &peer_scores[regular_count..];
             if !remaining.is_empty() {
-                let random_idx = rand::random::<usize>() % remaining.len();
+                use rand::Rng;
+                let random_idx = rand::thread_rng().gen_range(0..remaining.len());
                 unchoked.push(remaining[random_idx].0);
             }
         }
