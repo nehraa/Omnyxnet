@@ -63,14 +63,8 @@ SEED_DATA_FILE = DEMO_DIR / "demo_seed.json"
 GO_NODE_HOST = os.environ.get("GO_NODE_HOST", "localhost")
 GO_NODE_PORT = int(os.environ.get("GO_NODE_PORT", 8080))
 
-# Processing complexity delay configuration (in seconds)
-# Extracted as constants for maintainability and testability
-COMPLEXITY_DELAYS = {
-    "low": 0.3,
-    "medium": 0.5,
-    "high": 0.8
-}
-DEFAULT_COMPLEXITY_DELAY = 0.5
+# Note: Artificial "complexity delays" have been removed.
+# All processing now happens at actual network speed without fake delays.
 
 # FastAPI application
 app = FastAPI(
@@ -362,7 +356,7 @@ async def get_logs():
     }
 
 
-async def simulate_processing(complexity: str = "medium"):
+async def simulate_processing():
     """
     Simulates the distributed processing pipeline.
     This would normally trigger the actual core logic.
@@ -370,8 +364,8 @@ async def simulate_processing(complexity: str = "medium"):
     """
     state.add_log("🚀 Initializing distributed pipeline...", "info")
     
-    # Use configured complexity delays
-    delay = COMPLEXITY_DELAYS.get(complexity, DEFAULT_COMPLEXITY_DELAY)
+    # Small delay for visual feedback only (not artificial complexity delay)
+    delay = 0.2
     
     try:
         # Simulate Go orchestrator initialization
@@ -425,17 +419,12 @@ async def simulate_processing(complexity: str = "medium"):
 
 
 @app.post("/api/action/run")
-async def run_action(
-    background_tasks: BackgroundTasks, 
-    complexity: str = Query(default="medium", pattern="^(low|medium|high)$")
-):
+async def run_action(background_tasks: BackgroundTasks):
     """
     The Big Button - triggers the main distributed processing logic.
     
-    Args:
-        complexity: Processing complexity level (low, medium, high)
-    
-    Note: Input validation is handled by FastAPI Query pattern regex.
+    Note: Artificial "complexity" parameter has been removed. 
+    Processing now runs at actual network speed.
     """
     # Use lock to prevent race conditions
     async with state.processing_lock:
@@ -447,13 +436,13 @@ async def run_action(
         state.is_processing = True
     
     # Start processing in background
-    background_tasks.add_task(simulate_processing, complexity)
+    background_tasks.add_task(simulate_processing)
     
-    state.add_log(f"📦 Starting execution (complexity: {complexity})...", "info")
+    state.add_log(f"📦 Starting execution...", "info")
     
     return {
         "status": "started",
-        "message": f"Execution started with {complexity} complexity",
+        "message": "Execution started",
         "execution_id": state.execution_count + 1
     }
 
