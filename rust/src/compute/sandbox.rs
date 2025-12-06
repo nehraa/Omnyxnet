@@ -47,9 +47,9 @@ impl Default for SandboxConfig {
             max_cpu_cycles: 1_000_000_000,        // 1 billion
             max_execution_time_ms: 30_000,        // 30 seconds
             enable_wasi: false,
-            // SECURITY: Default to simulation for safety - MUST be set to false in production
-            // environments after Wasmtime integration is complete
-            simulation_mode: true,
+            // SECURITY: Default to false - simulation mode should only be enabled explicitly for testing
+            // In simulation mode, execute() returns input unchanged which is NOT safe for production
+            simulation_mode: false,
         }
     }
 }
@@ -305,7 +305,7 @@ impl WasmSandbox {
     
     /// Basic WASM module validation
     fn validate_module(&self, bytes: &[u8]) -> bool {
-        // Check for WASM magic number: \0asm
+        // Check for WASM magic number and version
         if bytes.len() < 8 {
             return false;
         }
@@ -314,7 +314,11 @@ impl WasmSandbox {
         let is_wasm = bytes[0] == 0x00 && bytes[1] == 0x61 && 
                       bytes[2] == 0x73 && bytes[3] == 0x6D;
         
-        is_wasm
+        // Validate WASM version (bytes 4-7 should be 0x01 0x00 0x00 0x00 for version 1)
+        let valid_version = bytes[4] == 0x01 && bytes[5] == 0x00 && 
+                           bytes[6] == 0x00 && bytes[7] == 0x00;
+        
+        is_wasm && valid_version
     }
     
     /// Get current resource usage

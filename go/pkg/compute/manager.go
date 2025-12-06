@@ -294,13 +294,14 @@ func probeCapacity() ComputeCapacity {
 	numCPU := runtime.NumCPU()
 
 	// Get memory stats
+	// NOTE: HeapSys is NOT total system memory - it's memory obtained from OS for the heap.
+	// This is an approximation based on heap allocation patterns, not actual available RAM.
+	// For accurate system memory, consider using github.com/shirou/gopsutil or similar.
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
-	// Use total system memory approximated from heap stats
-	// HeapSys is a rough approximation of available memory
 	ramMB := memStats.HeapSys / (1024 * 1024)
 	if ramMB < 512 {
-		ramMB = 512 // Minimum reasonable value
+		ramMB = 512 // Minimum reasonable value for fresh processes
 	}
 
 	// Estimate current load based on number of goroutines vs available CPUs
@@ -585,11 +586,7 @@ func (m *Manager) delegateJob(jobID string, manifest *JobManifest) {
 			// Delegate to remote worker using round-robin across available workers
 			workerIdx := i % len(workers)
 			workerID := workers[workerIdx]
-			// Safe truncation of worker ID for logging
-			shortID := workerID
-			if len(workerID) > 12 {
-				shortID = workerID[:12]
-			}
+			shortID := truncateID(workerID, 12)
 			log.Printf("📤 [COMPUTE] Sending chunk %d to remote worker %s", i, shortID)
 			go func(index int, data []byte, wID string, d TaskDelegator) {
 				defer wg.Done()
@@ -718,15 +715,12 @@ func (m *Manager) executeChunkRemote(jobID string, chunkIndex uint32, manifest *
 			if !workerAvailable && len(workers) > 0 {
 				// Worker disconnected, select a new one
 				log.Printf("🔄 [COMPUTE] Worker %s disconnected, selecting new worker for chunk %d", 
-					currentWorkerID[:min(12, len(currentWorkerID))], chunkIndex)
+					truncateID(currentWorkerID, 12), chunkIndex)
 				currentWorkerID = workers[int(chunkIndex)%len(workers)]
 			}
 		}
 
-		shortID := currentWorkerID
-		if len(shortID) > 12 {
-			shortID = shortID[:12]
-		}
+		shortID := truncateID(currentWorkerID, 12)
 		log.Printf("📤 [COMPUTE] Delegating chunk %d to worker %s (%d bytes, attempt %d)",
 			chunkIndex, shortID, len(data), attempt+1)
 
@@ -1020,6 +1014,19 @@ func (m *Manager) Close() {
 // generateJobID generates a unique job ID
 func generateJobID() string {
 	return fmt.Sprintf("job-%d", time.Now().UnixNano())
+}
+
+// truncateID safely truncates a string ID for logging, handling UTF-8 properly
+func truncateID(id string, maxLen int) string {
+	if len(id) <= maxLen {
+		return id
+	}
+	// Convert to runes to handle multi-byte UTF-8 characters safely
+	runes := []rune(id)
+	if len(runes) <= maxLen {
+		return id
+	}
+	return string(runes[:maxLen])
 }
 
 // hashData returns the SHA256 hash of data as a hex string

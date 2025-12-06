@@ -21,6 +21,9 @@ pub struct ComputeConfig {
     pub verification_mode: VerificationMode,
     /// Number of worker threads for parallel execution
     pub worker_threads: usize,
+    /// Simulation mode - when true, execute returns input unchanged (for testing only)
+    /// SECURITY: MUST be set to false in production environments
+    pub simulation_mode: bool,
 }
 
 impl Default for ComputeConfig {
@@ -32,6 +35,8 @@ impl Default for ComputeConfig {
             enable_wasi: false,
             verification_mode: VerificationMode::Hash,
             worker_threads: num_cpus::get().max(1),
+            // SECURITY: Default to false - simulation mode should only be enabled explicitly for testing
+            simulation_mode: false,
         }
     }
 }

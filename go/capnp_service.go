@@ -390,18 +390,20 @@ func (s *nodeServiceServer) GetNetworkMetrics(ctx context.Context, call NodeServ
 	peerCount := uint32(len(connectedPeers))
 	metrics.SetPeerCount(peerCount)
 
-	// Calculate average RTT from connected peers
+	// Calculate average RTT and packet loss from connected peers
 	var totalLatency float32
+	var totalPacketLoss float32
 	var latencyCount int
+	var packetLossCount int
 	for _, peerID := range connectedPeers {
 		latency, _, packetLoss, err := s.network.GetConnectionQuality(peerID)
 		if err == nil && latency > 0 {
 			totalLatency += latency
 			latencyCount++
-			// Use actual packet loss if available
-			if packetLoss > 0 {
-				metrics.SetPacketLoss(packetLoss)
-			}
+		}
+		if err == nil && packetLoss > 0 {
+			totalPacketLoss += packetLoss
+			packetLossCount++
 		}
 	}
 
@@ -411,16 +413,17 @@ func (s *nodeServiceServer) GetNetworkMetrics(ctx context.Context, call NodeServ
 		metrics.SetAvgRttMs(0.0)
 	}
 
-	// Set packet loss to 0 if no measurements available
-	if metrics.PacketLoss() == 0 && peerCount > 0 {
+	// Calculate average packet loss across all peers with measurements
+	if packetLossCount > 0 {
+		metrics.SetPacketLoss(totalPacketLoss / float32(packetLossCount))
+	} else {
 		metrics.SetPacketLoss(0.0)
 	}
 
-	// Bandwidth estimation: Since actual bandwidth measurement requires active probing
-	// (which adds network overhead), we use a heuristic based on peer count.
-	// Assumption: More connected peers indicate a well-connected node with higher capacity.
-	// Base: 10 Mbps (typical home internet), scaling linearly with peers up to 1 Gbps max.
-	// For production, consider implementing actual bandwidth probing or using libp2p metrics.
+	// WARNING: Bandwidth estimation is a rough heuristic and may NOT reflect actual capacity.
+	// This uses peer count as a proxy (more peers = better connected), but a node on a 100 Mbps
+	// connection with 100 peers would incorrectly report 1 Gbps. For accurate bandwidth measurement,
+	// implement active probing or use libp2p's built-in bandwidth metrics.
 	estimatedBandwidth := float32(10.0) // Base 10 Mbps for isolated node
 	if peerCount > 0 {
 		estimatedBandwidth = float32(peerCount) * 10.0
