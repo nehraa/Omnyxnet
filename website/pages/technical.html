@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Pangea Net Technical Deep Dive - Architecture, performance metrics, and implementation details.">
+  <title>Technical Deep Dive - Pangea Net</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="../css/styles.css">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23208A8D'/><text x='50' y='68' font-size='50' fill='white' text-anchor='middle' font-family='Arial' font-weight='bold'>P</text></svg>">
+  
+  <style>
+    .tech-hero {
+      padding-top: 120px;
+      padding-bottom: var(--space-3xl);
+      text-align: center;
+    }
+    
+    .tech-hero h1 {
+      max-width: 700px;
+      margin: 0 auto var(--space-md);
+    }
+    
+    .tech-hero .lead {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    /* Metrics Grid */
+    .metrics-section {
+      background: linear-gradient(180deg, var(--cream-main) 0%, rgba(32, 138, 141, 0.03) 100%);
+    }
+    
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--space-lg);
+    }
+    
+    @media (max-width: 1024px) {
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .metrics-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .metric-card {
+      background: white;
+      border-radius: var(--radius-lg);
+      padding: var(--space-xl);
+      text-align: center;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(32, 138, 141, 0.08);
+      transition: all var(--transition-normal);
+    }
+    
+    .metric-card:hover {
+      transform: translateY(-8px);
+      box-shadow: var(--shadow-lg);
+    }
+    
+    .metric-icon {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto var(--space-md);
+      background: rgba(32, 138, 141, 0.1);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--teal-main);
+    }
+    
+    .metric-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+    
+    .metric-value {
+      font-family: var(--font-display);
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--teal-main);
+      margin-bottom: var(--space-xs);
+    }
+    
+    .metric-label {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--charcoal-main);
+      margin-bottom: var(--space-xs);
+    }
+    
+    .metric-context {
+      font-size: 14px;
+      color: var(--gray);
+    }
+    
+    /* CES Pipeline */
+    .pipeline-section {
+      background: var(--charcoal-main);
+      color: var(--cream-main);
+    }
+    
+    .pipeline-header {
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto var(--space-3xl);
+    }
+    
+    .pipeline-header h2 {
+      color: var(--cream-main);
+    }
+    
+    .pipeline-header p {
+      color: var(--gray-light);
+    }
+    
+    .pipeline {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-lg);
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    
+    @media (max-width: 768px) {
+      .pipeline {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .pipeline-step {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: var(--radius-lg);
+      padding: var(--space-xl);
+      text-align: center;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      position: relative;
+    }
+    
+    .pipeline-step::after {
+      content: '→';
+      position: absolute;
+      right: -24px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 24px;
+      color: var(--teal-main);
+    }
+    
+    .pipeline-step:last-child::after {
+      display: none;
+    }
+    
+    @media (max-width: 768px) {
+      .pipeline-step::after {
+        content: '↓';
+        right: 50%;
+        transform: translateX(50%);
+        top: auto;
+        bottom: -24px;
+      }
+      
+      .pipeline-step:last-child::after {
+        display: none;
+      }
+    }
+    
+    .pipeline-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto var(--space-md);
+      background: var(--teal-main);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+    
+    .pipeline-icon svg {
+      width: 32px;
+      height: 32px;
+    }
+    
+    .pipeline-step h3 {
+      color: var(--cream-main);
+      margin-bottom: var(--space-xs);
+    }
+    
+    .pipeline-step .stat {
+      font-size: 14px;
+      color: var(--teal-light);
+      margin-bottom: var(--space-md);
+    }
+    
+    .pipeline-step p {
+      font-size: 15px;
+      color: var(--gray-light);
+      margin: 0;
+    }
+    
+    .pipeline-result {
+      text-align: center;
+      margin-top: var(--space-2xl);
+      padding: var(--space-xl);
+      background: rgba(32, 138, 141, 0.2);
+      border-radius: var(--radius-lg);
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    .pipeline-result h4 {
+      color: var(--cream-main);
+      margin-bottom: var(--space-sm);
+    }
+    
+    .pipeline-result p {
+      color: var(--cream-dark);
+      margin: 0;
+    }
+    
+    /* Security Section */
+    .security-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-lg);
+    }
+    
+    @media (max-width: 768px) {
+      .security-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .security-card {
+      padding: var(--space-xl);
+      background: rgba(32, 138, 141, 0.05);
+      border-radius: var(--radius-lg);
+      border-left: 4px solid var(--teal-main);
+    }
+    
+    .security-card h3 {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-md);
+    }
+    
+    .security-card svg {
+      width: 24px;
+      height: 24px;
+      color: var(--teal-main);
+    }
+    
+    /* Code Block */
+    .code-section {
+      background: linear-gradient(180deg, var(--cream-main) 0%, rgba(32, 138, 141, 0.03) 100%);
+    }
+    
+    .code-header {
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto var(--space-2xl);
+    }
+    
+    .code-block {
+      background: var(--charcoal-main);
+      border-radius: var(--radius-lg);
+      padding: var(--space-xl);
+      max-width: 700px;
+      margin: 0 auto;
+      overflow-x: auto;
+    }
+    
+    .code-block pre {
+      margin: 0;
+      font-family: 'JetBrains Mono', var(--font-code);
+      font-size: 14px;
+      line-height: 1.8;
+      color: var(--cream-main);
+    }
+    
+    .code-block .comment {
+      color: var(--gray);
+    }
+    
+    .code-block .command {
+      color: var(--teal-light);
+    }
+    
+    .code-block .string {
+      color: #98c379;
+    }
+    
+    .code-block .success {
+      color: var(--success);
+    }
+    
+    .code-note {
+      text-align: center;
+      margin-top: var(--space-lg);
+      font-size: 16px;
+      color: var(--gray);
+    }
+    
+    /* Integration Links */
+    .integration-links {
+      display: flex;
+      justify-content: center;
+      gap: var(--space-lg);
+      margin-top: var(--space-2xl);
+      flex-wrap: wrap;
+    }
+    
+    .integration-link {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: var(--space-md) var(--space-lg);
+      background: white;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(32, 138, 141, 0.2);
+      color: var(--charcoal-main);
+      font-weight: 500;
+      transition: all var(--transition-fast);
+    }
+    
+    .integration-link:hover {
+      border-color: var(--teal-main);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .integration-link svg {
+      width: 20px;
+      height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="nav-logo-icon">P</span>
+        Pangea Net
+      </a>
+      
+      <ul class="nav-links">
+        <li><a href="../index.html#features" class="nav-link">Features</a></li>
+        <li><a href="../index.html#how-it-works" class="nav-link">How It Works</a></li>
+        <li><a href="../index.html#technology" class="nav-link">Technology</a></li>
+        <li><a href="about.html" class="nav-link">About</a></li>
+        <li><a href="technical.html" class="nav-link">Technical</a></li>
+        <li><a href="../index.html#cta" class="nav-link nav-cta">Get Early Access</a></li>
+      </ul>
+      
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Tech Hero -->
+  <section class="section tech-hero">
+    <div class="container">
+      <h1 class="scroll-animate">Architecture Designed for Scale</h1>
+      <p class="lead scroll-animate" style="transition-delay: 0.1s">
+        Three languages working in harmony. Each optimized for its specific responsibility.
+        Built with 2+ years of research in distributed systems.
+      </p>
+    </div>
+  </section>
+
+  <!-- Performance Metrics -->
+  <section class="section metrics-section">
+    <div class="container">
+      <div class="features-header scroll-animate">
+        <h2>Proven Results</h2>
+        <p class="lead">Real benchmarks from production-grade testing.</p>
+      </div>
+      
+      <div class="metrics-grid">
+        <div class="metric-card scroll-animate stagger-1">
+          <div class="metric-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+          </div>
+          <div class="metric-value" data-count="0.33" data-suffix="ms">0</div>
+          <div class="metric-label">P2P Latency</div>
+          <div class="metric-context">294x better than target</div>
+        </div>
+        
+        <div class="metric-card scroll-animate stagger-2">
+          <div class="metric-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+              <polyline points="17 6 23 6 23 12"/>
+            </svg>
+          </div>
+          <div class="metric-value" data-count="69.21" data-suffix=" MB/s">0</div>
+          <div class="metric-label">Throughput</div>
+          <div class="metric-context">Large file transfer speed</div>
+        </div>
+        
+        <div class="metric-card scroll-animate stagger-3">
+          <div class="metric-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M9 12l2 2 4-4"/>
+            </svg>
+          </div>
+          <div class="metric-value" data-count="99.9" data-suffix="%">0</div>
+          <div class="metric-label">Uptime SLA</div>
+          <div class="metric-context">With predictive failure detection</div>
+        </div>
+        
+        <div class="metric-card scroll-animate stagger-4">
+          <div class="metric-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
+              <path d="M4 10h16M10 4v16"/>
+            </svg>
+          </div>
+          <div class="metric-value" data-count="20.87" data-suffix="x">0</div>
+          <div class="metric-label">Compression</div>
+          <div class="metric-context">Voice file reduction with Opus</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CES Pipeline -->
+  <section class="section pipeline-section">
+    <div class="container">
+      <div class="pipeline-header scroll-animate">
+        <h2>The CES Pipeline</h2>
+        <p>Compress. Encrypt. Shard. How your data stays safe and fast.</p>
+      </div>
+      
+      <div class="pipeline">
+        <div class="pipeline-step scroll-animate stagger-1">
+          <div class="pipeline-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 14 10 14 10 20"/>
+              <polyline points="20 10 14 10 14 4"/>
+              <line x1="14" y1="10" x2="21" y2="3"/>
+              <line x1="3" y1="21" x2="10" y2="14"/>
+            </svg>
+          </div>
+          <h3>Compress</h3>
+          <div class="stat">Brotli Algorithm • 12x Average</div>
+          <p>Your file is compressed using Brotli. A 100MB video becomes 8MB. Quality preserved, size dramatically cut.</p>
+        </div>
+        
+        <div class="pipeline-step scroll-animate stagger-2">
+          <div class="pipeline-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+          <h3>Encrypt</h3>
+          <div class="stat">XChaCha20-Poly1305 • 256-bit</div>
+          <p>Military-grade encryption. Only your private key can decrypt. No master keys. No backdoors. No exceptions.</p>
+        </div>
+        
+        <div class="pipeline-step scroll-animate stagger-3">
+          <div class="pipeline-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <circle cx="5" cy="6" r="2"/>
+              <circle cx="19" cy="6" r="2"/>
+              <circle cx="5" cy="18" r="2"/>
+              <circle cx="19" cy="18" r="2"/>
+              <path d="M7 7l3 3M15 9l2-2M7 16l3-2M15 15l2 2"/>
+            </svg>
+          </div>
+          <h3>Shard</h3>
+          <div class="stat">Reed-Solomon • 8+4 Redundancy</div>
+          <p>File splits into 12 pieces. Need only 8 to recover. Lose 4 shards? Your data still survives node failures.</p>
+        </div>
+      </div>
+      
+      <div class="pipeline-result scroll-animate">
+        <h4>The Result</h4>
+        <p>Your data is redundant, encrypted, and distributed. No single point of failure. 99.9% uptime guaranteed.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Security Model -->
+  <section class="section">
+    <div class="container">
+      <div class="features-header scroll-animate">
+        <h2>Your Data Belongs to You</h2>
+        <p class="lead">Encryption first. Privacy by architecture, not by policy.</p>
+      </div>
+      
+      <div class="security-grid">
+        <div class="security-card scroll-animate stagger-1">
+          <h3>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            Encryption by Default
+          </h3>
+          <p>
+            Not an option. Not something you enable in settings. Every file is encrypted 
+            with XChaCha20-Poly1305 before leaving your device. Period.
+          </p>
+        </div>
+        
+        <div class="security-card scroll-animate stagger-2">
+          <h3>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+            </svg>
+            Users Control Keys
+          </h3>
+          <p>
+            No master keys. No backdoors. No "we have access." You control your private keys. 
+            Only you decrypt your data. We literally cannot access it.
+          </p>
+        </div>
+        
+        <div class="security-card scroll-animate stagger-3">
+          <h3>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            Open Audits
+          </h3>
+          <p>
+            Protocols are open-source. Security experts can audit. No security-through-obscurity 
+            nonsense. Transparency builds trust.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Integration -->
+  <section class="section code-section">
+    <div class="container">
+      <div class="code-header scroll-animate">
+        <h2>Build On Pangea</h2>
+        <p class="lead">Open-source foundation + proprietary intelligence layer.</p>
+      </div>
+      
+      <div class="code-block scroll-animate">
+        <pre><span class="comment"># Install the CLI</span>
+<span class="command">$</span> npm install -g pangea-net
+
+<span class="comment"># Start a node</span>
+<span class="command">$</span> pangea start --port 9000
+<span class="success">✓</span> Node started on port 9000
+<span class="success">✓</span> Connected to 5 peers
+
+<span class="comment"># Upload a file</span>
+<span class="command">$</span> pangea upload ./my-data.zip
+<span class="success">✓</span> File compressed: 100MB → 8MB
+<span class="success">✓</span> File encrypted: XChaCha20-Poly1305
+<span class="success">✓</span> File sharded: 12 pieces across network
+<span class="success">✓</span> Hash: a1b2c3d4e5f6g7h8...
+
+<span class="comment"># Get status</span>
+<span class="command">$</span> pangea status
+<span class="string">Network: Healthy (12 peers)</span>
+<span class="string">Files: 3 stored (256MB total)</span>
+<span class="string">Uptime: 99.97%</span></pre>
+      </div>
+      
+      <p class="code-note scroll-animate">
+        That's it. Everything else is handled automatically.<br>
+        No config files. No blockchain complexity. Just works.
+      </p>
+      
+      <div class="integration-links scroll-animate">
+        <a href="#" class="integration-link">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+          </svg>
+          View on GitHub
+        </a>
+        <a href="#" class="integration-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          Documentation
+        </a>
+        <a href="#" class="integration-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          Join Discord
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="section cta-section">
+    <div class="container">
+      <div class="cta-content scroll-animate">
+        <h2 class="cta-title">Ready to Try It?</h2>
+        <p class="cta-subtitle">
+          Get hands-on with the CLI demo or help us validate market demand.
+        </p>
+        
+        <div class="cta-buttons">
+          <a href="demo.html" class="btn btn-primary btn-large">
+            Try CLI Demo
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
+          <a href="survey.html" class="btn btn-secondary btn-large">
+            Take the Survey
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <div class="footer-logo">
+            <span class="nav-logo-icon">P</span>
+            Pangea Net
+          </div>
+          <p class="footer-tagline">
+            The Internet of the People. Decentralized infrastructure that's faster, 
+            more private, and built for humanity.
+          </p>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Product</h4>
+          <ul class="footer-links">
+            <li><a href="../index.html#features">Features</a></li>
+            <li><a href="technical.html">Technical</a></li>
+            <li><a href="demo.html">Demo</a></li>
+            <li><a href="survey.html">Survey</a></li>
+          </ul>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Resources</h4>
+          <ul class="footer-links">
+            <li><a href="#">Documentation</a></li>
+            <li><a href="#">GitHub</a></li>
+            <li><a href="#">API Reference</a></li>
+            <li><a href="#">Research Papers</a></li>
+          </ul>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Company</h4>
+          <ul class="footer-links">
+            <li><a href="about.html">About</a></li>
+            <li><a href="#">Blog</a></li>
+            <li><a href="#">Careers</a></li>
+            <li><a href="#">Contact</a></li>
+          </ul>
+        </div>
+      </div>
+      
+      <div class="footer-bottom">
+        <p>&copy; 2025 Pangea Net. All rights reserved.</p>
+        <div class="footer-social">
+          <a href="#" aria-label="GitHub">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+          </a>
+          <a href="#" aria-label="Twitter">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+          </a>
+          <a href="#" aria-label="Discord">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189z"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="../js/main.js"></script>
+</body>
+</html>

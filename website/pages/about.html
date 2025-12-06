@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="About the founder of Pangea Net - The mission behind the code.">
+  <title>About - Pangea Net</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="../css/styles.css">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23208A8D'/><text x='50' y='68' font-size='50' fill='white' text-anchor='middle' font-family='Arial' font-weight='bold'>P</text></svg>">
+  
+  <style>
+    .about-hero {
+      padding-top: 120px;
+      padding-bottom: var(--space-3xl);
+    }
+    
+    .about-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr;
+      gap: var(--space-3xl);
+      align-items: start;
+    }
+    
+    @media (max-width: 768px) {
+      .about-grid {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+    }
+    
+    .about-image {
+      position: relative;
+    }
+    
+    .about-image-placeholder {
+      width: 100%;
+      aspect-ratio: 4/5;
+      background: linear-gradient(135deg, rgba(32, 138, 141, 0.1) 0%, rgba(32, 138, 141, 0.05) 100%);
+      border-radius: var(--radius-xl);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px dashed rgba(32, 138, 141, 0.3);
+    }
+    
+    .about-image-placeholder svg {
+      width: 100px;
+      height: 100px;
+      color: var(--teal-main);
+      opacity: 0.5;
+    }
+    
+    .about-content {
+      padding-top: var(--space-lg);
+    }
+    
+    .about-subtitle {
+      color: var(--teal-main);
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: var(--space-md);
+    }
+    
+    .about-text p {
+      font-size: 17px;
+      line-height: 1.8;
+      margin-bottom: var(--space-lg);
+    }
+    
+    .about-achievements {
+      margin-top: var(--space-2xl);
+      padding-top: var(--space-xl);
+      border-top: 1px solid rgba(32, 138, 141, 0.1);
+    }
+    
+    .about-achievements h3 {
+      font-size: 16px;
+      color: var(--gray);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: var(--space-lg);
+    }
+    
+    .achievements-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+    
+    .achievement {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md);
+      background: rgba(32, 138, 141, 0.05);
+      border-radius: var(--radius-md);
+    }
+    
+    @media (max-width: 768px) {
+      .achievement {
+        justify-content: center;
+      }
+    }
+    
+    .achievement-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--teal-main);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      flex-shrink: 0;
+    }
+    
+    .achievement-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+    
+    .achievement-text {
+      font-size: 15px;
+      color: var(--charcoal-main);
+    }
+    
+    .vision-section {
+      background: linear-gradient(180deg, var(--cream-main) 0%, rgba(32, 138, 141, 0.03) 100%);
+    }
+    
+    .vision-content {
+      max-width: 800px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    
+    .vision-quote {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--charcoal-main);
+      line-height: 1.5;
+      margin-bottom: var(--space-2xl);
+      position: relative;
+    }
+    
+    .vision-quote::before {
+      content: '"';
+      font-size: 80px;
+      color: var(--teal-main);
+      opacity: 0.2;
+      position: absolute;
+      left: -40px;
+      top: -30px;
+      font-family: Georgia, serif;
+    }
+    
+    .values-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-lg);
+      margin-top: var(--space-3xl);
+    }
+    
+    @media (max-width: 768px) {
+      .values-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .value-card {
+      text-align: center;
+      padding: var(--space-xl);
+    }
+    
+    .value-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto var(--space-lg);
+      background: rgba(32, 138, 141, 0.1);
+      border-radius: var(--radius-lg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--teal-main);
+    }
+    
+    .value-icon svg {
+      width: 32px;
+      height: 32px;
+    }
+    
+    .value-card h3 {
+      margin-bottom: var(--space-sm);
+    }
+    
+    .value-card p {
+      font-size: 15px;
+      color: var(--gray);
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="nav-logo-icon">P</span>
+        Pangea Net
+      </a>
+      
+      <ul class="nav-links">
+        <li><a href="../index.html#features" class="nav-link">Features</a></li>
+        <li><a href="../index.html#how-it-works" class="nav-link">How It Works</a></li>
+        <li><a href="../index.html#technology" class="nav-link">Technology</a></li>
+        <li><a href="about.html" class="nav-link">About</a></li>
+        <li><a href="technical.html" class="nav-link">Technical</a></li>
+        <li><a href="../index.html#cta" class="nav-link nav-cta">Get Early Access</a></li>
+      </ul>
+      
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- About Hero -->
+  <section class="section about-hero">
+    <div class="container">
+      <div class="about-grid">
+        <div class="about-image scroll-animate">
+          <div class="about-image-placeholder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="8" r="4"/>
+              <path d="M4 20c0-4 4-7 8-7s8 3 8 7"/>
+            </svg>
+          </div>
+        </div>
+        
+        <div class="about-content">
+          <p class="about-subtitle scroll-animate">The Mission Behind the Code</p>
+          <h1 class="scroll-animate" style="transition-delay: 0.1s">Why Decentralization Matters</h1>
+          
+          <div class="about-text scroll-animate" style="transition-delay: 0.2s">
+            <p>
+              I grew up in a world of networks. My father ran IT systems for government agencies.
+              I watched him solve problems involving thousands of people, millions of data points, 
+              critical infrastructure. Networking became my obsession—not the wires and routers, 
+              but the invisible architecture: how systems fail, how they're protected, how we choose 
+              what matters.
+            </p>
+            
+            <p>
+              For the last two years, I've asked one question: <strong>Why does decentralized 
+              infrastructure fail when every theory says it should work?</strong>
+            </p>
+            
+            <p>
+              The answer surprised me. It's not that decentralization is harder. It's that 
+              before now, it was impossible to do it RIGHT. Most P2P systems were built before 
+              modern phones had ML accelerators, before 5G existed, before we understood how 
+              to predict failures.
+            </p>
+            
+            <p>
+              I spent 2 years building what's only possible in 2025: A network that predicts 
+              failures before they happen. That transfers data 3-5x faster than centralized systems.
+              That never gives anyone access to your data.
+            </p>
+            
+            <p>
+              <strong>But here's the real reason I'm building this:</strong> Privacy is a human right.
+              It's promised by constitutions worldwide, but never enforced because centralization 
+              makes it impossible. Data centers consume lakes of water while billions of phones 
+              sit with unused computational power. This is absurd. It's technically wrong. 
+              It's morally wrong.
+            </p>
+            
+            <p>
+              The technology is finally mature enough to fix it. The market is ready. 
+              The timing is now. The only thing missing is execution.
+              <strong>That's what I'm building.</strong>
+            </p>
+          </div>
+          
+          <div class="about-achievements scroll-animate" style="transition-delay: 0.3s">
+            <h3>Key Achievements</h3>
+            <div class="achievements-list">
+              <div class="achievement">
+                <div class="achievement-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 14l9-5-9-5-9 5 9 5z"/>
+                    <path d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"/>
+                  </svg>
+                </div>
+                <span class="achievement-text">2+ years intensive research in distributed systems</span>
+              </div>
+              
+              <div class="achievement">
+                <div class="achievement-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                    <path d="M9 12l2 2 4-4"/>
+                  </svg>
+                </div>
+                <span class="achievement-text">15,000+ lines of production-grade code</span>
+              </div>
+              
+              <div class="achievement">
+                <div class="achievement-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                    <polyline points="17 6 23 6 23 12"/>
+                  </svg>
+                </div>
+                <span class="achievement-text">294x better than target latency (0.33ms achieved)</span>
+              </div>
+              
+              <div class="achievement">
+                <div class="achievement-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <path d="M3 9h18M9 21V9"/>
+                  </svg>
+                </div>
+                <span class="achievement-text">86+ automated tests passing across Rust, Go, and Python</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Vision Section -->
+  <section class="section vision-section">
+    <div class="container">
+      <div class="vision-content">
+        <p class="vision-quote scroll-animate">
+          The infrastructure monopolies won't innovate. They profit from centralization.
+          For the first time in internet history, decentralized CAN be better than centralized—
+          not just good enough for idealists, but actually better for everyone.
+        </p>
+        
+        <div class="values-grid">
+          <div class="value-card scroll-animate stagger-1">
+            <div class="value-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </div>
+            <h3>Privacy First</h3>
+            <p>Encryption by default, not by policy. Your data belongs to you.</p>
+          </div>
+          
+          <div class="value-card scroll-animate stagger-2">
+            <div class="value-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+            </div>
+            <h3>For The People</h3>
+            <p>Built to serve humanity, not to extract value from it.</p>
+          </div>
+          
+          <div class="value-card scroll-animate stagger-3">
+            <div class="value-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="4 17 10 11 4 5"/>
+                <line x1="12" y1="19" x2="20" y2="19"/>
+              </svg>
+            </div>
+            <h3>Open Source</h3>
+            <p>Transparency builds trust. Anyone can audit the code.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="section cta-section" id="cta">
+    <div class="container">
+      <div class="cta-content scroll-animate">
+        <h2 class="cta-title">Join the Movement</h2>
+        <p class="cta-subtitle">
+          Be part of building the internet we actually deserve.
+        </p>
+        
+        <div class="cta-buttons">
+          <a href="survey.html" class="btn btn-primary btn-large">
+            Take the Survey
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
+          <a href="technical.html" class="btn btn-secondary btn-large">
+            See Technical Details
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <div class="footer-logo">
+            <span class="nav-logo-icon">P</span>
+            Pangea Net
+          </div>
+          <p class="footer-tagline">
+            The Internet of the People. Decentralized infrastructure that's faster, 
+            more private, and built for humanity.
+          </p>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Product</h4>
+          <ul class="footer-links">
+            <li><a href="../index.html#features">Features</a></li>
+            <li><a href="technical.html">Technical</a></li>
+            <li><a href="demo.html">Demo</a></li>
+            <li><a href="survey.html">Survey</a></li>
+          </ul>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Resources</h4>
+          <ul class="footer-links">
+            <li><a href="#">Documentation</a></li>
+            <li><a href="#">GitHub</a></li>
+            <li><a href="#">API Reference</a></li>
+            <li><a href="#">Research Papers</a></li>
+          </ul>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Company</h4>
+          <ul class="footer-links">
+            <li><a href="about.html">About</a></li>
+            <li><a href="#">Blog</a></li>
+            <li><a href="#">Careers</a></li>
+            <li><a href="#">Contact</a></li>
+          </ul>
+        </div>
+      </div>
+      
+      <div class="footer-bottom">
+        <p>&copy; 2025 Pangea Net. All rights reserved.</p>
+        <div class="footer-social">
+          <a href="#" aria-label="GitHub">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+          </a>
+          <a href="#" aria-label="Twitter">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+          </a>
+          <a href="#" aria-label="Discord">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189z"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="../js/main.js"></script>
+</body>
+</html>

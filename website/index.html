@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Pangea Net - The Internet of the People. Decentralized infrastructure that's 3-5x faster than centralized systems, with 99.9% uptime and no blockchain complexity.">
+  <meta name="keywords" content="decentralized, P2P, peer-to-peer, privacy, infrastructure, network, distributed systems">
+  <meta name="author" content="Pangea Net">
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="Pangea Net - The Internet of the People">
+  <meta property="og:description" content="Decentralized infrastructure that's faster, more private, and built for humanity.">
+  <meta property="og:type" content="website">
+  
+  <title>Pangea Net - The Internet of the People</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23208A8D'/><text x='50' y='68' font-size='50' fill='white' text-anchor='middle' font-family='Arial' font-weight='bold'>P</text></svg>">
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-container">
+      <a href="/" class="nav-logo">
+        <span class="nav-logo-icon">P</span>
+        Pangea Net
+      </a>
+      
+      <ul class="nav-links">
+        <li><a href="#features" class="nav-link">Features</a></li>
+        <li><a href="#how-it-works" class="nav-link">How It Works</a></li>
+        <li><a href="#technology" class="nav-link">Technology</a></li>
+        <li><a href="pages/about.html" class="nav-link">About</a></li>
+        <li><a href="pages/technical.html" class="nav-link">Technical</a></li>
+        <li><a href="#cta" class="nav-link nav-cta">Get Early Access</a></li>
+      </ul>
+      
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero section" id="hero">
+    <div class="container">
+      <div class="hero-content">
+        <span class="hero-label animate-fade-in">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          Now in Alpha • v0.6.0
+        </span>
+        
+        <h1 class="hero-title animate-fade-in-up">
+          The Internet<br>
+          <span class="highlight">of the People</span>
+        </h1>
+        
+        <p class="hero-subtitle animate-fade-in-up" style="animation-delay: 0.2s">
+          Decentralized infrastructure that's 3-5x faster than centralized systems, 
+          with 99.9% uptime and no blockchain complexity. Privacy by design, 
+          not by policy.
+        </p>
+        
+        <div class="hero-buttons animate-fade-in-up" style="animation-delay: 0.4s">
+          <a href="#cta" class="btn btn-primary btn-large">
+            See Live Results
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
+          <a href="pages/demo.html" class="btn btn-secondary btn-large">
+            Try CLI Demo
+          </a>
+        </div>
+        
+        <div class="hero-social-proof animate-fade-in" style="animation-delay: 0.6s">
+          <div class="hero-stat">
+            <span class="hero-stat-value" data-count="0.33" data-suffix="ms">0</span>
+            <span class="hero-stat-label">P2P Latency</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value" data-count="99.9" data-suffix="%">0</span>
+            <span class="hero-stat-label">Uptime SLA</span>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-value" data-count="86" data-suffix="+">0</span>
+            <span class="hero-stat-label">Tests Passing</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Animated Network Background -->
+    <div class="hero-visual">
+      <canvas id="networkCanvas" class="network-canvas"></canvas>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="section features" id="features">
+    <div class="container">
+      <div class="features-header scroll-animate">
+        <h2>What Makes This Different</h2>
+        <p class="lead">
+          Most P2P systems are slow, unreliable, and complex. 
+          We solved all three with intelligent optimization.
+        </p>
+      </div>
+      
+      <div class="features-grid">
+        <!-- Feature 1 -->
+        <div class="card scroll-animate stagger-1">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+          </div>
+          <div class="card-metric" data-count="0.33" data-suffix="ms">0</div>
+          <h3 class="card-title">P2P Latency</h3>
+          <p class="card-subtitle">294x Better Than Target</p>
+          <p class="card-desc">
+            Multi-stream parallel transfers ensure your data never waits for the slowest peer.
+          </p>
+        </div>
+        
+        <!-- Feature 2 -->
+        <div class="card scroll-animate stagger-2">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M9 12l2 2 4-4"/>
+            </svg>
+          </div>
+          <div class="card-metric" data-count="99.9" data-suffix="%">0</div>
+          <h3 class="card-title">Uptime SLA</h3>
+          <p class="card-subtitle">Predictive Reliability</p>
+          <p class="card-desc">
+            ML predicts failures 10 minutes before they happen. Data migrates proactively.
+          </p>
+        </div>
+        
+        <!-- Feature 3 -->
+        <div class="card scroll-animate stagger-3">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+          </div>
+          <div class="card-metric">No Fees</div>
+          <h3 class="card-title">No Blockchain Friction</h3>
+          <p class="card-subtitle">Works Like Familiar SaaS</p>
+          <p class="card-desc">
+            No tokens, no wallet setup, no gas fees. Privacy infrastructure that just works.
+          </p>
+        </div>
+        
+        <!-- Feature 4 -->
+        <div class="card scroll-animate stagger-4">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+              <polyline points="17 6 23 6 23 12"/>
+            </svg>
+          </div>
+          <div class="card-metric">3-5x</div>
+          <h3 class="card-title">Faster Transfers</h3>
+          <p class="card-subtitle">Real-World Validated</p>
+          <p class="card-desc">
+            P83 latency optimization selects the 10th fastest of 12 peers. No bottlenecks.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section class="section how-it-works" id="how-it-works">
+    <div class="container">
+      <div class="features-header scroll-animate">
+        <h2>Faster. More Private. Open Source.</h2>
+        <p class="lead">
+          Built with security and performance at its core, 
+          not as an afterthought.
+        </p>
+      </div>
+      
+      <div class="steps">
+        <!-- Step 1 -->
+        <div class="step scroll-animate">
+          <div class="step-visual">
+            <div class="step-icon-container animate-float">
+              <svg class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="3"/>
+                <circle cx="5" cy="6" r="2"/>
+                <circle cx="19" cy="6" r="2"/>
+                <circle cx="5" cy="18" r="2"/>
+                <circle cx="19" cy="18" r="2"/>
+                <path d="M7 7l3 3M15 9l2-2M7 16l3-2M15 15l2 2"/>
+              </svg>
+            </div>
+          </div>
+          <div class="step-content">
+            <span class="step-number">1</span>
+            <h3 class="step-title">Distributed Storage</h3>
+            <p class="step-desc">
+              Your files split across multiple peers, encrypted end-to-end with XChaCha20-Poly1305. 
+              If one peer fails, others keep your data safe. Reed-Solomon erasure coding means 
+              you only need 8 of 12 shards to recover the original.
+            </p>
+          </div>
+        </div>
+        
+        <!-- Step 2 -->
+        <div class="step scroll-animate">
+          <div class="step-visual">
+            <div class="step-icon-container animate-float" style="animation-delay: 0.5s">
+              <svg class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 3a9 9 0 1 0 9 9"/>
+                <path d="M12 7v5l3 3"/>
+                <circle cx="12" cy="12" r="1"/>
+                <path d="M21 3l-3 3M18 6l3-3"/>
+              </svg>
+            </div>
+          </div>
+          <div class="step-content">
+            <span class="step-number">2</span>
+            <h3 class="step-title">Predictive Optimization</h3>
+            <p class="step-desc">
+              Machine learning models analyze peer health every 5 minutes with 80% accuracy. 
+              When we detect an issue forming—network degradation, peer instability—we 
+              proactively migrate your data before failure occurs.
+            </p>
+          </div>
+        </div>
+        
+        <!-- Step 3 -->
+        <div class="step scroll-animate">
+          <div class="step-visual">
+            <div class="step-icon-container animate-float" style="animation-delay: 1s">
+              <svg class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="M12 8v4M12 16h.01"/>
+              </svg>
+            </div>
+          </div>
+          <div class="step-content">
+            <span class="step-number">3</span>
+            <h3 class="step-title">Enterprise Reliability</h3>
+            <p class="step-desc">
+              99.9% uptime SLA with cryptographic verification. Multi-layer security with 
+              Noise Protocol XX encryption. Built for teams that can't afford downtime. 
+              Your data belongs to you—we literally cannot access it.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Technology Section -->
+  <section class="section tech-section section-dark" id="technology">
+    <div class="container">
+      <div class="tech-header scroll-animate">
+        <h2>Built Right. Built to Last.</h2>
+        <p class="lead">
+          Three languages working in harmony. Each optimized for its specific responsibility.
+        </p>
+      </div>
+      
+      <div class="architecture">
+        <!-- Python Layer -->
+        <div class="arch-layer scroll-animate stagger-1">
+          <div class="arch-layer-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+          </div>
+          <div class="arch-layer-content">
+            <h4>Python CLI + AI</h4>
+            <p>User interface and machine learning. Simple commands, intelligent predictions.</p>
+          </div>
+        </div>
+        
+        <!-- Go Layer -->
+        <div class="arch-layer scroll-animate stagger-2">
+          <div class="arch-layer-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+          </div>
+          <div class="arch-layer-content">
+            <h4>Go Networking</h4>
+            <p>P2P networking with libp2p, QUIC/TCP transports, NAT traversal. Handles millions of connections.</p>
+          </div>
+        </div>
+        
+        <!-- Rust Layer -->
+        <div class="arch-layer scroll-animate stagger-3">
+          <div class="arch-layer-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
+              <line x1="12" y1="22" x2="12" y2="15.5"/>
+              <polyline points="22 8.5 12 15.5 2 8.5"/>
+            </svg>
+          </div>
+          <div class="arch-layer-content">
+            <h4>Rust Performance</h4>
+            <p>CES pipeline (Compress, Encrypt, Shard), cryptography, and real-time processing. Maximum speed.</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="stats-bar scroll-animate">
+        <div class="stat-item">
+          <div class="stat-value" data-count="15000" data-suffix="+">0</div>
+          <div class="stat-label">Lines of Code</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" data-count="86" data-suffix="+">0</div>
+          <div class="stat-label">Tests Passing</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" data-count="2" data-suffix=" Years">0</div>
+          <div class="stat-label">Research</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value">Production</div>
+          <div class="stat-label">Ready</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why Now Section -->
+  <section class="section" id="why-now">
+    <div class="container">
+      <div class="features-header scroll-animate">
+        <h2>Three Things Just Aligned</h2>
+        <p class="lead">The technology finally caught up to the vision.</p>
+      </div>
+      
+      <div class="why-now-grid">
+        <div class="why-card scroll-animate stagger-1">
+          <div class="why-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+              <line x1="12" y1="18" x2="12.01" y2="18"/>
+              <path d="M9 6h6M9 10h6"/>
+            </svg>
+          </div>
+          <h3>Phones Got Smart</h3>
+          <p>
+            Every phone has ML accelerators. Trillions of operations per second 
+            sitting idle. We're finally leveraging that power.
+          </p>
+        </div>
+        
+        <div class="why-card scroll-animate stagger-2">
+          <div class="why-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M2 12h6M16 12h6"/>
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M5.5 5.5l2 2M16.5 5.5l-2 2M5.5 18.5l2-2M16.5 18.5l-2-2"/>
+            </svg>
+          </div>
+          <h3>Internet Got Fast</h3>
+          <p>
+            5G upload speeds make peer-to-peer actually feasible at scale. 
+            The bandwidth constraints that made this impossible are gone.
+          </p>
+        </div>
+        
+        <div class="why-card scroll-animate stagger-3">
+          <div class="why-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <line x1="12" y1="1" x2="12" y2="23"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <h3>Tech Got Greedy</h3>
+          <p>
+            AWS and Google have 90%+ margins. They're financially incentivized 
+            NOT to innovate. Centralization is their profit model.
+          </p>
+        </div>
+      </div>
+      
+      <p class="closing-statement scroll-animate">
+        "The infrastructure monopolies won't innovate. They profit from centralization.<br>
+        For the first time, decentralized CAN be better than centralized."
+      </p>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="section cta-section" id="cta">
+    <div class="container">
+      <div class="cta-content scroll-animate">
+        <h2 class="cta-title">See What People Think</h2>
+        <p class="cta-subtitle">
+          We're testing market traction with developers, founders, and privacy advocates.
+          Answer 7 quick questions. See live results. No email required.
+        </p>
+        
+        <div class="cta-buttons">
+          <a href="pages/survey.html" class="btn btn-primary btn-large">
+            Take the Survey
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+          </a>
+          <a href="pages/demo.html" class="btn btn-secondary btn-large">
+            Try CLI Demo
+          </a>
+        </div>
+        
+        <p class="cta-note">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          Privacy-first. No tracking. Your data stays yours.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <div class="footer-logo">
+            <span class="nav-logo-icon">P</span>
+            Pangea Net
+          </div>
+          <p class="footer-tagline">
+            The Internet of the People. Decentralized infrastructure that's faster, 
+            more private, and built for humanity.
+          </p>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Product</h4>
+          <ul class="footer-links">
+            <li><a href="#features">Features</a></li>
+            <li><a href="pages/technical.html">Technical</a></li>
+            <li><a href="pages/demo.html">Demo</a></li>
+            <li><a href="pages/survey.html">Survey</a></li>
+          </ul>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Resources</h4>
+          <ul class="footer-links">
+            <li><a href="#">Documentation</a></li>
+            <li><a href="#">GitHub</a></li>
+            <li><a href="#">API Reference</a></li>
+            <li><a href="#">Research Papers</a></li>
+          </ul>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Company</h4>
+          <ul class="footer-links">
+            <li><a href="pages/about.html">About</a></li>
+            <li><a href="#">Blog</a></li>
+            <li><a href="#">Careers</a></li>
+            <li><a href="#">Contact</a></li>
+          </ul>
+        </div>
+      </div>
+      
+      <div class="footer-bottom">
+        <p>&copy; 2025 Pangea Net. All rights reserved.</p>
+        <div class="footer-social">
+          <a href="#" aria-label="GitHub">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+          </a>
+          <a href="#" aria-label="Twitter">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+          </a>
+          <a href="#" aria-label="Discord">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189z"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/main.js"></script>
+</body>
+</html>
