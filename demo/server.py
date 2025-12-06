@@ -145,8 +145,8 @@ class DemoState:
         if self.go_client:
             try:
                 self.go_client.disconnect()
-            except Exception as e:
-                self.add_log(f"Error during Go node disconnect: {e}", "warning")
+            except Exception:
+                self.add_log("Error during Go node disconnect", "warning")
             self.go_client = None
             self.connected_to_go = False
     

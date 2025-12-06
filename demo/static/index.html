@@ -463,15 +463,7 @@
                 
                 if (!res.ok) {
                     // Robust error handling with fallback message
-                    let errorMsg = 'Failed to execute action';
-                    try {
-                        const error = await res.json();
-                        if (error && typeof error === 'object' && typeof error.detail === 'string' && error.detail.trim() !== '') {
-                            errorMsg = error.detail;
-                        }
-                    } catch (e) {
-                        // If parsing fails, keep fallback errorMsg
-                    }
+                    const errorMsg = await parseErrorResponse(res);
                     addTerminalLog(errorMsg, 'error');
                     return;
                 }
@@ -483,6 +475,19 @@
                 executeBtn.disabled = false;
                 executeBtn.innerHTML = '<i class="bi bi-play-fill me-2"></i>EXECUTE ANALYSIS';
             }
+        }
+        
+        // Helper function to parse error response
+        async function parseErrorResponse(res, fallback = 'An error occurred') {
+            try {
+                const error = await res.json();
+                if (error && typeof error === 'object' && typeof error.detail === 'string' && error.detail.trim() !== '') {
+                    return error.detail;
+                }
+            } catch (e) {
+                // If parsing fails, return fallback
+            }
+            return fallback;
         }
         
         // Reset demo

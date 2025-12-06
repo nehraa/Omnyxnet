@@ -388,7 +388,7 @@ start_demo_server() {
     MAX_WAIT=15
     WAITED=0
     log_info "Waiting for server to accept connections..."
-    until curl -s --max-time 1 "$DEMO_URL" >/dev/null 2>&1; do
+    until curl -sf --max-time 1 "$DEMO_URL" >/dev/null 2>&1; do
         sleep 1
         WAITED=$((WAITED+1))
         if [ "$WAITED" -ge "$MAX_WAIT" ]; then
