@@ -212,6 +212,8 @@
     <!-- Dashboard Script -->
     <script>
         // Configuration
+        // API_BASE is empty for same-origin requests (secure by default)
+        // This is hardcoded and not user-controllable
         const API_BASE = '';
         const REFRESH_INTERVAL_MS = 2000;  // Configurable refresh interval
         const USE_SSE = true;  // Use Server-Sent Events for real-time updates

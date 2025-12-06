@@ -113,15 +113,14 @@ class DemoState:
     
     def connect_to_go_node(self) -> bool:
         """Attempt to connect to Go node via Cap'n Proto."""
-        global go_client
         if not GO_CLIENT_AVAILABLE:
             self.add_log("Cap'n Proto client not available", "warning")
             return False
         
         try:
-            go_client = GoNodeClient(host=GO_NODE_HOST, port=GO_NODE_PORT)
-            if go_client.connect():
-                self.go_client = go_client
+            client = GoNodeClient(host=GO_NODE_HOST, port=GO_NODE_PORT)
+            if client.connect():
+                self.go_client = client
                 self.connected_to_go = True
                 self.add_log(f"🔗 Connected to Go node via Cap'n Proto ({GO_NODE_HOST}:{GO_NODE_PORT})", "success")
                 return True
@@ -383,15 +382,9 @@ async def run_action(
     
     Args:
         complexity: Processing complexity level (low, medium, high)
-    """
-    # Validate complexity parameter
-    valid_complexities = ["low", "medium", "high"]
-    if complexity not in valid_complexities:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid complexity level. Must be one of: {', '.join(valid_complexities)}"
-        )
     
+    Note: Input validation is handled by FastAPI Query pattern regex.
+    """
     # Use lock to prevent race conditions
     async with state.processing_lock:
         if state.is_processing:
