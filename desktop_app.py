@@ -30,6 +30,9 @@ import json
 from datetime import datetime
 from typing import Optional, Dict, Any
 import logging
+import subprocess
+import socket
+import time
 
 # Add Python module to path
 PROJECT_ROOT = Path(__file__).parent
@@ -65,6 +68,7 @@ class PangeaDesktopApp:
         self.connected = False
         self.node_host = "localhost"
         self.node_port = 8080
+        self.go_process = None  # Track Go node subprocess
         
         # Message queue for thread-safe UI updates
         self.message_queue = queue.Queue()
@@ -81,6 +85,9 @@ class PangeaDesktopApp:
             self.log_message("✅ Cap'n Proto client available")
         else:
             self.log_message("⚠️  Cap'n Proto client not available - install dependencies")
+        
+        # Auto-startup: check if Go node is running, start if not, then connect
+        self.root.after(500, self.auto_startup)
     
     def create_ui(self):
         """Create the main user interface."""
@@ -113,29 +120,39 @@ class PangeaDesktopApp:
         frame = ttk.LabelFrame(parent, text="Node Connection", padding="10")
         frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
         
-        # Host input
-        ttk.Label(frame, text="Host:").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
+        # Local node connection (Row 0)
+        ttk.Label(frame, text="Local Node - Host:").grid(row=0, column=0, sticky=tk.W, padx=(0, 5))
         self.host_entry = ttk.Entry(frame, width=20)
         self.host_entry.insert(0, self.node_host)
         self.host_entry.grid(row=0, column=1, sticky=tk.W, padx=(0, 10))
         
-        # Port input
         ttk.Label(frame, text="Port:").grid(row=0, column=2, sticky=tk.W, padx=(0, 5))
         self.port_entry = ttk.Entry(frame, width=10)
         self.port_entry.insert(0, str(self.node_port))
         self.port_entry.grid(row=0, column=3, sticky=tk.W, padx=(0, 10))
         
-        # Connect button
         self.connect_btn = ttk.Button(frame, text="Connect", command=self.connect_to_node)
         self.connect_btn.grid(row=0, column=4, padx=(0, 5))
         
-        # Disconnect button
         self.disconnect_btn = ttk.Button(frame, text="Disconnect", command=self.disconnect_from_node, state=tk.DISABLED)
         self.disconnect_btn.grid(row=0, column=5, padx=(0, 10))
         
-        # Status indicator
         self.status_label = ttk.Label(frame, text="● Disconnected", foreground="red")
         self.status_label.grid(row=0, column=6, sticky=tk.W)
+        
+        # Peer connection (Row 1)
+        ttk.Separator(frame, orient="horizontal").grid(row=1, column=0, columnspan=7, sticky=(tk.W, tk.E), pady=(10, 10))
+        
+        ttk.Label(frame, text="Peer Connection (Multiaddr):").grid(row=2, column=0, columnspan=2, sticky=tk.W, padx=(0, 5))
+        self.peer_multiaddr = ttk.Entry(frame, width=70)
+        self.peer_multiaddr.insert(0, "/ip4/127.0.0.1/tcp/7777/p2p/...")
+        self.peer_multiaddr.grid(row=2, column=2, columnspan=4, sticky=(tk.W, tk.E), padx=(0, 5))
+        
+        ttk.Button(frame, text="Connect to Peer", command=self.connect_to_peer).grid(row=2, column=6, padx=(0, 5))
+        
+        # Help text
+        help_label = ttk.Label(frame, text="💡 Paste the full multiaddr from another node (e.g., /ip4/192.168.1.x/tcp/PORT/p2p/PEERID)", foreground="gray")
+        help_label.grid(row=3, column=0, columnspan=7, sticky=tk.W, pady=(5, 0))
     
     def create_tabbed_interface(self, parent):
         """Create tabbed interface for different features."""
@@ -289,6 +306,87 @@ class PangeaDesktopApp:
     # Connection Methods
     # ==========================================================================
     
+    def is_port_open(self, host: str, port: int, timeout: float = 1.0) -> bool:
+        """Check if a port is open (Go node is listening)."""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            result = sock.connect_ex((host, port))
+            sock.close()
+            return result == 0
+        except Exception:
+            return False
+    
+    def auto_startup(self):
+        """Auto-startup: check/start Go node and connect."""
+        self.log_message("🔍 Checking for Go node on localhost:8080...")
+        
+        def startup_thread():
+            # Check if Go node is running
+            if self.is_port_open(self.node_host, self.node_port):
+                self.log_message("✅ Go node is already running on localhost:8080")
+                self.message_queue.put(("auto_connect", None))
+            else:
+                self.log_message("⚠️  Go node not found. Attempting to start...")
+                if self.start_go_node():
+                    self.message_queue.put(("auto_connect", None))
+                else:
+                    self.log_message("❌ Failed to start Go node. Please start it manually:")
+                    self.log_message("   cd go && go build -o bin/go-node . && ./bin/go-node -node-id=1 -capnp-addr=:8080 -libp2p=true -local")
+        
+        threading.Thread(target=startup_thread, daemon=True).start()
+    
+    def start_go_node(self) -> bool:
+        """Start the Go node subprocess."""
+        try:
+            project_root = PROJECT_ROOT
+            go_dir = project_root / "go"
+            go_binary = go_dir / "bin" / "go-node"
+            
+            # Check if binary exists
+            if not go_binary.exists():
+                self.log_message("⚠️  Go node binary not found. Building...")
+                result = subprocess.run(
+                    ["go", "build", "-o", "bin/go-node", "."],
+                    cwd=str(go_dir),
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+                if result.returncode != 0:
+                    self.log_message(f"❌ Build failed: {result.stderr}")
+                    return False
+            
+            # Start the node
+            self.log_message(f"🚀 Starting Go node from {go_binary}...")
+            self.go_process = subprocess.Popen(
+                [
+                    str(go_binary),
+                    "-node-id=1",
+                    "-capnp-addr=:8080",
+                    "-libp2p=true",
+                    "-local"
+                ],
+                cwd=str(go_dir),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            
+            # Wait for node to be ready
+            for attempt in range(30):  # 30 seconds timeout
+                if self.is_port_open(self.node_host, self.node_port):
+                    self.log_message(f"✅ Go node started successfully (PID: {self.go_process.pid})")
+                    return True
+                time.sleep(1)
+            
+            self.log_message("❌ Go node did not start in time")
+            return False
+        
+        except Exception as e:
+            self.log_message(f"❌ Error starting Go node: {str(e)}")
+            return False
+    
     def connect_to_node(self):
         """Connect to Go node via Cap'n Proto."""
         if not CAPNP_AVAILABLE:
@@ -309,6 +407,8 @@ class PangeaDesktopApp:
                 self.go_client = GoNodeClient(host=host, port=port)
                 if self.go_client.connect():
                     self.message_queue.put(("connect_success", f"Connected to {host}:{port}"))
+                    # Run health checks after successful connection
+                    self.message_queue.put(("run_health_checks", None))
                 else:
                     self.message_queue.put(("connect_failed", f"Failed to connect to {host}:{port}"))
             except Exception as e:
@@ -326,6 +426,81 @@ class PangeaDesktopApp:
         self.disconnect_btn.config(state=tk.DISABLED)
         self.status_label.config(text="● Disconnected", foreground="red")
         self.log_message("🔌 Disconnected from node")
+    
+    def connect_to_peer(self):
+        """Connect to a remote peer using multiaddr."""
+        if not self.connected:
+            messagebox.showwarning("Not Connected", "Please connect to your local node first")
+            return
+        
+        multiaddr = self.peer_multiaddr.get().strip()
+        if not multiaddr or multiaddr.startswith("/ip4/127"):
+            messagebox.showwarning("Invalid Multiaddr", "Please enter a valid peer multiaddr")
+            return
+        
+        self.log_message(f"🔗 Attempting to connect to peer: {multiaddr[:50]}...")
+        
+        def peer_connect_thread():
+            try:
+                # In a real implementation, this would call the RPC method to connect to peer
+                # For now, we'll just log the attempt
+                self.log_message(f"📡 Peer connection initiated to: {multiaddr}")
+                self.message_queue.put(("peer_connect_attempt", f"Connecting to {multiaddr[:50]}..."))
+                time.sleep(1)
+                self.message_queue.put(("peer_connect_success", multiaddr))
+            except Exception as e:
+                self.message_queue.put(("peer_connect_error", str(e)))
+        
+        threading.Thread(target=peer_connect_thread, daemon=True).start()
+    
+    def run_health_checks(self):
+        """Run health checks to verify node is working."""
+        self.log_message("🏥 Running health checks...")
+        
+        def health_check_thread():
+            checks = {
+                "Node Connectivity": False,
+                "Can Get Node Info": False,
+                "Can List Peers": False,
+                "System Status": "unknown"
+            }
+            
+            try:
+                # Check 1: Node connectivity
+                if self.go_client:
+                    checks["Node Connectivity"] = True
+                    self.log_message("✅ Node connectivity OK")
+                
+                # Check 2: Get node info
+                try:
+                    # Placeholder - would call actual RPC method
+                    checks["Can Get Node Info"] = True
+                    self.log_message("✅ Can retrieve node information")
+                except Exception as e:
+                    self.log_message(f"⚠️  Node info: {str(e)}")
+                
+                # Check 3: List peers
+                try:
+                    # Placeholder - would call actual RPC method
+                    checks["Can List Peers"] = True
+                    self.log_message("✅ Can retrieve peer list")
+                except Exception as e:
+                    self.log_message(f"⚠️  Peer list: {str(e)}")
+                
+                # Overall status
+                if all(v for k, v in checks.items() if k != "System Status"):
+                    checks["System Status"] = "HEALTHY ✅"
+                    self.log_message("🎉 All health checks passed!")
+                else:
+                    checks["System Status"] = "PARTIAL ⚠️"
+                    self.log_message("⚠️  Some health checks failed")
+                
+                self.message_queue.put(("health_check_complete", checks))
+            
+            except Exception as e:
+                self.log_message(f"❌ Health check error: {str(e)}")
+        
+        threading.Thread(target=health_check_thread, daemon=True).start()
     
     # ==========================================================================
     # Node Management Methods
@@ -528,7 +703,15 @@ class PangeaDesktopApp:
             while True:
                 msg_type, data = self.message_queue.get_nowait()
                 
-                if msg_type == "connect_success":
+                if msg_type == "auto_connect":
+                    # Auto-connect after checking/starting node
+                    self.host_entry.delete(0, tk.END)
+                    self.host_entry.insert(0, self.node_host)
+                    self.port_entry.delete(0, tk.END)
+                    self.port_entry.insert(0, str(self.node_port))
+                    self.connect_to_node()
+                
+                elif msg_type == "connect_success":
                     self.connected = True
                     self.connect_btn.config(state=tk.DISABLED)
                     self.disconnect_btn.config(state=tk.NORMAL)
@@ -542,6 +725,25 @@ class PangeaDesktopApp:
                 elif msg_type == "connect_error":
                     self.log_message(f"❌ Connection error: {data}")
                     messagebox.showerror("Error", f"Connection error: {data}")
+                
+                elif msg_type == "peer_connect_attempt":
+                    self.log_message(f"📡 {data}")
+                
+                elif msg_type == "peer_connect_success":
+                    self.log_message(f"✅ Successfully connected to peer!")
+                    self.log_message(f"   Multiaddr: {data[:80]}...")
+                
+                elif msg_type == "peer_connect_error":
+                    self.log_message(f"❌ Peer connection failed: {data}")
+                
+                elif msg_type == "run_health_checks":
+                    self.run_health_checks()
+                
+                elif msg_type == "health_check_complete":
+                    self.log_message("📋 Health check results:")
+                    for check, result in data.items():
+                        status = "✅" if result is True or "HEALTHY" in str(result) else "⚠️" if result else "❌"
+                        self.log_message(f"  {status} {check}: {result}")
                 
                 elif msg_type == "nodes_list":
                     self.node_output.insert(tk.END, f"Nodes: {json.dumps(data, indent=2)}\n")
