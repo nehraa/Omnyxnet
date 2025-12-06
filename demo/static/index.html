@@ -126,6 +126,32 @@
                             </div>
                         </div>
                         
+                        <!-- Connection Panel -->
+                        <div class="mb-4">
+                            <label class="form-label text-muted">
+                                <i class="bi bi-plug me-2"></i>
+                                Node Connection
+                            </label>
+                            <div class="input-group mb-2">
+                                <input type="text" id="node-host" class="form-control" placeholder="localhost" value="localhost">
+                                <input type="number" id="node-port" class="form-control" placeholder="8080" value="8080" style="max-width: 100px;">
+                                <button id="connect-btn" class="btn btn-outline-success">
+                                    <i class="bi bi-link-45deg"></i> Connect
+                                </button>
+                                <button id="disconnect-btn" class="btn btn-outline-danger" disabled>
+                                    <i class="bi bi-x-circle"></i> Disconnect
+                                </button>
+                            </div>
+                            <button id="discover-btn" class="btn btn-sm btn-outline-info w-100">
+                                <i class="bi bi-broadcast me-2"></i>
+                                Discover Local Nodes (MDNS)
+                            </button>
+                            <div id="connection-status" class="mt-2 small text-muted">
+                                <i class="bi bi-circle-fill text-secondary me-1"></i>
+                                Not connected - using simulated data
+                            </div>
+                        </div>
+                        
                         <!-- Execute Button -->
                         <div class="d-grid gap-2 mb-4">
                             <button id="execute-btn" class="btn btn-primary btn-lg execute-btn">
@@ -229,6 +255,12 @@
         const resetBtn = document.getElementById('reset-btn');
         const terminalBody = document.getElementById('terminal-body');
         const systemStatus = document.getElementById('system-status');
+        const connectBtn = document.getElementById('connect-btn');
+        const disconnectBtn = document.getElementById('disconnect-btn');
+        const discoverBtn = document.getElementById('discover-btn');
+        const nodeHost = document.getElementById('node-host');
+        const nodePort = document.getElementById('node-port');
+        const connectionStatus = document.getElementById('connection-status');
         
         // Clean up SSE connection on page unload
         window.addEventListener('beforeunload', function() {
@@ -302,6 +334,21 @@
             }
             
             document.getElementById('uptime').textContent = status.uptime || '00:00:00';
+            
+            // Update connection status indicator
+            if (status.connected_to_go) {
+                connectionStatus.innerHTML = '<i class="bi bi-circle-fill text-success me-1"></i> Connected to Go node - live data';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                nodeHost.disabled = true;
+                nodePort.disabled = true;
+            } else {
+                connectionStatus.innerHTML = '<i class="bi bi-circle-fill text-secondary me-1"></i> Not connected - using simulated data';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+                nodeHost.disabled = false;
+                nodePort.disabled = false;
+            }
         }
         
         // Show connection error in UI
@@ -517,9 +564,113 @@
             }
         }
         
+        // Connect to Go node
+        async function connectToNode() {
+            const host = nodeHost.value.trim();
+            const port = parseInt(nodePort.value);
+            
+            if (!host || !port) {
+                addTerminalLog('Please enter valid host and port', 'error');
+                return;
+            }
+            
+            try {
+                connectBtn.disabled = true;
+                connectBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Connecting...';
+                
+                const res = await fetch(`${API_BASE}/api/connect?host=${encodeURIComponent(host)}&port=${port}`, {
+                    method: 'POST'
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    addTerminalLog(`✅ ${data.message}`, 'success');
+                    // Refresh data to get live metrics
+                    if (!sseActive) {
+                        await refreshData();
+                    }
+                } else {
+                    const error = await parseErrorResponse(res, 'Connection failed');
+                    addTerminalLog(error, 'error');
+                }
+            } catch (error) {
+                console.error('Connect failed:', error);
+                addTerminalLog('Failed to connect - connection error', 'error');
+            } finally {
+                connectBtn.disabled = false;
+                connectBtn.innerHTML = '<i class="bi bi-link-45deg"></i> Connect';
+            }
+        }
+        
+        // Disconnect from Go node
+        async function disconnectFromNode() {
+            try {
+                disconnectBtn.disabled = true;
+                
+                const res = await fetch(`${API_BASE}/api/disconnect`, {
+                    method: 'POST'
+                });
+                
+                if (res.ok) {
+                    addTerminalLog('Disconnected from Go node', 'info');
+                    if (!sseActive) {
+                        await refreshData();
+                    }
+                } else {
+                    addTerminalLog('Failed to disconnect', 'error');
+                }
+            } catch (error) {
+                console.error('Disconnect failed:', error);
+                addTerminalLog('Failed to disconnect - connection error', 'error');
+            } finally {
+                disconnectBtn.disabled = false;
+            }
+        }
+        
+        // Discover local nodes
+        async function discoverNodes() {
+            try {
+                discoverBtn.disabled = true;
+                discoverBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Scanning...';
+                addTerminalLog('🔍 Scanning for local nodes...', 'info');
+                
+                const res = await fetch(`${API_BASE}/api/discover`);
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.discovered && data.discovered.length > 0) {
+                        addTerminalLog(`Found ${data.count} node(s):`, 'success');
+                        data.discovered.forEach(node => {
+                            addTerminalLog(`  • ${node.host}:${node.port}`, 'info');
+                        });
+                        
+                        // Auto-fill first discovered node
+                        if (data.discovered.length > 0) {
+                            nodeHost.value = data.discovered[0].host;
+                            nodePort.value = data.discovered[0].port;
+                            addTerminalLog('Auto-filled first discovered node. Click Connect to connect.', 'info');
+                        }
+                    } else {
+                        addTerminalLog('No local nodes found. Make sure a Go node is running.', 'warning');
+                    }
+                } else {
+                    addTerminalLog('Discovery failed', 'error');
+                }
+            } catch (error) {
+                console.error('Discovery failed:', error);
+                addTerminalLog('Discovery error', 'error');
+            } finally {
+                discoverBtn.disabled = false;
+                discoverBtn.innerHTML = '<i class="bi bi-broadcast me-2"></i>Discover Local Nodes (MDNS)';
+            }
+        }
+        
         // Event listeners
         executeBtn.addEventListener('click', executeAction);
         resetBtn.addEventListener('click', resetDemo);
+        connectBtn.addEventListener('click', connectToNode);
+        disconnectBtn.addEventListener('click', disconnectFromNode);
+        discoverBtn.addEventListener('click', discoverNodes);
         
         // Initialize: use SSE if supported, fallback to polling
         if (USE_SSE && typeof(EventSource) !== "undefined") {

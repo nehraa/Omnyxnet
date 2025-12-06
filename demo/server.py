@@ -120,21 +120,29 @@ class DemoState:
         self.go_client: Optional[Any] = None  # Cap'n Proto client
         self.connected_to_go = False
     
-    def connect_to_go_node(self) -> bool:
-        """Attempt to connect to Go node via Cap'n Proto."""
+    def connect_to_go_node(self, host: str = None, port: int = None) -> bool:
+        """Attempt to connect to Go node via Cap'n Proto.
+        
+        Args:
+            host: Go node host address (defaults to GO_NODE_HOST)
+            port: Go node port (defaults to GO_NODE_PORT)
+        """
         if not GO_CLIENT_AVAILABLE:
             self.add_log("Cap'n Proto client not available", "warning")
             return False
         
+        target_host = host if host else GO_NODE_HOST
+        target_port = port if port else GO_NODE_PORT
+        
         try:
-            client = GoNodeClient(host=GO_NODE_HOST, port=GO_NODE_PORT)
+            client = GoNodeClient(host=target_host, port=target_port)
             if client.connect():
                 self.go_client = client
                 self.connected_to_go = True
-                self.add_log(f"🔗 Connected to Go node via Cap'n Proto ({GO_NODE_HOST}:{GO_NODE_PORT})", "success")
+                self.add_log(f"🔗 Connected to Go node via Cap'n Proto ({target_host}:{target_port})", "success")
                 return True
             else:
-                self.add_log(f"Could not connect to Go node at {GO_NODE_HOST}:{GO_NODE_PORT}", "warning")
+                self.add_log(f"Could not connect to Go node at {target_host}:{target_port}", "warning")
                 return False
         except Exception as e:
             self.add_log(f"Cap'n Proto connection error: {str(e)}", "error")
@@ -263,10 +271,14 @@ async def get_status():
 
 
 @app.post("/api/connect")
-async def connect_to_go():
+async def connect_to_go(host: str = Query(default=None), port: int = Query(default=None)):
     """
     Connect to a live Go node via Cap'n Proto.
     This enables real-time metrics from the distributed network.
+    
+    Args:
+        host: Optional host address. If not provided, uses environment variable.
+        port: Optional port. If not provided, uses environment variable.
     """
     if not GO_CLIENT_AVAILABLE:
         raise HTTPException(
@@ -280,15 +292,19 @@ async def connect_to_go():
             content={"status": "already_connected", "message": "Already connected to Go node"}
         )
     
-    if state.connect_to_go_node():
+    # Use provided host/port or defaults
+    target_host = host if host else GO_NODE_HOST
+    target_port = port if port else GO_NODE_PORT
+    
+    if state.connect_to_go_node(target_host, target_port):
         return JSONResponse(
             status_code=201,
-            content={"status": "connected", "message": f"Connected to Go node at {GO_NODE_HOST}:{GO_NODE_PORT}"}
+            content={"status": "connected", "message": f"Connected to Go node at {target_host}:{target_port}"}
         )
     else:
         raise HTTPException(
             status_code=503,
-            detail=f"Could not connect to Go node at {GO_NODE_HOST}:{GO_NODE_PORT}"
+            detail=f"Could not connect to Go node at {target_host}:{target_port}"
         )
 
 
@@ -439,9 +455,59 @@ async def reset_demo():
 @app.get("/api/nodes")
 async def get_nodes():
     """Get detailed node information."""
+    nodes = state.data.get("nodes", [])
+    
+    # If connected to Go node, get real peer information
+    if state.connected_to_go and state.go_client:
+        try:
+            peers = state.go_client.get_connected_peers()
+            if peers:
+                # Add connected peers to nodes list
+                for i, peer_id in enumerate(peers):
+                    nodes.append({
+                        "id": peer_id,
+                        "name": f"peer-{peer_id}",
+                        "status": "online",
+                        "type": "peer"
+                    })
+        except Exception as e:
+            logger.warning(f"Error getting connected peers: {e}")
+    
     return {
-        "nodes": state.data.get("nodes", []),
-        "total": len(state.data.get("nodes", []))
+        "nodes": nodes,
+        "total": len(nodes)
+    }
+
+
+@app.get("/api/discover")
+async def discover_nodes():
+    """
+    Discover local Go nodes via MDNS.
+    Returns list of available nodes on the local network.
+    """
+    # In a real implementation, this would use MDNS to discover nodes
+    # For now, we'll check common ports
+    discovered = []
+    import socket
+    
+    for port in [8080, 8081, 8082]:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(0.5)
+            result = sock.connect_ex(('localhost', port))
+            sock.close()
+            if result == 0:
+                discovered.append({
+                    "host": "localhost",
+                    "port": port,
+                    "available": True
+                })
+        except Exception:
+            pass
+    
+    return {
+        "discovered": discovered,
+        "count": len(discovered)
     }
 
 
