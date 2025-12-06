@@ -8,6 +8,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import json
 import os
+import re
 from datetime import datetime
 import requests
 
@@ -33,7 +34,8 @@ def load_json_file(filepath, default=None):
     try:
         with open(filepath, 'r') as f:
             return json.load(f)
-    except:
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"Error loading {filepath}: {e}")
         return default if default is not None else []
 
 def save_json_file(filepath, data):
@@ -45,6 +47,13 @@ def save_json_file(filepath, data):
 def submit_survey():
     """Handle survey form submission"""
     try:
+        # Validate request has JSON data
+        if not request.json:
+            return jsonify({
+                'success': False,
+                'error': 'No JSON data provided'
+            }), 400
+        
         data = request.json
         
         # Add timestamp and ID
@@ -168,15 +177,16 @@ def get_outages():
             # Try to extract JSON from the response
             try:
                 # Look for JSON array in the response
-                import re
                 json_match = re.search(r'\[.*\]', content, re.DOTALL)
                 if json_match:
                     outages_data = json.loads(json_match.group())
                 else:
-                    # Fallback: parse structured text
-                    outages_data = parse_outages_from_text(content)
-            except:
-                outages_data = parse_outages_from_text(content)
+                    # Fallback to static data if parsing fails
+                    print("Could not extract JSON from Perplexity response")
+                    return jsonify(get_fallback_outages()), 200
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"Error parsing Perplexity response: {e}")
+                return jsonify(get_fallback_outages()), 200
             
             # Calculate totals
             totals = calculate_outage_totals(outages_data)
@@ -203,12 +213,7 @@ def get_outages():
         # Return fallback data on error
         return jsonify(get_fallback_outages()), 200
 
-def parse_outages_from_text(text):
-    """Parse outages from text format"""
-    # This is a simple parser - could be enhanced
-    outages = []
-    # Add basic parsing logic here if needed
-    return outages
+
 
 def calculate_outage_totals(outages):
     """Calculate aggregate statistics from outages"""

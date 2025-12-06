@@ -169,8 +169,16 @@ gunicorn -w 4 -b 0.0.0.0:5000 app:app
 
 ## CORS Configuration
 
-The server allows CORS from all origins. For production, you may want to restrict this to specific domains:
+⚠️ **Security Warning**: The server currently allows CORS from all origins for development convenience. 
+
+**For production deployment**, you MUST restrict CORS to specific domains:
 
 ```python
-CORS(app, origins=['https://yourdomain.com'])
+# In app.py, change this line:
+CORS(app)
+
+# To:
+CORS(app, origins=['https://yourdomain.com', 'https://www.yourdomain.com'])
 ```
+
+This prevents unauthorized domains from accessing your API.
