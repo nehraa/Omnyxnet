@@ -55,6 +55,9 @@ class GoNodeClient:
         self._loop_thread = None
         self._loop = None
         self._executor = ThreadPoolExecutor(max_workers=1)
+        self._connection_event = threading.Event()
+        self._connection_error = None
+        self._connection_future = None
     
     def _run_event_loop(self):
         """Run the Cap'n Proto event loop in a background thread."""
@@ -64,6 +67,10 @@ class GoNodeClient:
     def connect(self) -> bool:
         """Connect to Go node. Returns True if successful."""
         try:
+            # Reset connection state
+            self._connection_event.clear()
+            self._connection_error = None
+            
             # Create a new event loop for the background thread
             self._loop = asyncio.new_event_loop()
             
@@ -71,36 +78,62 @@ class GoNodeClient:
             self._loop_thread = threading.Thread(target=self._run_event_loop, daemon=True)
             self._loop_thread.start()
             
-            # Wait a bit for the loop to start
-            time.sleep(0.1)
+            # Wait for the loop to start (with proper synchronization)
+            max_retries = 10
+            for _ in range(max_retries):
+                if self._loop.is_running():
+                    break
+                time.sleep(0.01)
+            
+            if not self._loop.is_running():
+                raise RuntimeError("Event loop failed to start")
             
             # Connect using asyncio.run_coroutine_threadsafe
             async def _async_connect():
-                async with capnp.kj_loop():
-                    # Load schema
-                    self.schema = capnp.load(self.schema_path)
-                    
-                    # Connect to Go node using AsyncIoStream
-                    sock = await capnp.AsyncIoStream.create_connection(self.host, self.port)
-                    self.client = capnp.TwoPartyClient(sock)
-                    self.service = self.client.bootstrap().cast_as(self.schema.NodeService)
-                    self._connected = True
-                    logger.info(f"Connected to Go node at {self.host}:{self.port}")
-                    
-                    # Keep the loop alive
-                    while self._connected:
-                        await asyncio.sleep(0.1)
+                try:
+                    async with capnp.kj_loop():
+                        # Load schema
+                        self.schema = capnp.load(self.schema_path)
+                        
+                        # Connect to Go node using AsyncIoStream
+                        sock = await capnp.AsyncIoStream.create_connection(self.host, self.port)
+                        self.client = capnp.TwoPartyClient(sock)
+                        self.service = self.client.bootstrap().cast_as(self.schema.NodeService)
+                        self._connected = True
+                        logger.info(f"Connected to Go node at {self.host}:{self.port}")
+                        
+                        # Signal connection success
+                        self._connection_event.set()
+                        
+                        # Keep the loop alive
+                        while self._connected:
+                            await asyncio.sleep(0.1)
+                except Exception as e:
+                    self._connection_error = e
+                    self._connection_event.set()  # Signal even on error
+                    raise
             
             # Schedule the connection in the background loop
-            future = asyncio.run_coroutine_threadsafe(_async_connect(), self._loop)
+            self._connection_future = asyncio.run_coroutine_threadsafe(_async_connect(), self._loop)
             
-            # Wait for connection to establish
-            time.sleep(0.5)
+            # Wait for connection with timeout (proper synchronization instead of sleep)
+            if not self._connection_event.wait(timeout=5.0):
+                # Cancel the future on timeout to clean up the background task
+                if self._connection_future:
+                    self._connection_future.cancel()
+                raise TimeoutError("Connection timed out")
+            
+            # Check if connection failed
+            if self._connection_error:
+                raise self._connection_error
             
             return self._connected
         except Exception as e:
             logger.error(f"Failed to connect to Go node: {e}")
             self._connected = False
+            # Cancel any pending future to prevent coroutine from continuing
+            if self._connection_future:
+                self._connection_future.cancel()
             if self._loop and self._loop.is_running():
                 self._loop.call_soon_threadsafe(self._loop.stop)
             return False

@@ -35,6 +35,9 @@ pub struct SandboxConfig {
     pub max_execution_time_ms: u64,
     /// Enable WASI (disabled by default for security)
     pub enable_wasi: bool,
+    /// Simulation mode - when true, uses identity function for execute
+    /// WARNING: Set to false in production!
+    pub simulation_mode: bool,
 }
 
 impl Default for SandboxConfig {
@@ -44,6 +47,9 @@ impl Default for SandboxConfig {
             max_cpu_cycles: 1_000_000_000,        // 1 billion
             max_execution_time_ms: 30_000,        // 30 seconds
             enable_wasi: false,
+            // SECURITY: Default to false - simulation mode should only be enabled explicitly for testing
+            // In simulation mode, execute() returns input unchanged which is NOT safe for production
+            simulation_mode: false,
         }
     }
 }
@@ -196,15 +202,23 @@ impl WasmSandbox {
         Ok(result)
     }
     
-    /// Simulate the execute function
+    /// Execute function for WASM modules
     /// 
-    /// Default execution is identity (returns input unchanged).
-    /// Real WASM modules would implement actual computation here.
+    /// In simulation mode (default), returns input unchanged for testing.
+    /// In production mode, requires valid WASM and uses Wasmtime for execution.
     fn simulate_execute(&self, data: &[u8]) -> Result<Vec<u8>, ComputeError> {
-        // Identity transformation for simulation
-        // Real WASM modules would do actual computation
-        debug!("Execute: processing {} bytes", data.len());
-        Ok(data.to_vec())
+        if self.config.simulation_mode {
+            // Simulation mode: identity transformation for testing
+            debug!("Execute (SIMULATION MODE): processing {} bytes - returning input unchanged", data.len());
+            tracing::warn!("Running in simulation mode - execute returns identity. Set simulation_mode=false for production.");
+            Ok(data.to_vec())
+        } else {
+            // Production mode: would use Wasmtime here
+            // For now, return an error indicating real execution is not yet implemented
+            Err(ComputeError::WasmExecutionError(
+                "Production WASM execution not yet implemented. Enable simulation_mode for testing or integrate Wasmtime.".into()
+            ))
+        }
     }
     
     /// Simulate the merge function
@@ -272,25 +286,39 @@ impl WasmSandbox {
             
             self.module_cache.insert(hash.clone(), cached);
             info!("Loaded and cached WASM module: {}", &hash[..16]);
+        } else {
+            debug!("Using cached WASM module: {}", &hash[..16]);
         }
         
         Ok(hash)
     }
     
+    /// Check if a module is cached
+    pub fn is_module_cached(&self, hash: &str) -> bool {
+        self.module_cache.contains_key(hash)
+    }
+    
+    /// Get cached module info
+    pub fn get_cached_module_size(&self, hash: &str) -> Option<usize> {
+        self.module_cache.get(hash).map(|m| m.size)
+    }
+    
     /// Basic WASM module validation
     fn validate_module(&self, bytes: &[u8]) -> bool {
-        // Check for WASM magic number: \0asm
+        // Check for WASM magic number and version
         if bytes.len() < 8 {
             return false;
         }
         
-        // Allow both real WASM and test data
         // Real WASM starts with: 0x00 0x61 0x73 0x6D (\0asm)
         let is_wasm = bytes[0] == 0x00 && bytes[1] == 0x61 && 
                       bytes[2] == 0x73 && bytes[3] == 0x6D;
         
-        // For testing, also accept non-WASM data
-        is_wasm || !bytes.is_empty()
+        // Validate WASM version (bytes 4-7 should be 0x01 0x00 0x00 0x00 for version 1)
+        let valid_version = bytes[4] == 0x01 && bytes[5] == 0x00 && 
+                           bytes[6] == 0x00 && bytes[7] == 0x00;
+        
+        is_wasm && valid_version
     }
     
     /// Get current resource usage

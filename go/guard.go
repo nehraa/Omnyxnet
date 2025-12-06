@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"sync"
@@ -51,6 +53,11 @@ type GuardObject struct {
 	
 	// CES pipeline for processing authenticated data
 	cesPipeline *CESPipeline
+	
+	// Shutdown channel for graceful cleanup goroutine termination
+	stopChan chan struct{}
+	stopped  bool
+	stopMu   sync.Mutex
 }
 
 // NewGuardObject creates a new guard with the specified configuration
@@ -61,6 +68,7 @@ func NewGuardObject(config GuardConfig, cesPipeline *CESPipeline) *GuardObject {
 		tokens:      make(map[string]time.Time),
 		peerStats:   make(map[peer.ID]*PeerStats),
 		cesPipeline: cesPipeline,
+		stopChan:    make(chan struct{}),
 	}
 	
 	// Start cleanup goroutine for expired tokens and stats
@@ -92,20 +100,30 @@ func (g *GuardObject) IsWhitelisted(peerID peer.ID) bool {
 	return g.whitelist[peerID]
 }
 
+// hashToken returns a SHA256 hash of the token for secure storage
+func hashToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
+}
+
 // RegisterToken registers a new authentication token
+// The token is hashed before storage to prevent token theft via memory dumps
 func (g *GuardObject) RegisterToken(token string, validFor time.Duration) {
 	g.tokensMu.Lock()
 	defer g.tokensMu.Unlock()
-	g.tokens[token] = time.Now().Add(validFor)
+	hashedToken := hashToken(token)
+	g.tokens[hashedToken] = time.Now().Add(validFor)
 	log.Printf("🔑 Registered auth token (expires in %v)", validFor)
 }
 
 // VerifyToken checks if a token is valid
+// The token is hashed before lookup to match the stored hash
 func (g *GuardObject) VerifyToken(token string) bool {
 	g.tokensMu.RLock()
 	defer g.tokensMu.RUnlock()
 	
-	expiry, exists := g.tokens[token]
+	hashedToken := hashToken(token)
+	expiry, exists := g.tokens[hashedToken]
 	if !exists {
 		return false
 	}
@@ -231,27 +249,46 @@ func (g *GuardObject) cleanupLoop() {
 	ticker := time.NewTicker(5 * time.Minute)
 	defer ticker.Stop()
 	
-	for range ticker.C {
-		now := time.Now()
-		
-		// Clean expired tokens
-		g.tokensMu.Lock()
-		for token, expiry := range g.tokens {
-			if now.After(expiry) {
-				delete(g.tokens, token)
+	for {
+		select {
+		case <-g.stopChan:
+			log.Printf("🛑 Guard cleanup goroutine stopped")
+			return
+		case <-ticker.C:
+			now := time.Now()
+			
+			// Clean expired tokens
+			g.tokensMu.Lock()
+			for token, expiry := range g.tokens {
+				if now.After(expiry) {
+					delete(g.tokens, token)
+				}
 			}
-		}
-		g.tokensMu.Unlock()
-		
-		// Clean old stats (peers not seen in 1 hour)
-		g.statsMu.Lock()
-		for peerID, stats := range g.peerStats {
-			if now.Sub(stats.LastRequestAt) > time.Hour && now.After(stats.BannedUntil) {
-				delete(g.peerStats, peerID)
+			g.tokensMu.Unlock()
+			
+			// Clean old stats (peers not seen in 1 hour)
+			g.statsMu.Lock()
+			for peerID, stats := range g.peerStats {
+				if now.Sub(stats.LastRequestAt) > time.Hour && now.After(stats.BannedUntil) {
+					delete(g.peerStats, peerID)
+				}
 			}
+			g.statsMu.Unlock()
 		}
-		g.statsMu.Unlock()
 	}
+}
+
+// Close stops the cleanup goroutine and releases resources
+func (g *GuardObject) Close() {
+	g.stopMu.Lock()
+	defer g.stopMu.Unlock()
+	
+	if g.stopped {
+		return
+	}
+	g.stopped = true
+	close(g.stopChan)
+	log.Printf("🔒 GuardObject closed")
 }
 
 // GetStats returns current statistics

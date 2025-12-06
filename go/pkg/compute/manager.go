@@ -17,8 +17,12 @@ package compute
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"log"
+	"math"
+	"runtime"
 	"sync"
 	"time"
 	"unsafe"
@@ -285,15 +289,31 @@ func (m *Manager) SetDelegator(delegator TaskDelegator) {
 
 }
 
-// probeCapacity probes the system for compute capacity
+// probeCapacity probes the system for compute capacity using actual system info
 func probeCapacity() ComputeCapacity {
-	// In a real implementation, this would use sysinfo or similar
+	numCPU := runtime.NumCPU()
+
+	// Get memory stats
+	// NOTE: HeapSys is NOT total system memory - it's memory obtained from OS for the heap.
+	// This is an approximation based on heap allocation patterns, not actual available RAM.
+	// For accurate system memory, consider using github.com/shirou/gopsutil or similar.
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	ramMB := memStats.HeapSys / (1024 * 1024)
+	if ramMB < 512 {
+		ramMB = 512 // Minimum reasonable value for fresh processes
+	}
+
+	// Estimate current load based on number of goroutines vs available CPUs
+	numGoroutines := runtime.NumGoroutine()
+	currentLoad := math.Min(float64(numGoroutines)/float64(numCPU*10), 1.0)
+
 	return ComputeCapacity{
-		CPUCores:      4,
-		RAMMB:         8192,
-		CurrentLoad:   0.1,
-		DiskMB:        100000,
-		BandwidthMbps: 100.0,
+		CPUCores:      uint32(numCPU),
+		RAMMB:         ramMB,
+		CurrentLoad:   float32(currentLoad),
+		DiskMB:        100000,       // Disk probing requires OS-specific code
+		BandwidthMbps: 100.0,        // Network probing requires active measurement
 	}
 }
 
@@ -506,11 +526,28 @@ func (m *Manager) processJob(jobID string) {
 }
 
 // calculateComplexity calculates the complexity score for a job
+// Bounds the calculation to prevent manipulation through oversized inputs
 func (m *Manager) calculateComplexity(manifest *JobManifest) float64 {
-	dataFactor := float64(len(manifest.InputData)) / (1024.0 * 1024.0) // MB
-	wasmFactor := float64(len(manifest.WASMModule)) / (64.0 * 1024.0)  // 64KB units
-
-	return dataFactor * (1.0 + wasmFactor*0.1)
+	// Cap input sizes to prevent gaming the complexity calculation
+	const maxDataMB = 1024.0   // 1GB max for calculation
+	const maxWasmKB = 10240.0  // 10MB max WASM for calculation
+	
+	dataSize := float64(len(manifest.InputData))
+	wasmSize := float64(len(manifest.WASMModule))
+	
+	// Cap the values
+	dataMB := math.Min(dataSize/(1024.0*1024.0), maxDataMB)
+	wasmKB := math.Min(wasmSize/(64.0*1024.0), maxWasmKB/64.0)
+	
+	// Calculate bounded complexity
+	complexity := dataMB * (1.0 + wasmKB*0.1)
+	
+	// Ensure minimum complexity for non-trivial inputs
+	if len(manifest.InputData) > 0 && complexity < 0.001 {
+		complexity = 0.001
+	}
+	
+	return complexity
 }
 
 // delegateJob delegates a job to workers
@@ -549,11 +586,7 @@ func (m *Manager) delegateJob(jobID string, manifest *JobManifest) {
 			// Delegate to remote worker using round-robin across available workers
 			workerIdx := i % len(workers)
 			workerID := workers[workerIdx]
-			// Safe truncation of worker ID for logging
-			shortID := workerID
-			if len(workerID) > 12 {
-				shortID = workerID[:12]
-			}
+			shortID := truncateID(workerID, 12)
 			log.Printf("📤 [COMPUTE] Sending chunk %d to remote worker %s", i, shortID)
 			go func(index int, data []byte, wID string, d TaskDelegator) {
 				defer wg.Done()
@@ -662,64 +695,105 @@ func (m *Manager) executeChunk(jobID string, chunkIndex uint32, manifest *JobMan
 }
 
 // executeChunkRemote executes a chunk on a remote worker
+// Handles TOCTOU by checking worker availability and retrying with fresh workers if needed
 func (m *Manager) executeChunkRemote(jobID string, chunkIndex uint32, manifest *JobManifest, data []byte, workerID string, delegator TaskDelegator) {
 	start := time.Now()
+	maxRetries := 3
+	currentWorkerID := workerID
 
-	log.Printf("📤 [COMPUTE] Delegating chunk %d to worker %s (%d bytes)",
-		chunkIndex, workerID[:12], len(data))
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		// Check if worker is still available (mitigate TOCTOU)
+		if delegator.HasWorkers() {
+			workers := delegator.GetAvailableWorkers()
+			workerAvailable := false
+			for _, w := range workers {
+				if w == currentWorkerID {
+					workerAvailable = true
+					break
+				}
+			}
+			if !workerAvailable && len(workers) > 0 {
+				// Worker disconnected, select a new one
+				log.Printf("🔄 [COMPUTE] Worker %s disconnected, selecting new worker for chunk %d", 
+					truncateID(currentWorkerID, 12), chunkIndex)
+				currentWorkerID = workers[int(chunkIndex)%len(workers)]
+			}
+		}
 
-	// Create compute task for remote execution
-	task := &ComputeTask{
-		TaskID:          fmt.Sprintf("%s:%d", jobID, chunkIndex),
-		ParentJobID:     jobID,
-		ChunkIndex:      chunkIndex,
-		WASMModule:      manifest.WASMModule,
-		InputData:       data,
-		FunctionName:    "matrix_block_multiply",
-		DelegationDepth: 0,
-		TimeoutMs:       uint64(manifest.TimeoutSecs) * 1000,
+		shortID := truncateID(currentWorkerID, 12)
+		log.Printf("📤 [COMPUTE] Delegating chunk %d to worker %s (%d bytes, attempt %d)",
+			chunkIndex, shortID, len(data), attempt+1)
+
+		// Create compute task for remote execution
+		task := &ComputeTask{
+			TaskID:          fmt.Sprintf("%s:%d", jobID, chunkIndex),
+			ParentJobID:     jobID,
+			ChunkIndex:      chunkIndex,
+			WASMModule:      manifest.WASMModule,
+			InputData:       data,
+			FunctionName:    "matrix_block_multiply",
+			DelegationDepth: 0,
+			TimeoutMs:       uint64(manifest.TimeoutSecs) * 1000,
+		}
+
+		// Execute on remote worker via delegator
+		ctx, cancel := context.WithTimeout(m.ctx, time.Duration(manifest.TimeoutSecs)*time.Second)
+		remoteResult, err := delegator.DelegateTask(ctx, currentWorkerID, task)
+		cancel()
+
+		if err != nil {
+			log.Printf("❌ [COMPUTE] Remote chunk %d failed on %s: %v (attempt %d)", 
+				chunkIndex, shortID, err, attempt+1)
+			
+			// Refresh worker list for next attempt
+			if delegator.HasWorkers() {
+				workers := delegator.GetAvailableWorkers()
+				if len(workers) > 0 {
+					// Pick a different worker for retry
+					currentWorkerID = workers[(int(chunkIndex)+attempt+1)%len(workers)]
+					continue
+				}
+			}
+			
+			// No more workers available, fall back to local execution
+			log.Printf("🔄 [COMPUTE] No workers available, falling back to local execution for chunk %d", chunkIndex)
+			m.executeChunk(jobID, chunkIndex, manifest, data)
+			return
+		}
+
+		if remoteResult.Status == TaskCompleted {
+			log.Printf("✅ [COMPUTE] Chunk %d completed by worker %s in %dms: %d bytes",
+				chunkIndex, shortID, remoteResult.ExecutionTimeMs, len(remoteResult.ResultData))
+			
+			result := remoteResult
+			result.WorkerID = currentWorkerID
+			result.ExecutionTimeMs = uint64(time.Since(start).Milliseconds())
+
+			m.mu.Lock()
+			state := m.jobs[jobID]
+			state.results[chunkIndex] = result
+			state.chunks[chunkIndex].Status = TaskCompleted
+			state.lastUpdate = time.Now()
+			m.mu.Unlock()
+			return
+		}
+
+		log.Printf("❌ [COMPUTE] Remote chunk %d returned failure: %s (attempt %d)", 
+			chunkIndex, remoteResult.Error, attempt+1)
+		
+		// Try to get a different worker for retry
+		if delegator.HasWorkers() {
+			workers := delegator.GetAvailableWorkers()
+			if len(workers) > 0 {
+				currentWorkerID = workers[(int(chunkIndex)+attempt+1)%len(workers)]
+				continue
+			}
+		}
 	}
 
-	// Execute on remote worker via delegator
-	ctx, cancel := context.WithTimeout(m.ctx, time.Duration(manifest.TimeoutSecs)*time.Second)
-	defer cancel()
-
-	remoteResult, err := delegator.DelegateTask(ctx, workerID, task)
-
-	var result *TaskResult
-	if err != nil {
-		log.Printf("❌ [COMPUTE] Remote chunk %d failed on %s: %v", chunkIndex, workerID[:12], err)
-		// Fall back to local execution
-		log.Printf("🔄 [COMPUTE] Falling back to local execution for chunk %d", chunkIndex)
-		m.executeChunk(jobID, chunkIndex, manifest, data)
-		return
-	}
-
-	if remoteResult.Status == TaskCompleted {
-		log.Printf("✅ [COMPUTE] Chunk %d completed by worker %s in %dms: %d bytes",
-			chunkIndex, workerID[:12], remoteResult.ExecutionTimeMs, len(remoteResult.ResultData))
-		result = remoteResult
-		result.WorkerID = workerID
-	} else {
-		log.Printf("❌ [COMPUTE] Remote chunk %d returned failure: %s", chunkIndex, remoteResult.Error)
-		// Fall back to local execution
-		log.Printf("🔄 [COMPUTE] Falling back to local execution for chunk %d", chunkIndex)
-		m.executeChunk(jobID, chunkIndex, manifest, data)
-		return
-	}
-
-	result.ExecutionTimeMs = uint64(time.Since(start).Milliseconds())
-
-	m.mu.Lock()
-	state := m.jobs[jobID]
-	state.results[chunkIndex] = result
-	if result.Status == TaskCompleted {
-		state.chunks[chunkIndex].Status = TaskCompleted
-	} else {
-		state.chunks[chunkIndex].Status = TaskFailed
-	}
-	state.lastUpdate = time.Now()
-	m.mu.Unlock()
+	// All retries exhausted, fall back to local execution
+	log.Printf("🔄 [COMPUTE] All remote attempts failed, falling back to local execution for chunk %d", chunkIndex)
+	m.executeChunk(jobID, chunkIndex, manifest, data)
 }
 
 // ExecuteMatrixBlockMultiply executes matrix block multiplication (exported for compute protocol)
@@ -746,6 +820,14 @@ func executeMatrixBlockMultiply(data []byte) ([]byte, error) {
 
 	log.Printf("   📊 [COMPUTE] Parsed dimensions: aRows=%d, aCols=%d", aRows, aCols)
 
+	// Check for integer overflow before multiplication: aRows * aCols * 8
+	// Use uint64 arithmetic and cap at MaxInt32/8 to ensure the result fits in int
+	// (int is 32-bit on some platforms, and we need safe bounds for slice operations)
+	const maxMatrixElements uint64 = math.MaxInt32 / 8
+	if uint64(aRows)*uint64(aCols) > maxMatrixElements {
+		return nil, fmt.Errorf("matrix A dimensions too large: %d x %d would overflow", aRows, aCols)
+	}
+
 	aDataSize := int(aRows * aCols * 8)
 	if len(data) < 8+aDataSize+8 {
 		return nil, fmt.Errorf("input data incomplete for matrix A: need %d, have %d", 8+aDataSize+8, len(data))
@@ -755,6 +837,11 @@ func executeMatrixBlockMultiply(data []byte) ([]byte, error) {
 	bOffset := 8 + aDataSize
 	bRows := uint32(data[bOffset])<<24 | uint32(data[bOffset+1])<<16 | uint32(data[bOffset+2])<<8 | uint32(data[bOffset+3])
 	bCols := uint32(data[bOffset+4])<<24 | uint32(data[bOffset+5])<<16 | uint32(data[bOffset+6])<<8 | uint32(data[bOffset+7])
+
+	// Check for integer overflow before multiplication: bRows * bCols * 8
+	if uint64(bRows)*uint64(bCols) > maxMatrixElements {
+		return nil, fmt.Errorf("matrix B dimensions too large: %d x %d would overflow", bRows, bCols)
+	}
 
 	bDataSize := int(bRows * bCols * 8)
 	if len(data) < bOffset+8+bDataSize {
@@ -929,9 +1016,22 @@ func generateJobID() string {
 	return fmt.Sprintf("job-%d", time.Now().UnixNano())
 }
 
+// truncateID safely truncates a string ID for logging, handling UTF-8 properly
+func truncateID(id string, maxLen int) string {
+	// Fast path: if byte length is within limit, no truncation needed
+	if len(id) <= maxLen {
+		return id
+	}
+	// Convert to runes only when truncation is needed to handle multi-byte UTF-8 safely
+	runes := []rune(id)
+	if len(runes) <= maxLen {
+		return id
+	}
+	return string(runes[:maxLen])
+}
+
 // hashData returns the SHA256 hash of data as a hex string
 func hashData(data []byte) string {
-	// In a real implementation, use crypto/sha256
-	// For now, return a placeholder
-	return fmt.Sprintf("%x", len(data))
+	hash := sha256.Sum256(data)
+	return hex.EncodeToString(hash[:])
 }

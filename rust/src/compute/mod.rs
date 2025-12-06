@@ -55,11 +55,17 @@ impl ComputeEngine {
     pub fn new(config: ComputeConfig) -> Result<Self, ComputeError> {
         info!("Initializing Compute Engine with config: {:?}", config);
         
+        // SECURITY: Warn if simulation mode is enabled
+        if config.simulation_mode {
+            tracing::error!("⚠️  SIMULATION MODE ENABLED - execute() returns input unchanged! This MUST be disabled in production.");
+        }
+        
         let sandbox_config = SandboxConfig {
             max_memory_bytes: config.max_memory_mb * 1024 * 1024,
             max_cpu_cycles: config.max_cpu_cycles,
             max_execution_time_ms: config.max_execution_time_ms,
             enable_wasi: config.enable_wasi,
+            simulation_mode: config.simulation_mode,
         };
         
         let sandbox = WasmSandbox::new(sandbox_config)?;

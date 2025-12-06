@@ -63,7 +63,14 @@ func (s *nodeServiceServer) GetComputeManager() *compute.Manager {
 	return s.computeManager
 }
 
+// Error Handling Convention for Cap'n Proto RPC methods:
+// - Return Go error for internal/allocation failures (RPC fails)
+// - For application-level errors where response has success/errorMsg fields,
+//   set success=false, errorMsg=description, and return nil (RPC succeeds with error info)
+// - For simple query methods without success fields, return Go error (client handles as RPC error)
+
 // GetNode implements the getNode method
+// Returns Go error if node not found (propagates as RPC error to client)
 func (s *nodeServiceServer) GetNode(ctx context.Context, call NodeService_getNode) error {
 	results, err := call.AllocResults()
 	if err != nil {
@@ -373,22 +380,70 @@ func (s *nodeServiceServer) GetNetworkMetrics(ctx context.Context, call NodeServ
 		return err
 	}
 
-	// Get network metrics from network adapter
-	// For now, return mock data - this should be implemented properly
 	metrics, err := results.NewMetrics()
 	if err != nil {
 		return err
 	}
 
-	metrics.SetAvgRttMs(50.0)
-	metrics.SetPacketLoss(0.01)
-	metrics.SetBandwidthMbps(100.0)
-	metrics.SetPeerCount(uint32(len(s.network.GetConnectedPeers())))
-	metrics.SetCpuUsage(0.3)
-	metrics.SetIoCapacity(0.8)
+	// Get real peer count
+	connectedPeers := s.network.GetConnectedPeers()
+	peerCount := uint32(len(connectedPeers))
+	metrics.SetPeerCount(peerCount)
 
-	// Note: All metrics except PeerCount are currently mock values
-	log.Println("WARNING: GetNetworkMetrics returned mock values for all fields except PeerCount. This should be replaced with real metrics gathering.")
+	// Calculate average RTT and packet loss from connected peers
+	var totalLatency float32
+	var totalPacketLoss float32
+	var latencyCount int
+	var packetLossCount int
+	for _, peerID := range connectedPeers {
+		latency, _, packetLoss, err := s.network.GetConnectionQuality(peerID)
+		if err == nil && latency > 0 {
+			totalLatency += latency
+			latencyCount++
+		}
+		if err == nil && packetLoss > 0 {
+			totalPacketLoss += packetLoss
+			packetLossCount++
+		}
+	}
+
+	if latencyCount > 0 {
+		metrics.SetAvgRttMs(totalLatency / float32(latencyCount))
+	} else {
+		metrics.SetAvgRttMs(0.0)
+	}
+
+	// Calculate average packet loss across all peers with measurements
+	if packetLossCount > 0 {
+		metrics.SetPacketLoss(totalPacketLoss / float32(packetLossCount))
+	} else {
+		metrics.SetPacketLoss(0.0)
+	}
+
+	// WARNING: Bandwidth estimation is a rough heuristic and may NOT reflect actual capacity.
+	// This uses peer count as a proxy (more peers = better connected), but a node on a 100 Mbps
+	// connection with 100 peers would incorrectly report 1 Gbps. For accurate bandwidth measurement,
+	// implement active probing or use libp2p's built-in bandwidth metrics.
+	estimatedBandwidth := float32(10.0) // Base 10 Mbps for isolated node
+	if peerCount > 0 {
+		estimatedBandwidth = float32(peerCount) * 10.0
+		if estimatedBandwidth > 1000.0 {
+			estimatedBandwidth = 1000.0 // Cap at 1 Gbps
+		}
+	}
+	metrics.SetBandwidthMbps(estimatedBandwidth)
+
+	// CPU usage from compute manager if available
+	if s.computeManager != nil {
+		capacity := s.computeManager.GetCapacity()
+		metrics.SetCpuUsage(capacity.CurrentLoad)
+		// IO capacity based on load (inverse relationship)
+		metrics.SetIoCapacity(1.0 - capacity.CurrentLoad)
+	} else {
+		metrics.SetCpuUsage(0.0)
+		metrics.SetIoCapacity(1.0)
+	}
+
 	return nil
 }
 
@@ -639,21 +694,20 @@ func (s *nodeServiceServer) Upload(ctx context.Context, call NodeService_upload)
 		targetPeers[i] = targetPeersList.At(i)
 	}
 
-	// Create CES pipeline with adaptive compression
-	pipeline := NewCESPipeline(3) // Default compression level
-	if pipeline == nil {
+	// Use shared CES pipeline for consistent encryption key management
+	// This ensures the same key is used for encryption and decryption
+	if s.cesPipeline == nil {
 		response, err := results.NewResponse()
 		if err != nil {
 			return err
 		}
 		response.SetSuccess(false)
-		response.SetErrorMsg("Failed to create CES pipeline")
+		response.SetErrorMsg("CES pipeline not initialized - encryption key would be inconsistent")
 		return nil
 	}
-	defer pipeline.Close()
 
-	// Process through CES
-	shards, err := pipeline.Process(data)
+	// Process through shared CES pipeline
+	shards, err := s.cesPipeline.Process(data)
 	if err != nil {
 		response, err := results.NewResponse()
 		if err != nil {

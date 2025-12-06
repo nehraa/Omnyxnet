@@ -104,18 +104,39 @@ func (c *CESPipeline) Process(data []byte) ([]ShardData, error) {
 	}
 
 	// Validate shard count to prevent out-of-bounds access
-	if ffiShards.count > 10000 {
-		return nil, fmt.Errorf("shard count too large: %d", ffiShards.count)
+	// Use a reasonable limit based on expected use cases (100 shards * 1MB = 100MB)
+	const maxShardCount = 1000
+	if ffiShards.count > maxShardCount {
+		return nil, fmt.Errorf("shard count too large: %d (max %d)", ffiShards.count, maxShardCount)
 	}
 
-	// Convert C shards to Go
-	shards := make([]ShardData, int(ffiShards.count))
-	cShards := (*[1 << 30]C.FFIShard)(unsafe.Pointer(ffiShards.shards))[:ffiShards.count:ffiShards.count]
+	// Validate the total size doesn't exceed reasonable limits
+	// This helps catch corrupted FFI responses
+	const maxTotalSize = 1 << 30 // 1GB total max
+	totalSize := uint64(0)
 
-	for i := 0; i < int(ffiShards.count); i++ {
+	// Pre-validate all shards before processing
+	// Use maxShardCount for the backing array to match the validation above
+	shardCount := int(ffiShards.count)
+	cShards := (*[maxShardCount]C.FFIShard)(unsafe.Pointer(ffiShards.shards))[:shardCount:shardCount]
+
+	for i := 0; i < shardCount; i++ {
 		if cShards[i].data == nil {
 			return nil, fmt.Errorf("shard %d has no data", i)
 		}
+		shardLen := uint64(cShards[i].len)
+		if shardLen > maxTotalSize {
+			return nil, fmt.Errorf("shard %d size too large: %d", i, shardLen)
+		}
+		totalSize += shardLen
+		if totalSize > maxTotalSize {
+			return nil, fmt.Errorf("total shard size exceeds limit: %d > %d", totalSize, maxTotalSize)
+		}
+	}
+
+	// Convert C shards to Go
+	shards := make([]ShardData, shardCount)
+	for i := 0; i < shardCount; i++ {
 		// Copy shard data to Go
 		shardData := C.GoBytes(unsafe.Pointer(cShards[i].data), C.int(cShards[i].len))
 		shards[i] = ShardData{Data: shardData}
