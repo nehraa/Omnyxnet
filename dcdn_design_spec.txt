@@ -1,0 +1,946 @@
+# DCDN System Design Specification
+## Architecture & Implementation Blueprint
+
+**Document Version:** 2.0  
+**Date:** December 2025  
+**Status:** Design Phase  
+**Prerequisite:** DCDN_PRD_Research_Validation.md
+
+---
+
+## DOCUMENT PURPOSE
+
+This design document translates the validated requirements into a concrete system architecture. It specifies:
+
+- Component boundaries and responsibilities
+- Data structures and memory layouts
+- Interface contracts (APIs between components)
+- Threading and concurrency models
+- Configuration and tunables
+- Error handling strategies
+
+**What this document is NOT:**
+- Implementation code (that's for the development phase)
+- Detailed algorithms (already validated in PRD)
+- Performance benchmarks (those come from testing)
+
+---
+
+## SYSTEM OVERVIEW
+
+### Architecture Layers
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   CONTROL PLANE                          │
+│  (Configuration, Monitoring, Coordination)               │
+│  - gRPC Server (port 50051)                             │
+│  - Metrics Aggregator                                    │
+│  - Policy Engine                                         │
+└────────────────┬────────────────────────────────────────┘
+                 │ Configuration Updates
+                 │ Metrics Push
+                 ▼
+┌─────────────────────────────────────────────────────────┐
+│                    DATA PLANE                            │
+│  (High-throughput packet processing in Rust)             │
+│                                                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+│  │ QUIC Layer   │─▶│ FEC Engine   │─▶│ Ring Buffer  │ │
+│  │ (quinn)      │  │ (reed-solomon)│  │ (lock-free)  │ │
+│  └──────────────┘  └──────────────┘  └──────────────┘ │
+│         │                  │                  │         │
+│         └──────────────────┴──────────────────┘         │
+│                          │                               │
+│                ┌─────────▼──────────┐                   │
+│                │  P2P Engine        │                   │
+│                │  (tit-for-tat)     │                   │
+│                └────────────────────┘                   │
+└─────────────────────────────────────────────────────────┘
+                 ▲                    │
+                 │ Chunks             │ Chunks
+                 │                    ▼
+┌────────────────┴─────────────────────────────────────────┐
+│                  INTEGRITY PLANE                          │
+│  (Cryptographic verification)                             │
+│  - Signature Verifier (Ed25519)                          │
+│  - Key Manager                                            │
+│  - Reputation Tracker                                     │
+└───────────────────────────────────────────────────────────┘
+```
+
+---
+
+## PART 1: DATA PLANE DESIGN
+
+### 1.1 Component: QUIC Transport Manager
+
+**Responsibility:** Manage all QUIC connections, streams, and low-level packet handling.
+
+#### Interface Definition
+
+```rust
+// Public API
+pub trait QuicTransport {
+    async fn connect(&self, peer_addr: SocketAddr) -> Result<ConnectionHandle>;
+    async fn accept(&self) -> Result<IncomingConnection>;
+    async fn send_chunk(&self, conn: &ConnectionHandle, chunk: ChunkRef) -> Result<()>;
+    async fn receive_chunk(&self, conn: &ConnectionHandle) -> Result<Chunk>;
+}
+
+// Configuration Structure
+pub struct QuicConfig {
+    pub max_concurrent_connections: usize,     // Default: 1000
+    pub max_streams_per_connection: u64,       // Default: 256
+    pub congestion_algorithm: CongestionAlgo,  // BBR or CUBIC
+    pub ack_frequency: AckPolicy,              // Adaptive or Fixed
+    pub enable_gso: bool,                      // UDP Generic Segmentation Offload
+    pub idle_timeout_ms: u64,                  // Default: 30000
+}
+
+// Internal State
+struct QuicState {
+    endpoint: Endpoint,
+    active_connections: DashMap<PeerId, Connection>,
+    config: Arc<QuicConfig>,
+    metrics: Arc<TransportMetrics>,
+}
+```
+
+#### Data Flow
+
+```
+Incoming UDP Packet
+    ↓
+[QUIC Decrypt] (hardware offload if available)
+    ↓
+[Stream Demux] → Route to appropriate handler
+    ↓
+[Loss Detection] → Update congestion window
+    ↓
+[ACK Generation] → Send feedback
+    ↓
+Pass to FEC Engine
+```
+
+#### Threading Model
+
+- **Main QUIC Thread:** Runs `quinn` event loop, handles all connections
+- **Per-connection Worker:** Process streams asynchronously (Tokio tasks)
+- **Lock Contention:** None (DashMap for concurrent connection map)
+
+#### Configuration Tunables
+
+| Parameter | Default | Range | When to Adjust |
+|-----------|---------|-------|----------------|
+| `max_concurrent_connections` | 1000 | 100-10000 | Based on server capacity |
+| `ack_frequency` | Adaptive | Fixed(2)/Adaptive | Fixed for stable networks |
+| `enable_gso` | true | bool | Disable if kernel <4.18 |
+| `idle_timeout_ms` | 30000 | 5000-120000 | Longer for mobile peers |
+
+---
+
+### 1.2 Component: Chunk Store (Ring Buffer)
+
+**Responsibility:** In-memory storage for active video chunks with automatic expiration.
+
+#### Data Structure
+
+```rust
+// Memory Layout (aligned for cache efficiency)
+#[repr(C, align(64))]
+pub struct ChunkStore {
+    // Fixed-size ring buffer
+    slots: Box<[Option<Arc<ChunkData>>]>,  // Preallocated array
+    
+    // Atomic indices (lock-free)
+    write_head: AtomicUsize,
+    read_tail: AtomicUsize,
+    
+    // Metadata
+    capacity: usize,
+    chunk_ttl: Duration,
+    
+    // Fast lookup (chunk_id → slot index)
+    index: DashMap<ChunkId, usize>,
+}
+
+// Chunk metadata + data
+pub struct ChunkData {
+    pub id: ChunkId,
+    pub sequence: u64,
+    pub timestamp: Instant,
+    pub source_peer: PeerId,
+    pub signature: Signature,
+    pub data: Bytes,  // Zero-copy buffer
+    pub fec_group: Option<FecGroupId>,
+}
+```
+
+#### Interface Definition
+
+```rust
+pub trait ChunkStorage {
+    fn insert(&self, chunk: ChunkData) -> Result<()>;
+    fn get(&self, id: &ChunkId) -> Option<Arc<ChunkData>>;
+    fn remove(&self, id: &ChunkId) -> Option<Arc<ChunkData>>;
+    fn list_expired(&self, now: Instant) -> Vec<ChunkId>;
+    fn stats(&self) -> StorageStats;
+}
+```
+
+#### Memory Management Strategy
+
+```
+Buffer Size Calculation:
+    Primary Buffer = (avg_chunk_size × lookahead_count) + safety_margin
+    
+    Example (10 Mbps stream, 2-second chunks):
+        Chunk Size = 2.5 MB
+        Lookahead = 5 chunks
+        Safety = 20% = 2.5 MB
+        Total = 15 MB
+        
+Ring Buffer Sizing:
+    Slots = (buffer_size / avg_chunk_size) × 1.5  // 50% overhead
+    Example: (15 MB / 2.5 MB) × 1.5 = 9 slots
+```
+
+#### Eviction Policy
+
+```
+Priority Order (highest to lowest):
+1. Chunks past TTL (age > chunk_ttl)
+2. Chunks with failed signature (marked invalid)
+3. Chunks not referenced by any peer request
+4. Oldest chunks by timestamp
+
+Trigger Conditions:
+- Automatic: Every 10 seconds (background task)
+- On-demand: When buffer >90% full
+```
+
+#### Threading Model
+
+- **Lock-free reads:** Multiple reader threads via atomic loads
+- **Single writer:** Dedicated insertion thread (or protected by mutex if multiple)
+- **Background evictor:** Separate Tokio task runs cleanup
+
+---
+
+### 1.3 Component: FEC Engine
+
+**Responsibility:** Apply Reed-Solomon forward error correction for packet recovery.
+
+#### Interface Definition
+
+```rust
+pub trait FecEngine {
+    fn encode(&self, packets: &[Packet], config: &FecConfig) -> Result<Vec<ParityPacket>>;
+    fn decode(&self, group: &FecGroup) -> Result<Vec<Packet>>;
+    fn can_recover(&self, group: &FecGroup) -> bool;
+}
+
+pub struct FecConfig {
+    pub block_size: usize,        // k data packets
+    pub parity_count: usize,      // m parity packets
+    pub algorithm: FecAlgorithm,  // RS-GF256
+}
+
+pub struct FecGroup {
+    pub id: FecGroupId,
+    pub data_packets: Vec<Option<Packet>>,
+    pub parity_packets: Vec<ParityPacket>,
+    pub received_count: usize,
+}
+```
+
+#### Block Size Selection Logic
+
+```rust
+// Adaptive block sizing based on network conditions
+fn select_block_size(latency_budget_ms: u32, loss_rate: f32) -> FecConfig {
+    let block_size = match latency_budget_ms {
+        0..=100 => 8,      // Ultra-low latency
+        101..=200 => 16,   // Low latency
+        201..=500 => 32,   // Moderate
+        _ => 64,           // Standard
+    };
+    
+    let parity_count = calculate_parity(block_size, loss_rate);
+    
+    FecConfig {
+        block_size,
+        parity_count,
+        algorithm: FecAlgorithm::ReedSolomon,
+    }
+}
+
+fn calculate_parity(k: usize, loss_rate: f32) -> usize {
+    // Meta's formula: m = ceil(k × loss_rate × safety_factor)
+    let safety_factor = 1.5;
+    let m = (k as f32 * loss_rate * safety_factor).ceil() as usize;
+    m.clamp(2, k / 2)  // Minimum 2, maximum 50% overhead
+}
+```
+
+#### Processing Pipeline
+
+```
+Encoding Path (Sender):
+    Chunk → Split into packets → RS Encode → Generate parity
+    
+Decoding Path (Receiver):
+    Packets arrive → Buffer in FecGroup → Check if recoverable
+    ↓
+    If recoverable: RS Decode → Reconstruct missing packets
+    ↓
+    Pass complete chunk to Ring Buffer
+
+Optimization: Lazy decoding
+    - Don't decode until ALL data packets received OR timeout
+    - Timeout = 2 × RTT (adaptive)
+```
+
+#### State Management
+
+```rust
+struct FecState {
+    active_groups: DashMap<FecGroupId, FecGroup>,
+    config: Arc<FecConfig>,
+    metrics: Arc<FecMetrics>,
+}
+
+// Lifecycle: Group is removed after successful decode or timeout
+impl FecState {
+    fn on_packet_received(&self, group_id: FecGroupId, packet: Packet) {
+        let mut group = self.active_groups.entry(group_id).or_insert_with(|| {
+            FecGroup::new(self.config.block_size, self.config.parity_count)
+        });
+        
+        group.insert_packet(packet);
+        
+        if group.is_complete() || self.can_recover(&group) {
+            self.trigger_decode(group_id);
+        }
+    }
+}
+```
+
+---
+
+### 1.4 Component: P2P Transfer Engine
+
+**Responsibility:** Implement tit-for-tat incentive mechanism and chunk distribution.
+
+#### Interface Definition
+
+```rust
+pub trait P2PEngine {
+    async fn handle_chunk_request(&self, peer: PeerId, chunk_id: ChunkId) -> Result<()>;
+    async fn request_chunk(&self, peer: PeerId, chunk_id: ChunkId) -> Result<Chunk>;
+    fn update_peer_state(&self, peer: PeerId, stats: PeerStats);
+    fn get_unchoked_peers(&self) -> Vec<PeerId>;
+}
+
+pub struct PeerStats {
+    pub uploaded_bytes: u64,
+    pub downloaded_bytes: u64,
+    pub last_interaction: Instant,
+    pub reliability_score: f32,  // 0.0-1.0
+}
+```
+
+#### Peer State Machine
+
+```
+Peer Lifecycle:
+    DISCOVERED → CONNECTED → INTERESTED → UNCHOKED → UPLOADING
+                      ↓           ↓
+                   CHOKED ←──────┘
+                      ↓
+                 DISCONNECTED
+
+State Transitions:
+- DISCOVERED: Control Plane announces peer
+- CONNECTED: QUIC connection established
+- INTERESTED: Peer requests chunk we have
+- UNCHOKED: We allow this peer to download (tit-for-tat decision)
+- CHOKED: We block this peer (bandwidth limits or poor reciprocation)
+```
+
+#### Unchoke Algorithm
+
+```rust
+struct UnchokePolicy {
+    regular_unchoke_count: usize,   // Top N peers (default: 4)
+    optimistic_count: usize,         // Random new peers (default: 1)
+    interval_seconds: u64,           // Decision interval (default: 10)
+}
+
+impl P2PEngine {
+    fn calculate_unchoke_set(&self) -> Vec<PeerId> {
+        let mut peers = self.get_all_interested_peers();
+        
+        // Score peers by reciprocal bandwidth
+        peers.sort_by_key(|p| {
+            let uploaded = self.stats.uploaded_to(p);
+            let downloaded = self.stats.downloaded_from(p);
+            let priority = self.config.peer_priority(p);
+            
+            // Higher score = better peer
+            (downloaded as f32 * 0.7 + uploaded as f32 * 0.3) * priority
+        });
+        
+        let mut unchoked = Vec::new();
+        
+        // Regular unchoke (top performers)
+        unchoked.extend(peers.iter().take(self.policy.regular_unchoke_count).copied());
+        
+        // Optimistic unchoke (random selection)
+        let remaining = peers.iter().skip(self.policy.regular_unchoke_count);
+        if let Some(random_peer) = remaining.choose(&mut rand::thread_rng()) {
+            unchoked.push(*random_peer);
+        }
+        
+        unchoked
+    }
+}
+```
+
+#### Bandwidth Allocation
+
+```
+Total Upload Bandwidth (B_total)
+    ↓
+Divide among unchoked peers:
+    B_per_peer = B_total / unchoked_count
+    
+Rate Limiting:
+    Token bucket per peer
+    Refill rate = B_per_peer bytes/sec
+    Burst size = 2 × avg_chunk_size
+```
+
+---
+
+### 1.5 Component: Signature Verifier
+
+**Responsibility:** Cryptographic verification of chunk authenticity.
+
+#### Interface Definition
+
+```rust
+pub trait SignatureVerifier {
+    fn verify(&self, chunk: &ChunkData) -> Result<bool>;
+    fn verify_batch(&self, chunks: &[ChunkData]) -> Result<Vec<bool>>;
+    fn add_trusted_key(&self, peer: PeerId, public_key: PublicKey);
+    fn revoke_key(&self, peer: PeerId);
+}
+
+struct VerifierState {
+    trusted_keys: DashMap<PeerId, PublicKey>,
+    revoked_keys: Arc<RwLock<HashSet<PeerId>>>,
+    metrics: Arc<VerificationMetrics>,
+}
+```
+
+#### Verification Pipeline
+
+```
+Chunk arrives
+    ↓
+[1] Check if source peer is revoked → Reject
+    ↓
+[2] Lookup public key for source peer
+    ↓
+[3] Batch with other pending chunks (up to 8)
+    ↓
+[4] Ed25519 batch verify (SIMD-optimized)
+    ↓
+[5] Mark chunk as verified/failed
+    ↓
+Pass to Ring Buffer (only if verified)
+```
+
+#### Batch Processing
+
+```rust
+struct VerificationBatch {
+    chunks: Vec<Arc<ChunkData>>,
+    max_size: usize,           // Default: 8
+    timeout: Duration,          // Default: 100ms
+}
+
+// Accumulate chunks until batch is full or timeout
+impl VerificationBatch {
+    async fn process(&mut self) {
+        if self.chunks.len() >= self.max_size {
+            self.verify_now().await;
+        } else {
+            tokio::time::sleep(self.timeout).await;
+            self.verify_now().await;
+        }
+    }
+}
+```
+
+---
+
+## PART 2: CONTROL PLANE DESIGN
+
+### 2.1 Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│         Control Plane Server                │
+│                                             │
+│  ┌──────────────┐      ┌─────────────────┐│
+│  │ gRPC Server  │─────▶│ Policy Engine   ││
+│  │ (port 50051) │      │                 ││
+│  └──────────────┘      └─────────────────┘│
+│         │                      │           │
+│         │                      ▼           │
+│         │              ┌─────────────────┐│
+│         │              │ Config Store    ││
+│         │              │ (in-memory)     ││
+│         │              └─────────────────┘│
+│         ▼                      │           │
+│  ┌──────────────┐              │           │
+│  │ Metrics DB   │◀─────────────┘           │
+│  │ (TimeSeries) │                          │
+│  └──────────────┘                          │
+└─────────────────────────────────────────────┘
+```
+
+### 2.2 gRPC Service Definition
+
+```protobuf
+service ControlPlane {
+  // Configuration management
+  rpc GetConfig(ConfigRequest) returns (ConfigResponse);
+  rpc UpdateConfig(UpdateConfigRequest) returns (UpdateConfigResponse);
+  
+  // Peer management
+  rpc RegisterPeer(PeerInfo) returns (PeerRegistration);
+  rpc GetPeerList(PeerQuery) returns (PeerList);
+  
+  // Metrics reporting
+  rpc ReportMetrics(MetricsReport) returns (Ack);
+  rpc StreamMetrics(stream MetricsReport) returns (Ack);
+}
+
+message ConfigRequest {
+  string node_id = 1;
+}
+
+message ConfigResponse {
+  FecConfig fec_config = 1;
+  P2PConfig p2p_config = 2;
+  QuicConfig quic_config = 3;
+}
+
+message MetricsReport {
+  string node_id = 1;
+  int64 timestamp = 2;
+  map<string, double> metrics = 3;
+}
+```
+
+### 2.3 Policy Engine
+
+**Responsibility:** Make global optimization decisions based on aggregate metrics.
+
+```rust
+pub trait PolicyEngine {
+    fn optimize_fec_params(&self, node_id: &str) -> FecConfig;
+    fn compute_peer_priorities(&self, node_id: &str) -> HashMap<PeerId, f32>;
+    fn detect_anomalies(&self, metrics: &MetricsReport) -> Vec<Anomaly>;
+}
+
+// Example policy: Adaptive FEC
+impl PolicyEngine {
+    fn optimize_fec_params(&self, node_id: &str) -> FecConfig {
+        let metrics = self.metrics_db.get_recent(node_id, Duration::from_secs(60));
+        
+        let avg_loss_rate = metrics.avg("packet_loss_rate");
+        let avg_latency = metrics.avg("rtt_ms");
+        
+        // Increase parity if loss rate is high
+        let parity_count = if avg_loss_rate > 0.03 {
+            4  // 4 parity packets for >3% loss
+        } else if avg_loss_rate > 0.01 {
+            3
+        } else {
+            2  // Minimum overhead
+        };
+        
+        FecConfig {
+            block_size: select_block_size(avg_latency as u32, avg_loss_rate),
+            parity_count,
+            algorithm: FecAlgorithm::ReedSolomon,
+        }
+    }
+}
+```
+
+---
+
+## PART 3: INTEGRATION POINTS
+
+### 3.1 Data Plane ↔ Control Plane
+
+**Communication Pattern:** Push metrics, pull configuration
+
+```rust
+// Data Plane periodically reports metrics
+async fn metrics_reporter(control_plane_addr: String) {
+    let client = ControlPlaneClient::connect(control_plane_addr).await?;
+    
+    loop {
+        let metrics = collect_local_metrics();
+        client.report_metrics(metrics).await?;
+        
+        tokio::time::sleep(Duration::from_secs(30)).await;
+    }
+}
+
+// Control Plane pushes configuration updates
+async fn config_updater(data_plane: Arc<DataPlane>) {
+    let mut interval = tokio::time::interval(Duration::from_secs(60));
+    
+    loop {
+        interval.tick().await;
+        
+        let new_config = fetch_latest_config().await?;
+        data_plane.apply_config(new_config).await?;
+    }
+}
+```
+
+### 3.2 Data Plane ↔ Integrity Plane
+
+**Communication Pattern:** Synchronous verification calls
+
+```rust
+// Data Plane calls Integrity Plane for every chunk
+async fn process_incoming_chunk(chunk: ChunkData, verifier: &SignatureVerifier) -> Result<()> {
+    // Block until verification completes
+    let is_valid = verifier.verify(&chunk).await?;
+    
+    if !is_valid {
+        metrics::increment("chunks_rejected");
+        return Err(Error::InvalidSignature);
+    }
+    
+    // Only store verified chunks
+    chunk_store.insert(chunk).await?;
+    Ok(())
+}
+```
+
+---
+
+## PART 4: CONFIGURATION SYSTEM
+
+### 4.1 Configuration File Format (TOML)
+
+```toml
+[node]
+id = "node-001"
+role = "edge"  # edge | relay | origin
+
+[network]
+listen_addr = "0.0.0.0:4433"
+control_plane_addr = "control.example.com:50051"
+
+[quic]
+max_concurrent_connections = 1000
+max_streams_per_connection = 256
+congestion_algorithm = "bbr"
+enable_gso = true
+idle_timeout_ms = 30000
+
+[storage]
+ring_buffer_size_mb = 100
+chunk_ttl_seconds = 120
+max_memory_mb = 500
+
+[fec]
+default_block_size = 16
+default_parity_count = 2
+adaptive = true
+
+[p2p]
+max_upload_mbps = 50
+max_download_mbps = 100
+unchoke_interval_seconds = 10
+regular_unchoke_count = 4
+optimistic_unchoke_count = 1
+
+[crypto]
+signature_algorithm = "ed25519"
+key_rotation_days = 30
+```
+
+### 4.2 Configuration Loading
+
+```rust
+pub struct Config {
+    pub node: NodeConfig,
+    pub network: NetworkConfig,
+    pub quic: QuicConfig,
+    pub storage: StorageConfig,
+    pub fec: FecConfig,
+    pub p2p: P2PConfig,
+    pub crypto: CryptoConfig,
+}
+
+impl Config {
+    pub fn from_file(path: &str) -> Result<Self> {
+        let content = std::fs::read_to_string(path)?;
+        let config: Config = toml::from_str(&content)?;
+        config.validate()?;
+        Ok(config)
+    }
+    
+    fn validate(&self) -> Result<()> {
+        // Sanity checks
+        assert!(self.storage.ring_buffer_size_mb > 0);
+        assert!(self.fec.default_parity_count < self.fec.default_block_size);
+        // ... more validations
+        Ok(())
+    }
+}
+```
+
+---
+
+## PART 5: ERROR HANDLING STRATEGY
+
+### 5.1 Error Taxonomy
+
+```rust
+#[derive(Debug, thiserror::Error)]
+pub enum DcdnError {
+    // Network errors
+    #[error("QUIC connection failed: {0}")]
+    QuicConnectionFailed(String),
+    
+    #[error("Peer unreachable: {peer_id}")]
+    PeerUnreachable { peer_id: PeerId },
+    
+    // Crypto errors
+    #[error("Signature verification failed")]
+    InvalidSignature,
+    
+    #[error("Key not found for peer: {peer_id}")]
+    KeyNotFound { peer_id: PeerId },
+    
+    // Storage errors
+    #[error("Ring buffer full")]
+    BufferFull,
+    
+    #[error("Chunk not found: {chunk_id}")]
+    ChunkNotFound { chunk_id: ChunkId },
+    
+    // FEC errors
+    #[error("FEC decoding failed: insufficient packets")]
+    FecInsufficientPackets,
+    
+    // Configuration errors
+    #[error("Invalid configuration: {0}")]
+    InvalidConfig(String),
+}
+```
+
+### 5.2 Recovery Strategies
+
+| Error Type | Recovery Action | Fallback |
+|------------|----------------|----------|
+| `QuicConnectionFailed` | Retry with exponential backoff (3 attempts) | Mark peer offline, request from different peer |
+| `InvalidSignature` | Drop chunk, log incident | Request chunk from alternate source |
+| `BufferFull` | Trigger aggressive eviction | Reject new chunks (backpressure) |
+| `FecInsufficientPackets` | Wait for timeout, request missing packets | Request entire chunk from peer |
+| `PeerUnreachable` | Remove from active set | Rebalance load to other peers |
+
+---
+
+## PART 6: MONITORING & OBSERVABILITY
+
+### 6.1 Metrics to Collect
+
+**Data Plane Metrics:**
+```
+# Network
+quic_connections_active{node_id}
+quic_bytes_sent_total{node_id, peer_id}
+quic_bytes_received_total{node_id, peer_id}
+quic_rtt_ms{node_id, peer_id}
+quic_packet_loss_rate{node_id, peer_id}
+
+# Storage
+chunk_store_size_bytes{node_id}
+chunk_store_evictions_total{node_id}
+chunk_store_hits_total{node_id}
+chunk_store_misses_total{node_id}
+
+# FEC
+fec_encoding_duration_ms{node_id}
+fec_decoding_duration_ms{node_id}
+fec_recovery_success_total{node_id}
+fec_recovery_failure_total{node_id}
+
+# P2P
+p2p_unchoked_peers{node_id}
+p2p_upload_rate_mbps{node_id}
+p2p_download_rate_mbps{node_id}
+p2p_chunk_requests_total{node_id, peer_id}
+
+# Crypto
+signature_verification_duration_us{node_id}
+signature_verification_failures_total{node_id}
+```
+
+### 6.2 Logging Strategy
+
+```rust
+// Use structured logging (tracing crate)
+use tracing::{info, warn, error, debug};
+
+// Example: Log chunk arrival
+info!(
+    chunk_id = %chunk.id,
+    source_peer = %chunk.source_peer,
+    size_bytes = chunk.data.len(),
+    "Chunk received"
+);
+
+// Example: Log FEC recovery
+warn!(
+    fec_group_id = %group.id,
+    missing_packets = group.missing_count(),
+    "FEC recovery attempted with insufficient packets"
+);
+```
+
+---
+
+## PART 7: DEPLOYMENT ARCHITECTURE
+
+### 7.1 Node Types
+
+```
+Origin Node:
+    - Ingests live stream from encoder
+    - Performs initial chunking
+    - Signs chunks with private key
+    - Seeds to edge nodes
+
+Edge Node:
+    - High-bandwidth server (1-10 Gbps)
+    - Caches popular chunks
+    - Serves many end-user peers
+    - Participates in P2P mesh
+
+End-User Node:
+    - Consumer device (phone, laptop)
+    - Downloads chunks for playback
+    - Uploads to nearby peers (limited bandwidth)
+```
+
+### 7.2 Network Topology
+
+```
+        [Origin Node]
+             │
+             ├─────────┬─────────┬─────────┐
+             │         │         │         │
+        [Edge A]  [Edge B]  [Edge C]  [Edge D]
+          /  \      /  \      /  \      /  \
+       [EU] [EU] [EU] [EU] [EU] [EU] [EU] [EU]
+       
+Legend:
+    EU = End-User Node
+    Solid lines = Primary paths (low latency)
+    Dashed lines = P2P mesh (best-effort)
+```
+
+---
+
+## PART 8: TESTING STRATEGY
+
+### 8.1 Unit Tests
+
+```rust
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_ring_buffer_insert() {
+        let store = ChunkStore::new(10);
+        let chunk = create_test_chunk();
+        assert!(store.insert(chunk).is_ok());
+    }
+    
+    #[test]
+    fn test_fec_recovery() {
+        let engine = FecEngine::new();
+        let packets = create_test_packets(16);
+        let parity = engine.encode(&packets, &FecConfig::default()).unwrap();
+        
+        // Simulate packet loss
+        let mut incomplete = packets.clone();
+        incomplete[3] = None;
+        incomplete[7] = None;
+        
+        let recovered = engine.decode(&FecGroup::new(incomplete, parity)).unwrap();
+        assert_eq!(recovered, packets);
+    }
+}
+```
+
+### 8.2 Integration Tests
+
+```rust
+#[tokio::test]
+async fn test_e2e_chunk_delivery() {
+    // Setup origin node
+    let origin = spawn_origin_node().await;
+    
+    // Setup edge node
+    let edge = spawn_edge_node().await;
+    edge.connect_to(origin.address()).await;
+    
+    // Send chunk from origin
+    let chunk = create_test_chunk();
+    origin.publish(chunk.clone()).await;
+    
+    // Verify edge receives chunk
+    let received = edge.receive_chunk(chunk.id).await.unwrap();
+    assert_eq!(received.data, chunk.data);
+}
+```
+
+### 8.3 Performance Tests
+
+```rust
+#[criterion::bench]
+fn bench_signature_verification(b: &mut Bencher) {
+    let verifier = SignatureVerifier::new();
+    let chunks = create_test_chunks(100);
+    
+    b.iter(|| {
+        verifier.verify_batch(&chunks).unwrap();
+    });
+}
+```
+
+---
+
+## PART 9: IMPLEMENTATION PHASES
+
+### Phase 1: Core Data Plane (Weeks 1-4)
+- [ ] QUIC transport layer with `quinn`
+- [ ] Ring buffer implementation (lock-free)
+- [ ] Basic chunk storage and retrieval
+-
