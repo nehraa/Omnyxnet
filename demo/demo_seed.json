@@ -1,0 +1,54 @@
+{
+  "metrics": {
+    "files_processed": 150,
+    "success_rate": 98.5,
+    "nodes_active": 3,
+    "compute_tasks": 45,
+    "network_latency_ms": 0.33,
+    "throughput_mbps": 125.5
+  },
+  "nodes": [
+    {
+      "id": 1,
+      "name": "go-orchestrator",
+      "status": "online",
+      "type": "orchestrator",
+      "description": "Go P2P Network Orchestrator with libp2p"
+    },
+    {
+      "id": 2,
+      "name": "rust-compute",
+      "status": "online",
+      "type": "compute",
+      "description": "Rust High-Performance Compute Core"
+    },
+    {
+      "id": 3,
+      "name": "python-ai",
+      "status": "online",
+      "type": "ai-worker",
+      "description": "Python AI/ML Processing Service"
+    }
+  ],
+  "recent_tasks": [
+    {
+      "id": "task-001",
+      "type": "gradient_sync",
+      "status": "completed",
+      "duration_ms": 45
+    },
+    {
+      "id": "task-002",
+      "type": "data_shard",
+      "status": "completed",
+      "duration_ms": 120
+    },
+    {
+      "id": "task-003",
+      "type": "ai_inference",
+      "status": "completed",
+      "duration_ms": 89
+    }
+  ],
+  "system_status": "healthy"
+}

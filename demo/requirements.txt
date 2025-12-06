@@ -1,0 +1,6 @@
+# Pangea Net Demo - Python Dependencies
+# These are demo-specific dependencies for the FastAPI web server
+
+# Web Framework
+fastapi~=0.104.0
+uvicorn[standard]~=0.24.0
