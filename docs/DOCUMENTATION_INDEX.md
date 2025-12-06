@@ -1,389 +1,363 @@
-# 📚 Pangea Net - Documentation Index
+# 📖 Pangea Monorepo - Documentation Index
 
-**Last Updated**: December 3, 2025  
-**Version**: 0.6.0-alpha
+**Quick Links to All Documentation**
 
-**NEW:** [Distributed Compute System](docs/DISTRIBUTED_COMPUTE.md) - Hierarchical task network for parallel computation 🚀
+---
 
-## 🚀 Getting Started
+## 🚀 Getting Started (Read These First)
 
-**New to Pangea Net?** Start here:
+1. **[README_MONOREPO.md](README_MONOREPO.md)** ⭐ **START HERE**
+   - Quick start guide
+   - One-command setup (`./setup.sh`)
+   - Architecture overview
+   - Makefile reference
+   - Troubleshooting
 
-1. **[START_HERE.md](START_HERE.md)** - Project overview and architecture
-2. **[QUICK_START.md](QUICK_START.md)** - Build and run your first node
-3. **[TESTING_QUICK_START.md](TESTING_QUICK_START.md)** - Run tests quickly
+2. **[COMPLETION_REPORT.md](COMPLETION_REPORT.md)**
+   - What was generated
+   - Statistics
+   - Key guarantees
+   - Verification checklist
 
-## 📖 Core Documentation
+---
 
-### Distributed Compute
+## 📚 Complete Documentation
 
-- **[Distributed Compute System](docs/DISTRIBUTED_COMPUTE.md)** ⭐ NEW (Dec 2025)
-  - Hierarchical Task Network (Recursive Delegation Model)
-  - WASM Sandbox for secure computation
-  - MapReduce interface (Split, Execute, Merge)
-  - Verification (Hash, Merkle, Redundancy)
-  - Python SDK for job definition
+3. **[MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md)** ⭐ **COMPREHENSIVE GUIDE**
+   
+   **Part 1:** Repository Root Structure
+   - Directory layout
+   - Makefile details
+   - setup.sh automation
+   
+   **Part 2:** Shared Schema Management
+   - Schema directory structure
+   - tensor.capnp (single source of truth)
+   - Schema generation automation
+   - Update workflow
+   
+   **Part 3:** Service-Level Organization
+   - Go Orchestrator details
+   - Rust Compute Core details
+   - Python AI Service details
+   - Build instructions per service
+   
+   **Part 4:** Cross-Device Testing
+   - docker-compose.yaml breakdown
+   - setup.sh execution flow
+   - E2E test details
+   
+   **Additional Sections:**
+   - Quick Start Guide
+   - Development Workflows
+   - Troubleshooting
+   - Design Principles
 
-### Networking
+4. **[PATH_REFERENCE.md](PATH_REFERENCE.md)** ⭐ **PATH RESOLUTION**
+   - Complete path mapping
+   - Service-specific paths
+   - Docker compose path resolution
+   - Makefile execution paths
+   - setup.sh path handling
+   - Docker container paths
+   - Verification commands
+   - Common mistakes & fixes
+   - Path resolution checklist
 
-- **[Network Adapter](docs/networking/NETWORK_ADAPTER.md)** ⭐ NEW
-  - LibP2P and Legacy implementations
-  - FetchShard protocol for file distribution
-  - Localhost vs Cross-device modes
-  - mDNS discovery status and workarounds
+---
 
-### API & Services
+## 🗂️ Project Structure
 
-- **[Cap'n Proto Service](docs/api/CAPNP_SERVICE.md)** ⭐ NEW
-  - Upload/Download RPC methods (fully wired!)
-  - Shard distribution protocol
-  - Reed-Solomon encoding (8+4 shards)
-  - Integration with Rust CES pipeline
-
-### Testing
-
-- **[Testing Guide](docs/testing/TESTING_GUIDE.md)** ⭐ NEW
-  - Complete test suite overview
-  - Localhost multi-node testing guide
-  - Cross-device testing instructions
-  - Known issues and workarounds
-  - Test results summary
-
-### Streaming
-
-- **[Voice/Video Streaming Guide](docs/STREAMING_GUIDE.md)** ⭐ NEW (Nov 24)
-  - UDP-based real-time audio streaming
-  - Opus codec integration for low-latency voice
-  - Stream configuration (voice, high-quality)
-  - Packet format and serialization
-  - Usage examples and API reference
-  - 12 tests (all passing)
-
-### Documentation Standards
-
-- **[Documentation Style Guide](docs/DOCUMENTATION_STYLE_GUIDE.md)** ⭐ NEW (Dec 2025)
-  - Formatting conventions
-  - Code examples standards
-  - Architecture diagrams
-  - Version and status indicators
-
-## 🗂️ Directory Structure
-
+### Root Level
 ```
-WGT/
-├── docs/                          # 📚 Documentation
-│   ├── networking/                #    Network layer docs
-│   │   └── NETWORK_ADAPTER.md     #    ⭐ Updated Nov 22
-│   ├── api/                       #    API and RPC docs
-│   │   └── CAPNP_SERVICE.md       #    ⭐ Updated Nov 22
-│   ├── testing/                   #    Testing documentation
-│   │   └── TESTING_GUIDE.md       #    ⭐ Updated Nov 22
-│   └── archive/                   #    Historical docs
-│
-├── go/                            # 🔧 Go implementation
-│   ├── bin/go-node                #    Main executable (33MB)
-│   ├── network_adapter.go         #    ✅ FetchShard added
-│   ├── capnp_service.go          #    ✅ Upload/Download wired
-│   ├── libp2p_node.go            #    LibP2P + mDNS
-│   ├── legacy_p2p.go             #    Legacy P2P with Noise
-│   └── ces_ffi.go                #    Rust FFI bridge
-│
-├── rust/                          # 🦀 Rust implementation
-│   ├── src/
-│   │   ├── ces.rs                #    CES pipeline (12/12 tests ✅)
-│   │   ├── lib.rs                #    FFI exports
-│   │   └── firewall.rs           #    Security layer
-│   └── target/release/           #    libpangea_ces.so (14MB)
-│
-├── python/                        # 🐍 Python components
-│   ├── cli.py                    #    ⏳ CLI (needs implementation)
-│   └── client.py                 #    RPC client
-│
-├── tests/                         # 🧪 Test scripts
-│   ├── test_all.sh               #    ✅ 4/4 tests passing
-│   ├── test_upload_download_local.sh      #    ✅ Localhost testing
-│   └── test_upload_download_cross_device.sh #   ✅ Cross-device guide
-│
-├── scripts/                       # 🛠️ Utility scripts
-│   ├── easy_test.sh              #    Interactive node starter
-│   └── test_automated.sh         #    Automated testing
-│
-└── tools/                         # 🔨 Development tools
+/Makefile                  Build and test commands
+/setup.sh                  E2E test automation
+/README_MONOREPO.md        Quick start guide
+/MONOREPO_STRUCTURE.md     Complete documentation
+/PATH_REFERENCE.md         Path resolution guide
+/COMPLETION_REPORT.md      What was generated
+/DOCUMENTATION_INDEX.md    This file
 ```
 
-## 📝 Quick Reference
-
-### Building
-
-```bash
-# Full setup (first time)
-./setup.sh
-
-# Build Go
-cd go && make build
-
-# Build Rust  
-cd rust && cargo build --release
-
-# Run all tests
-./tests/test_all.sh
+### Services
+```
+/services/
+├── go-orchestrator/       RPC server, gradient aggregation
+├── rust-compute/          Data preprocessing
+└── python-ai-client/      Training & gradient computation
 ```
 
-### Running Nodes
-
-#### Localhost Testing (Single Machine)
-
-**Use `-local` flag** - nodes discover each other via mDNS:
-
-```bash
-# Terminal 1
-export LD_LIBRARY_PATH="$PWD/rust/target/release:$LD_LIBRARY_PATH"
-./go/bin/go-node -node-id=1 -capnp-addr=:18080 -libp2p -local
-
-# Terminal 2
-export LD_LIBRARY_PATH="$PWD/rust/target/release:$LD_LIBRARY_PATH"
-./go/bin/go-node -node-id=2 -capnp-addr=:18081 -libp2p -local
-
-# Terminal 3
-export LD_LIBRARY_PATH="$PWD/rust/target/release:$LD_LIBRARY_PATH"
-./go/bin/go-node -node-id=3 -capnp-addr=:18082 -libp2p -local
+### Shared Resources
+```
+/libraries/schemas/
+├── tensor.capnp          Single source of truth
+├── go/                   Generated Go bindings
+├── rust/                 Generated Rust bindings
+└── python/               Generated Python bindings
 ```
 
-**Important**: Do NOT use `-peers` flag for localhost testing!
-
-#### Cross-Device Testing (Different Machines)
-
-**Use `-peers` flag** with bootstrap multiaddr:
-
-```bash
-# Device 1 (Bootstrap node)
-./go/bin/go-node -node-id=1 -libp2p
-
-# Copy the multiaddr from output (e.g., /ip4/192.168.1.100/tcp/40225/p2p/12D3KooW...)
-
-# Device 2 (Joining node)
-./go/bin/go-node -node-id=2 -libp2p -peers="/ip4/192.168.1.100/tcp/40225/p2p/12D3KooW..."
+### Infrastructure
 ```
-
-### Testing
-
-```bash
-# All component tests (Python, Go, Rust, Multi-node)
-./tests/test_all.sh
-
-# Localhost 3-node test
-./tests/test_upload_download_local.sh
-
-# Cross-device interactive guide
-./tests/test_upload_download_cross_device.sh
-```
-
-## ✅ Implementation Status
-
-| Component | Status | Notes |
-|-----------|--------|-------|
-| **Go Node** | ✅ Complete | 33MB binary, full P2P |
-| **Rust CES** | ✅ Complete | 12/12 tests passing |
-| **Network Adapter** | ✅ Complete | FetchShard implemented |
-| **Upload RPC** | ✅ Complete | CES + distribution working |
-| **Download RPC** | ✅ Complete | FetchShard + reconstruct working |
-| **LibP2P** | ✅ Working | IP/PeerID connection reliable |
-| **mDNS Discovery** | ⚠️ Partial | Detection works, auto-connect pending |
-| **Python CLI** | ⏳ Pending | Backend ready, CLI needed |
-| **All Tests** | ✅ Passing | 4/4 tests green |
-
-### Legend
-- ✅ Complete and tested
-- ⚠️ Partially working (with known workaround)
-- ⏳ Pending implementation
-- ❌ Not working
-
-## 🔧 Recent Updates (Nov 22, 2025)
-
-### Completed Today
-
-1. **✅ FetchShard Implementation**
-   - Added to NetworkAdapter interface
-   - Implemented in LibP2PAdapter (libp2p streams)
-   - Implemented in LegacyP2PAdapter (Noise encryption)
-   - Protocol: `[REQUEST_TYPE=1][SHARD_INDEX=4 bytes]` → raw shard data
-
-2. **✅ Download RPC Wiring**
-   - Removed "TODO" placeholder
-   - Fetches shards via `NetworkAdapter.FetchShard()`
-   - Validates minimum shard count (8 of 12)
-   - Calls Rust CES reconstruct
-
-3. **✅ Test Scripts Updated**
-   - Fixed `-bootstrap` → `-peers` flag
-   - Added `-local` flag for localhost testing
-   - Created comprehensive test documentation
-   - All tests passing
-
-4. **✅ Documentation Organized**
-   - Created `docs/networking/`, `docs/api/`, `docs/testing/`
-   - Moved old docs to `docs/archive/`
-   - New focused documentation for each component
-   - This updated index
-
-## 🐛 Known Issues & Workarounds
-
-### 1. mDNS Auto-Connect Not Fully Working
-
-**Issue**: Nodes detect each other via mDNS but don't always auto-connect
-
-**Workaround**:
-- **Localhost**: Use `-local` flag (should work but may not show peer count)
-- **Cross-device**: Use explicit `-peers` flag with multiaddr
-
-**Status**: Not blocking - manual connection works reliably
-
-**Documentation**: See [Network Adapter docs](docs/networking/NETWORK_ADAPTER.md#connection-modes)
-
-### 2. Python CLI Missing
-
-**Issue**: No command-line interface for upload/download yet
-
-**Workaround**: Test via direct RPC calls or wait for CLI implementation
-
-**Status**: Backend fully ready, frontend needed
-
-**Next Steps**: Implement `python/cli.py` with:
-```bash
-pangea upload /path/to/file
-pangea download <file_hash>
-```
-
-### 3. Peer Count Shows 0 in Logs
-
-**Issue**: Nodes start but may not report connected peers
-
-**Cause**: mDNS discovery timing or connection status reporting
-
-**Impact**: Cosmetic only - doesn't affect functionality
-
-**Status**: Non-critical
-
-## 🎯 Next Steps
-
-### Immediate (High Priority)
-
-1. **Python CLI Implementation**
-   - Create `pangea upload` command
-   - Create `pangea download` command
-   - Integrate with Cap'n Proto RPC
-
-2. **End-to-End Testing**
-   - Upload file from Node 1
-   - Download from Node 2
-   - Verify SHA256 hash match
-
-### Future (Nice to Have)
-
-3. **mDNS Auto-Connect Fix**
-   - Debug discovery callback
-   - Add explicit connect on peer found
-   - Test timing issues
-
-4. **Shard Storage Verification**
-   - Confirm shards stored on peers
-   - Test retrieval from storage
-   - Add shard management
-
-See [SUGGESTED_FEATURES.md](SUGGESTED_FEATURES.md) for long-term roadmap.
-
-## 📚 Additional Resources
-
-### Component-Specific Docs
-
-- **Network Layer**: [NETWORK_ADAPTER.md](docs/networking/NETWORK_ADAPTER.md)
-- **RPC Layer**: [CAPNP_SERVICE.md](docs/api/CAPNP_SERVICE.md)  
-- **Testing**: [TESTING_GUIDE.md](docs/testing/TESTING_GUIDE.md)
-
-### Root Directory Docs
-
-- **[README.md](README.md)** - Main project README
-- **[START_HERE.md](START_HERE.md)** - Project overview
-- **[QUICK_START.md](QUICK_START.md)** - Quick setup guide
-- **[TESTING_QUICK_START.md](TESTING_QUICK_START.md)** - Test quickly
-- **[CROSS_DEVICE_TESTING.md](CROSS_DEVICE_TESTING.md)** - Cross-device setup
-- **[SUGGESTED_FEATURES.md](SUGGESTED_FEATURES.md)** - Future features (GNN, Mamba, eBPF, etc.)
-
-### Archived Documentation
-
-Historical notes moved to `docs/archive/`:
-- `CES_WIRING_COMPLETE.md` - Original wiring notes
-- `IMPLEMENTATION_COMPLETE.md` - Old implementation status
-- `UPLOAD_DOWNLOAD_FIX_REPORT.md` - Original fix report
-- And more...
-
-### External References
-
-- [libp2p Documentation](https://docs.libp2p.io/)
-- [Cap'n Proto](https://capnproto.org/)
-- [Reed-Solomon Error Correction](https://en.wikipedia.org/wiki/Reed%E2%80%93Solomon_error_correction)
-- [Go-libp2p Examples](https://github.com/libp2p/go-libp2p/tree/master/examples)
-
-## 🤝 Contributing
-
-### Before Submitting Changes
-
-1. **Run all tests**:
-   ```bash
-   ./tests/test_all.sh
-   ```
-
-2. **Test locally**:
-   ```bash
-   ./tests/test_upload_download_local.sh
-   ```
-
-3. **Verify build**:
-   ```bash
-   cd go && go build && cd ..
-   cd rust && cargo test && cd ..
-   ```
-
-### Updating Documentation
-
-When you modify code, update the relevant docs:
-
-| You Changed | Update This |
-|-------------|-------------|
-| Network layer | `docs/networking/NETWORK_ADAPTER.md` |
-| RPC methods | `docs/api/CAPNP_SERVICE.md` |
-| Tests | `docs/testing/TESTING_GUIDE.md` |
-| CLI flags | Component README + this index |
-
-## 📞 Support & Debugging
-
-### Getting Help
-
-1. **Check Known Issues** (see above)
-2. **Read relevant docs** (see links above)
-3. **Run tests**: `./tests/test_all.sh`
-4. **Check logs**: `/tmp/pangea-test-*/node*.log`
-
-### Debug Commands
-
-```bash
-# Check if binary exists and has library
-ldd ./go/bin/go-node
-
-# Check CLI flags
-LD_LIBRARY_PATH="rust/target/release" ./go/bin/go-node -help
-
-# Test Rust library
-cd rust && cargo test
-
-# Verbose test output
-./tests/test_all.sh 2>&1 | tee test_output.txt
+/infra/
+└── docker-compose.yaml   Local development environment
 ```
 
 ---
 
-**Project**: Pangea Net - Decentralized Storage with AI  
-**Version**: 0.1.0  
-**Last Updated**: November 22, 2025  
-**License**: See LICENSE file  
-**Repository**: https://github.com/nehraa/WGT
+## 🎯 Quick Commands
+
+### One-Command Everything
+```bash
+./setup.sh
+```
+
+### Manual Commands
+```bash
+make help              # Show all targets
+make schema-gen        # Generate schemas (FIRST)
+make build            # Build all services
+make docker-up        # Start services
+make e2e-test         # Run tests
+make docker-down      # Stop services
+make clean            # Clean artifacts
+```
+
+---
+
+## 🔍 Finding What You Need
+
+### I want to...
+
+**...get started quickly**
+→ Read [README_MONOREPO.md](README_MONOREPO.md) "Quick Start" section
+
+**...understand the complete architecture**
+→ Read [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) entire document
+
+**...run the E2E test**
+→ Run `./setup.sh` from project root
+
+**...debug path issues**
+→ Read [PATH_REFERENCE.md](PATH_REFERENCE.md)
+
+**...understand what was created**
+→ Read [COMPLETION_REPORT.md](COMPLETION_REPORT.md)
+
+**...build a specific service**
+→ See [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) "Part 3"
+
+**...modify the shared schemas**
+→ Edit `libraries/schemas/tensor.capnp`, then run `make schema-gen`
+
+**...troubleshoot problems**
+→ See [README_MONOREPO.md](README_MONOREPO.md) "Troubleshooting" section
+
+**...understand the directory structure**
+→ Read [PATH_REFERENCE.md](PATH_REFERENCE.md) "Key Path Constants"
+
+---
+
+## 📋 Documentation Navigation
+
+### By Topic
+
+#### Architecture & Design
+- [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) - Complete architecture
+- [README_MONOREPO.md](README_MONOREPO.md) - Architecture overview section
+
+#### Implementation Details
+- [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) - Service specifications
+- Service-specific code comments
+
+#### Path Management
+- [PATH_REFERENCE.md](PATH_REFERENCE.md) - All path information
+- [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) - "Part 1: Root Structure"
+
+#### Testing
+- [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) - "Part 4: Testing Environment"
+- [README_MONOREPO.md](README_MONOREPO.md) - Testing section
+
+#### Troubleshooting
+- [README_MONOREPO.md](README_MONOREPO.md) - Troubleshooting section
+- [PATH_REFERENCE.md](PATH_REFERENCE.md) - Common mistakes & fixes
+
+#### Development
+- [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) - Development Workflows
+- Service-specific READMEs (in each service directory)
+
+---
+
+## ✅ Key Files to Know
+
+| File | Purpose | When to Read |
+|------|---------|--------------|
+| README_MONOREPO.md | Overview & quick start | First time setup |
+| MONOREPO_STRUCTURE.md | Complete detailed guide | Deep understanding needed |
+| PATH_REFERENCE.md | Path resolution | Debugging path issues |
+| COMPLETION_REPORT.md | What was generated | Understanding scope |
+| Makefile | Build commands | Running builds |
+| setup.sh | E2E automation | Running tests |
+
+---
+
+## 🔗 Service Documentation
+
+### Go Orchestrator
+- **Location:** `/services/go-orchestrator`
+- **Key Files:** `main.go`, `pkg/gradient/manager.go`
+- **Documentation in:** [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) Part 3
+
+### Rust Compute Core
+- **Location:** `/services/rust-compute`
+- **Key Files:** `src/main.rs`, `src/data_processing.rs`
+- **Documentation in:** [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) Part 3
+
+### Python AI Service
+- **Location:** `/services/python-ai-client`
+- **Key Files:** `app/main.py`, `app/training_core.py`, `tests/run_e2e_test.py`
+- **Documentation in:** [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) Part 3
+
+### Shared Schemas
+- **Location:** `/libraries/schemas`
+- **Key File:** `tensor.capnp`
+- **Documentation in:** [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) Part 2
+
+---
+
+## 🎓 Learning Path
+
+### For Beginners
+1. Read [README_MONOREPO.md](README_MONOREPO.md) - Quick start
+2. Run `./setup.sh` - See it in action
+3. Review test output - Understand the flow
+
+### For Developers
+1. Read [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) - Full details
+2. Read [PATH_REFERENCE.md](PATH_REFERENCE.md) - Understand paths
+3. Review source code in `/services`
+4. Modify and test
+
+### For Operators
+1. Read [README_MONOREPO.md](README_MONOREPO.md) - Overview
+2. Read [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) Part 4 - Testing
+3. Set up monitoring for services
+4. Configure for production
+
+### For Architects
+1. Read [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) - All parts
+2. Review design principles - end of document
+3. Understand schema synchronization - Part 2
+4. Plan extensions
+
+---
+
+## 🚀 Common Workflows
+
+### Setup & Test
+```bash
+./setup.sh
+```
+See: [README_MONOREPO.md](README_MONOREPO.md) "Quick Start"
+
+### Build Services
+```bash
+make schema-gen
+make build
+```
+See: [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) "Makefile"
+
+### Modify Schemas
+1. Edit `/libraries/schemas/tensor.capnp`
+2. Run `make schema-gen`
+3. Update service code
+4. Run `make test`
+
+See: [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) "Schema Update Workflow"
+
+### Debug Issues
+1. Check [README_MONOREPO.md](README_MONOREPO.md) troubleshooting
+2. Review [PATH_REFERENCE.md](PATH_REFERENCE.md) for path issues
+3. Stream logs: `make logs`
+4. Run tests: `make e2e-test`
+
+### Deploy to Production
+1. Review [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md) "Deployment"
+2. Build images: `make docker-build`
+3. Push to registry
+4. Deploy with Kubernetes
+
+---
+
+## 📊 Documentation Statistics
+
+| Document | Lines | Sections | Purpose |
+|----------|-------|----------|---------|
+| README_MONOREPO.md | ~300 | 15 | Quick start & overview |
+| MONOREPO_STRUCTURE.md | ~1200 | 30+ | Complete detailed guide |
+| PATH_REFERENCE.md | ~400 | 20+ | Path resolution |
+| COMPLETION_REPORT.md | ~300 | 15 | Generation report |
+| This Index | ~300 | 20+ | Documentation navigation |
+
+**Total:** 2,500+ lines of comprehensive documentation
+
+---
+
+## 🔗 External Resources
+
+### Technologies Used
+- **Go:** https://golang.org
+- **Rust:** https://www.rust-lang.org
+- **Python:** https://www.python.org
+- **Cap'n Proto:** https://capnproto.org
+- **Docker:** https://www.docker.com
+- **Docker Compose:** https://docs.docker.com/compose
+
+---
+
+## ❓ FAQ
+
+**Q: Where do I start?**
+A: Read [README_MONOREPO.md](README_MONOREPO.md) first.
+
+**Q: How do I run E2E tests?**
+A: Execute `./setup.sh` from project root.
+
+**Q: Where are the services?**
+A: In `/services` directory. See [PATH_REFERENCE.md](PATH_REFERENCE.md) for exact paths.
+
+**Q: How do I modify schemas?**
+A: Edit `/libraries/schemas/tensor.capnp`, then run `make schema-gen`.
+
+**Q: What should I run from project root?**
+A: Everything - Makefile and setup.sh both expect project root as working directory.
+
+**Q: Where are generated schema bindings?**
+A: In `/libraries/schemas/{go,rust,python}` directories.
+
+---
+
+## 📞 Support
+
+For specific topics:
+- **Getting started:** [README_MONOREPO.md](README_MONOREPO.md)
+- **Detailed guide:** [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md)
+- **Path issues:** [PATH_REFERENCE.md](PATH_REFERENCE.md)
+- **What exists:** [COMPLETION_REPORT.md](COMPLETION_REPORT.md)
+
+---
+
+## ✅ Checklist
+
+- [ ] Read [README_MONOREPO.md](README_MONOREPO.md)
+- [ ] Run `./setup.sh`
+- [ ] Verify all tests pass
+- [ ] Review [MONOREPO_STRUCTURE.md](MONOREPO_STRUCTURE.md)
+- [ ] Understand [PATH_REFERENCE.md](PATH_REFERENCE.md)
+- [ ] Explore service code
+- [ ] Plan modifications
+
+---
+
+**Version:** 1.0  
+**Last Updated:** December 2025  
+**Status:** Complete ✅
