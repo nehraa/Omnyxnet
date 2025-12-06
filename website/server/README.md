@@ -34,6 +34,8 @@ The server will start on `http://localhost:5000` by default.
 ### Environment Variables
 
 - `PORT`: Server port (default: 5000)
+- `FLASK_DEBUG`: Enable debug mode for development (default: false, **NEVER enable in production**)
+- `PERPLEXITY_API_KEY`: API key for Perplexity AI (optional, has fallback data)
 
 ## API Endpoints
 
