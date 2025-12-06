@@ -14,10 +14,10 @@
   
   <title>Pangea Net - The Internet of the People</title>
   
-  <!-- Fonts -->
+  <!-- Fonts - Premium Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   
   <!-- Styles -->
   <link rel="stylesheet" href="css/styles.css">
@@ -52,11 +52,11 @@
   </nav>
 
   <!-- Hero Section -->
-  <section class="hero section" id="hero">
+  <section class="hero section particles-bg" id="hero">
     <div class="container">
       <div class="hero-content">
-        <span class="hero-label animate-fade-in">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <span class="hero-label animate-fade-in-up animate-pulse-glow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin-slow">
             <circle cx="12" cy="12" r="10"/>
             <path d="M12 6v6l4 2"/>
           </svg>
@@ -65,7 +65,7 @@
         
         <h1 class="hero-title animate-fade-in-up">
           The Internet<br>
-          <span class="highlight">of the People</span>
+          <span class="highlight gradient-text">of the People</span>
         </h1>
         
         <p class="hero-subtitle animate-fade-in-up" style="animation-delay: 0.2s">
@@ -75,28 +75,28 @@
         </p>
         
         <div class="hero-buttons animate-fade-in-up" style="animation-delay: 0.4s">
-          <a href="#cta" class="btn btn-primary btn-large">
+          <a href="#cta" class="btn btn-primary btn-large hover-glow ripple-effect">
             See Live Results
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M5 12h14M12 5l7 7-7 7"/>
             </svg>
           </a>
-          <a href="pages/demo.html" class="btn btn-secondary btn-large">
+          <a href="pages/demo.html" class="btn btn-secondary btn-large hover-scale">
             Try CLI Demo
           </a>
         </div>
         
-        <div class="hero-social-proof animate-fade-in" style="animation-delay: 0.6s">
-          <div class="hero-stat">
-            <span class="hero-stat-value" data-count="0.33" data-suffix="ms">0</span>
+        <div class="hero-social-proof animate-fade-in-up" style="animation-delay: 0.6s">
+          <div class="hero-stat hover-lift">
+            <span class="hero-stat-value animate-text-glow" data-count="0.33" data-suffix="ms">0</span>
             <span class="hero-stat-label">P2P Latency</span>
           </div>
-          <div class="hero-stat">
-            <span class="hero-stat-value" data-count="99.9" data-suffix="%">0</span>
+          <div class="hero-stat hover-lift">
+            <span class="hero-stat-value animate-text-glow" data-count="99.9" data-suffix="%">0</span>
             <span class="hero-stat-label">Uptime SLA</span>
           </div>
-          <div class="hero-stat">
-            <span class="hero-stat-value" data-count="86" data-suffix="+">0</span>
+          <div class="hero-stat hover-lift">
+            <span class="hero-stat-value animate-text-glow" data-count="86" data-suffix="+">0</span>
             <span class="hero-stat-label">Tests Passing</span>
           </div>
         </div>
@@ -113,22 +113,23 @@
   <section class="section features" id="features">
     <div class="container">
       <div class="features-header scroll-animate">
-        <h2>What Makes This Different</h2>
+        <h2 class="gradient-text">What Makes This Different</h2>
         <p class="lead">
           Most P2P systems are slow, unreliable, and complex. 
           We solved all three with intelligent optimization.
         </p>
+        <div class="animated-line" style="margin: 20px auto; max-width: 100px;"></div>
       </div>
       
       <div class="features-grid">
         <!-- Feature 1 -->
-        <div class="card scroll-animate stagger-1">
-          <div class="card-icon">
+        <div class="card scroll-animate-scale stagger-1 hover-lift">
+          <div class="card-icon icon-bounce animate-float">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
             </svg>
           </div>
-          <div class="card-metric" data-count="0.33" data-suffix="ms">0</div>
+          <div class="card-metric gradient-text" data-count="0.33" data-suffix="ms">0</div>
           <h3 class="card-title">P2P Latency</h3>
           <p class="card-subtitle">294x Better Than Target</p>
           <p class="card-desc">
@@ -137,14 +138,14 @@
         </div>
         
         <!-- Feature 2 -->
-        <div class="card scroll-animate stagger-2">
-          <div class="card-icon">
+        <div class="card scroll-animate-scale stagger-2 hover-lift">
+          <div class="card-icon icon-bounce animate-float" style="animation-delay: 0.5s;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               <path d="M9 12l2 2 4-4"/>
             </svg>
           </div>
-          <div class="card-metric" data-count="99.9" data-suffix="%">0</div>
+          <div class="card-metric gradient-text" data-count="99.9" data-suffix="%">0</div>
           <h3 class="card-title">Uptime SLA</h3>
           <p class="card-subtitle">Predictive Reliability</p>
           <p class="card-desc">
@@ -153,14 +154,14 @@
         </div>
         
         <!-- Feature 3 -->
-        <div class="card scroll-animate stagger-3">
-          <div class="card-icon">
+        <div class="card scroll-animate-scale stagger-3 hover-lift">
+          <div class="card-icon icon-bounce animate-float" style="animation-delay: 1s;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
           </div>
-          <div class="card-metric">No Fees</div>
+          <div class="card-metric gradient-text">No Fees</div>
           <h3 class="card-title">No Blockchain Friction</h3>
           <p class="card-subtitle">Works Like Familiar SaaS</p>
           <p class="card-desc">
@@ -169,14 +170,14 @@
         </div>
         
         <!-- Feature 4 -->
-        <div class="card scroll-animate stagger-4">
-          <div class="card-icon">
+        <div class="card scroll-animate-scale stagger-4 hover-lift">
+          <div class="card-icon icon-bounce animate-float" style="animation-delay: 1.5s;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
               <polyline points="17 6 23 6 23 12"/>
             </svg>
           </div>
-          <div class="card-metric">3-5x</div>
+          <div class="card-metric gradient-text">3-5x</div>
           <h3 class="card-title">Faster Transfers</h3>
           <p class="card-subtitle">Real-World Validated</p>
           <p class="card-desc">
@@ -191,16 +192,17 @@
   <section class="section how-it-works" id="how-it-works">
     <div class="container">
       <div class="features-header scroll-animate">
-        <h2>Faster. More Private. Open Source.</h2>
+        <h2 class="gradient-text">Faster. More Private. Open Source.</h2>
         <p class="lead">
           Built with security and performance at its core, 
           not as an afterthought.
         </p>
+        <div class="animated-line" style="margin: 20px auto; max-width: 100px;"></div>
       </div>
       
       <div class="steps">
         <!-- Step 1 -->
-        <div class="step scroll-animate">
+        <div class="step scroll-animate-left">
           <div class="step-visual">
             <div class="step-icon-container animate-float">
               <svg class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -225,9 +227,9 @@
         </div>
         
         <!-- Step 2 -->
-        <div class="step scroll-animate">
+        <div class="step scroll-animate-right">
           <div class="step-visual">
-            <div class="step-icon-container animate-float" style="animation-delay: 0.5s">
+            <div class="step-icon-container animate-float animate-pulse-glow" style="animation-delay: 0.5s">
               <svg class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M12 3a9 9 0 1 0 9 9"/>
                 <path d="M12 7v5l3 3"/>
@@ -237,7 +239,7 @@
             </div>
           </div>
           <div class="step-content">
-            <span class="step-number">2</span>
+            <span class="step-number gradient-text">2</span>
             <h3 class="step-title">Predictive Optimization</h3>
             <p class="step-desc">
               Machine learning models analyze peer health every 5 minutes with 80% accuracy. 
@@ -248,9 +250,9 @@
         </div>
         
         <!-- Step 3 -->
-        <div class="step scroll-animate">
+        <div class="step scroll-animate-left">
           <div class="step-visual">
-            <div class="step-icon-container animate-float" style="animation-delay: 1s">
+            <div class="step-icon-container animate-float animate-pulse-glow" style="animation-delay: 1s">
               <svg class="step-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                 <path d="M12 8v4M12 16h.01"/>
@@ -258,7 +260,7 @@
             </div>
           </div>
           <div class="step-content">
-            <span class="step-number">3</span>
+            <span class="step-number gradient-text">3</span>
             <h3 class="step-title">Enterprise Reliability</h3>
             <p class="step-desc">
               99.9% uptime SLA with cryptographic verification. Multi-layer security with 
@@ -275,16 +277,17 @@
   <section class="section tech-section section-dark" id="technology">
     <div class="container">
       <div class="tech-header scroll-animate">
-        <h2>Built Right. Built to Last.</h2>
+        <h2 class="gradient-text">Built Right. Built to Last.</h2>
         <p class="lead">
           Three languages working in harmony. Each optimized for its specific responsibility.
         </p>
+        <div class="animated-line" style="margin: 20px auto; max-width: 100px;"></div>
       </div>
       
       <div class="architecture">
         <!-- Python Layer -->
-        <div class="arch-layer scroll-animate stagger-1">
-          <div class="arch-layer-icon">
+        <div class="arch-layer scroll-animate-left stagger-1 hover-scale">
+          <div class="arch-layer-icon animate-float">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
               <line x1="8" y1="21" x2="16" y2="21"/>
@@ -298,8 +301,8 @@
         </div>
         
         <!-- Go Layer -->
-        <div class="arch-layer scroll-animate stagger-2">
-          <div class="arch-layer-icon">
+        <div class="arch-layer scroll-animate-right stagger-2 hover-scale">
+          <div class="arch-layer-icon animate-float" style="animation-delay: 0.3s;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"/>
               <line x1="2" y1="12" x2="22" y2="12"/>
@@ -313,8 +316,8 @@
         </div>
         
         <!-- Rust Layer -->
-        <div class="arch-layer scroll-animate stagger-3">
-          <div class="arch-layer-icon">
+        <div class="arch-layer scroll-animate-left stagger-3 hover-scale">
+          <div class="arch-layer-icon animate-float" style="animation-delay: 0.6s;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/>
               <line x1="12" y1="22" x2="12" y2="15.5"/>
@@ -328,21 +331,21 @@
         </div>
       </div>
       
-      <div class="stats-bar scroll-animate">
-        <div class="stat-item">
-          <div class="stat-value" data-count="15000" data-suffix="+">0</div>
+      <div class="stats-bar scroll-animate-scale">
+        <div class="stat-item hover-lift">
+          <div class="stat-value gradient-text" data-count="15000" data-suffix="+">0</div>
           <div class="stat-label">Lines of Code</div>
         </div>
-        <div class="stat-item">
-          <div class="stat-value" data-count="86" data-suffix="+">0</div>
+        <div class="stat-item hover-lift">
+          <div class="stat-value gradient-text" data-count="86" data-suffix="+">0</div>
           <div class="stat-label">Tests Passing</div>
         </div>
-        <div class="stat-item">
-          <div class="stat-value" data-count="2" data-suffix=" Years">0</div>
+        <div class="stat-item hover-lift">
+          <div class="stat-value gradient-text" data-count="2" data-suffix=" Years">0</div>
           <div class="stat-label">Research</div>
         </div>
-        <div class="stat-item">
-          <div class="stat-value">Production</div>
+        <div class="stat-item hover-lift">
+          <div class="stat-value gradient-text">Production</div>
           <div class="stat-label">Ready</div>
         </div>
       </div>
@@ -353,13 +356,14 @@
   <section class="section" id="why-now">
     <div class="container">
       <div class="features-header scroll-animate">
-        <h2>Three Things Just Aligned</h2>
+        <h2 class="gradient-text">Three Things Just Aligned</h2>
         <p class="lead">The technology finally caught up to the vision.</p>
+        <div class="animated-line" style="margin: 20px auto; max-width: 100px;"></div>
       </div>
       
       <div class="why-now-grid">
-        <div class="why-card scroll-animate stagger-1">
-          <div class="why-card-icon">
+        <div class="why-card scroll-animate-scale stagger-1 hover-lift">
+          <div class="why-card-icon animate-float animate-pulse-glow">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
               <line x1="12" y1="18" x2="12.01" y2="18"/>
@@ -373,8 +377,8 @@
           </p>
         </div>
         
-        <div class="why-card scroll-animate stagger-2">
-          <div class="why-card-icon">
+        <div class="why-card scroll-animate-scale stagger-2 hover-lift">
+          <div class="why-card-icon animate-float animate-pulse-glow" style="animation-delay: 0.5s;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <path d="M2 12h6M16 12h6"/>
               <circle cx="12" cy="12" r="4"/>
@@ -388,8 +392,8 @@
           </p>
         </div>
         
-        <div class="why-card scroll-animate stagger-3">
-          <div class="why-card-icon">
+        <div class="why-card scroll-animate-scale stagger-3 hover-lift">
+          <div class="why-card-icon animate-float animate-pulse-glow" style="animation-delay: 1s;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
               <line x1="12" y1="1" x2="12" y2="23"/>
               <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
@@ -403,7 +407,7 @@
         </div>
       </div>
       
-      <p class="closing-statement scroll-animate">
+      <p class="closing-statement scroll-animate animate-text-glow">
         "The infrastructure monopolies won't innovate. They profit from centralization.<br>
         For the first time, decentralized CAN be better than centralized."
       </p>
@@ -411,17 +415,17 @@
   </section>
 
   <!-- CTA Section -->
-  <section class="section cta-section" id="cta">
+  <section class="section cta-section particles-bg" id="cta">
     <div class="container">
-      <div class="cta-content scroll-animate">
-        <h2 class="cta-title">See What People Think</h2>
+      <div class="cta-content scroll-animate-scale">
+        <h2 class="cta-title gradient-text">See What People Think</h2>
         <p class="cta-subtitle">
           We're testing market traction with developers, founders, and privacy advocates.
           Answer 7 quick questions. See live results. No email required.
         </p>
         
         <div class="cta-buttons">
-          <a href="pages/survey.html" class="btn btn-primary btn-large">
+          <a href="pages/survey.html" class="btn btn-primary btn-large hover-glow ripple-effect animate-pulse-glow">
             Take the Survey
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M5 12h14M12 5l7 7-7 7"/>
