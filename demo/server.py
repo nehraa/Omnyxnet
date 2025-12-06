@@ -158,15 +158,14 @@ class DemoState:
             return None
         
         try:
-            # Get network metrics from Go node
+            # Get network metrics from Go node  
             metrics = self.go_client.get_network_metrics()
             if metrics:
                 return {
-                    "files_processed": self.data.get("metrics", {}).get("files_processed", 0),
-                    "success_rate": 98.5,  # Calculated
                     "nodes_active": metrics.get("peerCount", 0) + 1,
-                    "compute_tasks": self.execution_count,
-                    "network_latency_ms": metrics.get("avgRttMs", 0.33),
+                    "connected_peers": metrics.get("peerCount", 0),
+                    "executions": self.execution_count,
+                    "network_latency_ms": metrics.get("avgRttMs", 0),
                     "throughput_mbps": metrics.get("bandwidthMbps", 0)
                 }
         except Exception as e:
@@ -178,15 +177,14 @@ class DemoState:
         if SEED_DATA_FILE.exists():
             with open(SEED_DATA_FILE, "r") as f:
                 return json.load(f)
-        # Default seed data if file doesn't exist
+        # Default seed data if file doesn't exist (cleaned up - no fake metrics)
         return {
             "metrics": {
-                "files_processed": 150,
-                "success_rate": 98.5,
-                "nodes_active": 3,
-                "compute_tasks": 45,
-                "network_latency_ms": 0.33,
-                "throughput_mbps": 125.5
+                "nodes_active": 0,
+                "connected_peers": 0,
+                "executions": 0,
+                "network_latency_ms": 0,
+                "throughput_mbps": 0
             },
             "nodes": [
                 {"id": 1, "name": "go-orchestrator", "status": "online", "type": "orchestrator"},
@@ -388,11 +386,11 @@ async def simulate_processing():
         await asyncio.sleep(delay)
         state.add_log("🔄 Gradient synchronization in progress...", "info")
         
-        # Update metrics and recent_tasks with lock protection
+        # Update execution count with lock protection
         async with state.processing_lock:
             metrics = state.data.get("metrics", {})
-            metrics["files_processed"] = metrics.get("files_processed", 0) + 10
-            metrics["compute_tasks"] = metrics.get("compute_tasks", 0) + 1
+            # Note: Fake metrics removed - only real execution count tracked
+            metrics["executions"] = metrics.get("executions", 0) + 1
             
             # Add completed task
             tasks = state.data.get("recent_tasks", [])
