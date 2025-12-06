@@ -154,8 +154,19 @@ impl FecEngine {
         }
 
         // Reconstruct missing shards
-        rs.reconstruct(&mut shards)
+        let mut shard_options: Vec<Option<Vec<u8>>> = shards.into_iter().enumerate().map(|(i, s)| {
+            if present[i] {
+                Some(s)
+            } else {
+                None
+            }
+        }).collect();
+        
+        rs.reconstruct_data(&mut shard_options)
             .context("Reed-Solomon reconstruction failed")?;
+        
+        // Extract reconstructed shards
+        shards = shard_options.into_iter().map(|opt| opt.unwrap()).collect();
 
         // Extract recovered data packets
         let mut recovered = Vec::new();

@@ -134,21 +134,22 @@ impl QuicTransport {
     fn create_server_config(config: &QuicConfig) -> Result<ServerConfig> {
         let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()])
             .context("Failed to generate certificate")?;
-        let cert_der = cert.serialize_der()
-            .context("Failed to serialize certificate")?;
-        let key_der = cert.serialize_private_key_der();
+        let cert_der = cert.cert.der().to_vec();
+        let key_der = cert.key_pair.serialize_der();
 
         let priv_key = rustls::pki_types::PrivateKeyDer::try_from(key_der)
-            .context("Failed to parse private key")?;
+            .map_err(|e| anyhow::anyhow!("Failed to parse private key: {}", e))?;
         let cert_chain = vec![rustls::pki_types::CertificateDer::from(cert_der)];
 
         let mut server_config = ServerConfig::with_single_cert(cert_chain, priv_key)
             .context("Failed to create server config")?;
 
         let mut transport_config = quinn::TransportConfig::default();
-        transport_config.max_concurrent_uni_streams(config.max_streams_per_connection.try_into().unwrap_or(256));
+        transport_config.max_concurrent_uni_streams(
+            quinn::VarInt::from_u64(config.max_streams_per_connection).unwrap_or(quinn::VarInt::from_u32(256))
+        );
         transport_config.max_idle_timeout(Some(
-            std::time::Duration::from_millis(config.idle_timeout_ms).try_into()
+            quinn::IdleTimeout::try_from(std::time::Duration::from_millis(config.idle_timeout_ms))
                 .unwrap_or(quinn::IdleTimeout::from(quinn::VarInt::from_u32(30000)))
         ));
 

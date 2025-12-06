@@ -26,6 +26,7 @@ pub mod auto_heal;
 pub mod file_detector;
 pub mod automated;
 pub mod compute; // Distributed Compute System
+pub mod dcdn;    // Distributed Content Delivery Network
 
 // Re-export commonly used types for ease of use
 pub use capabilities::HardwareCaps;
@@ -52,4 +53,12 @@ pub use compute::{
     ResourceLimits, ResourceUsage, Metering,
     MerkleTree, ResultVerifier, VerificationResult,
     ComputeExecutor, ExecutionContext,
+};
+
+// DCDN System exports
+pub use dcdn::{
+    DcdnConfig, ChunkId, ChunkData, ChunkStore, StorageStats,
+    FecEngine, FecEngineConfig, FecAlgorithm, FecGroup,
+    P2PEngine, P2PConfig, PeerStats as DcdnPeerStats,
+    QuicTransport, SignatureVerifier, VerificationMetrics,
 };

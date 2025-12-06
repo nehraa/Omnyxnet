@@ -144,7 +144,7 @@ impl DcdnConfig {
     }
 
     /// Validate configuration parameters
-    fn validate(&self) -> Result<()> {
+    pub fn validate(&self) -> Result<()> {
         if self.storage.ring_buffer_size_mb == 0 {
             anyhow::bail!("ring_buffer_size_mb must be > 0");
         }

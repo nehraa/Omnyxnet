@@ -17,21 +17,24 @@ pub struct PeerId(pub u64);
 pub struct FecGroupId(pub u64);
 
 /// Ed25519 signature for chunk verification
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Signature(pub [u8; 64]);
 
 /// Ed25519 public key
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PublicKey(pub [u8; 32]);
 
 /// Chunk metadata and data
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChunkData {
     pub id: ChunkId,
     pub sequence: u64,
+    #[serde(skip, default = "Instant::now")]
     pub timestamp: Instant,
     pub source_peer: PeerId,
+    #[serde(with = "signature_serde")]
     pub signature: Signature,
+    #[serde(with = "bytes_serde")]
     pub data: Bytes,
     pub fec_group: Option<FecGroupId>,
 }
@@ -98,5 +101,52 @@ impl Signature {
 impl PublicKey {
     pub fn from_bytes(bytes: [u8; 32]) -> Self {
         PublicKey(bytes)
+    }
+}
+
+// Serde helper for Signature
+mod signature_serde {
+    use super::Signature;
+    use serde::{Deserializer, Serializer, Deserialize};
+
+    pub fn serialize<S>(sig: &Signature, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_bytes(&sig.0)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Signature, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let bytes = <Vec<u8>>::deserialize(deserializer)?;
+        if bytes.len() != 64 {
+            return Err(serde::de::Error::custom("signature must be 64 bytes"));
+        }
+        let mut arr = [0u8; 64];
+        arr.copy_from_slice(&bytes);
+        Ok(Signature(arr))
+    }
+}
+
+// Serde helper for Bytes
+mod bytes_serde {
+    use bytes::Bytes;
+    use serde::{Deserializer, Serializer, Deserialize};
+
+    pub fn serialize<S>(bytes: &Bytes, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_bytes(bytes)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Bytes, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let vec = <Vec<u8>>::deserialize(deserializer)?;
+        Ok(Bytes::from(vec))
     }
 }
