@@ -102,7 +102,10 @@ env/
 ENV/
 
 # Website backend data
-website/server/data/
-website/server/__pycache__/
-website/server/.env
+Website/backend/data/
+Website/server/data/
+Website/server/__pycache__/
+# Ignore environment files (secrets)
+.env
+Website/server/.env
 
