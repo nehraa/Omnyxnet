@@ -753,15 +753,5 @@ letterStyles.textContent = `
     animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
     opacity: 0;
   }
-  
-  @keyframes floatSlow {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-30px) scale(1.05); }
-  }
-  
-  @keyframes pulseGlow {
-    0%, 100% { opacity: 0.6; }
-    50% { opacity: 1; }
-  }
 `;
 document.head.appendChild(letterStyles);
