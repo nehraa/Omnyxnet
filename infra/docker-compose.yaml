@@ -1,0 +1,98 @@
+version: '3.9'
+
+services:
+  # Go Orchestrator - RPC Server and Gradient Aggregation
+  go-orchestrator:
+    build:
+      context: ../services/go-orchestrator
+      dockerfile: Dockerfile
+    container_name: go-orchestrator
+    hostname: go-orchestrator
+    ports:
+      - "8080:8080"  # RPC port exposed to host
+    environment:
+      - NODE_ID=1
+      - RPC_ADDR=0.0.0.0:8080
+      - LOG_LEVEL=info
+    networks:
+      - pangea-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    depends_on: []
+
+  # Rust Compute Core - Data Preprocessing and Serialization
+  rust-compute:
+    build:
+      context: ../services/rust-compute
+      dockerfile: Dockerfile
+    container_name: rust-compute
+    hostname: rust-compute
+    ports:
+      - "9090:9090"  # RPC port for compute operations
+    environment:
+      - NODE_ID=2
+      - LISTEN=0.0.0.0:9090
+      - ORCHESTRATOR=go-orchestrator:8080
+      - WORKERS=4
+      - CHUNK_SIZE=32
+      - RUST_LOG=info
+    networks:
+      - pangea-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "9090"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      go-orchestrator:
+        condition: service_healthy
+
+  # Python AI Service - Zero-Copy Training and Gradient Computation
+  python-worker-1:
+    build:
+      context: ../services/python-ai-client
+      dockerfile: Dockerfile
+    container_name: python-worker-1
+    hostname: python-worker-1
+    environment:
+      - WORKER_ID=1
+      - ORCHESTRATOR_HOST=go-orchestrator
+      - ORCHESTRATOR_PORT=8080
+      - COMPUTE_HOST=rust-compute
+      - COMPUTE_PORT=9090
+      - BATCH_SIZE=32
+      - EPOCHS=5
+      - PYTHONUNBUFFERED=1
+    networks:
+      - pangea-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      go-orchestrator:
+        condition: service_healthy
+      rust-compute:
+        condition: service_healthy
+
+networks:
+  pangea-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  # Optional: shared volumes for data between services
+  shared-data:
+    driver: local

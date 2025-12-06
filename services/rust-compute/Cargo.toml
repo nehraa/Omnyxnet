@@ -1,0 +1,49 @@
+[package]
+name = "pangea-rust-compute"
+version = "0.1.0"
+edition = "2021"
+authors = ["Pangea Net Contributors"]
+description = "Rust-native high-performance compute core for distributed data processing"
+license = "MIT"
+
+[[bin]]
+name = "pangea-rust-compute"
+path = "src/main.rs"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.36", features = ["full", "rt-multi-thread", "macros", "sync"] }
+tokio-util = { version = "0.7", features = ["compat"] }
+async-trait = "0.1"
+
+# Data processing
+rayon = "1.8"
+ndarray = "0.15"
+ndarray-stats = "0.5"
+
+# Networking
+quinn = "0.11"
+rustls = "0.23"
+
+# Serialization
+pycapnp = "1.0"
+capnp = "0.18"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Compression
+zstd = "0.13"
+
+# Utilities
+clap = { version = "4.4", features = ["derive"] }
+
+[dev-dependencies]
+criterion = "0.5"
