@@ -240,6 +240,25 @@ class DemoState:
 # Global state instance
 state = DemoState()
 
+
+@app.on_event("startup")
+async def startup_event():
+    """Run on application startup."""
+    logger.info("📡 Demo server starting up...")
+    state.add_log("🚀 Demo server initialized", "info")
+    
+    # Try to auto-connect to Go node
+    if GO_CLIENT_AVAILABLE:
+        # Try common ports
+        for port in [8080, 8081, 8082]:
+            if state.connect_to_go_node("localhost", port):
+                state.add_log(f"✅ Auto-connected to Go node on port {port}", "success")
+                return
+        
+        state.add_log("ℹ️  No Go node found - using simulated data", "info")
+    else:
+        state.add_log("⚠️  Cap'n Proto client not available - install pycapnp for real node connection", "warning")
+
 # ============================================================
 # API Endpoints
 # ============================================================
@@ -588,6 +607,15 @@ def main():
     logger.info(f"📊 Seed data: {SEED_DATA_FILE}")
     logger.info(f"🌐 Port: {port}")
     logger.info("🔒 Binding to localhost only (127.0.0.1) for security")
+    
+    # Try to auto-connect to Go node on startup
+    if GO_CLIENT_AVAILABLE:
+        logger.info("🔍 Attempting to auto-connect to Go node...")
+        if state.connect_to_go_node():
+            logger.info("✅ Auto-connected to Go node successfully")
+        else:
+            logger.info("ℹ️  No Go node found - using simulated data")
+            logger.info("   Start a Go node and use the Connect button in the UI")
     
     uvicorn.run(
         app,
