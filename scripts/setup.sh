@@ -397,11 +397,12 @@ show_menu() {
     echo "17) Run Phase 1 Performance Benchmarks"
     echo "18) Run Streaming & AI Wiring Test (Phase 1&2)"
     echo "19) Distributed Compute Menu"
-    echo "20) Run Live P2P Test (Chat/Voice/Video)"
-    echo "21) Check Network Status"
-    echo "22) View Setup Log"
-    echo "23) View Test Log"
-    echo "24) Clean Build Artifacts"
+    echo "20) DCDN Demo (Distributed CDN System)"
+    echo "21) Run Live P2P Test (Chat/Voice/Video)"
+    echo "22) Check Network Status"
+    echo "23) View Setup Log"
+    echo "24) View Test Log"
+    echo "25) Clean Build Artifacts"
     echo "0) Exit"
     echo ""
     echo -n "Select an option: "
@@ -1131,21 +1132,65 @@ main() {
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
+            20)
+                log_info "User selected: DCDN Demo"
+                echo ""
+                echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+                echo -e "${BLUE}   DCDN DEMO - Distributed CDN System${NC}"
+                echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+                echo ""
+                echo "Running interactive DCDN demo..."
+                echo "This demonstrates:"
+                echo "  • ChunkStore (lock-free ring buffer)"
+                echo "  • FEC Engine (Reed-Solomon recovery)"
+                echo "  • P2P Engine (tit-for-tat bandwidth allocation)"
+                echo "  • Ed25519 signature verification"
+                echo "  • Complete chunk lifecycle"
+                echo ""
+                read -p "Press Enter to start demo..."
+                
+                cd "$PROJECT_ROOT/rust" || {
+                    log_error "Failed to navigate to rust directory"
+                    read -p "Press Enter to continue..."
+                    return 1
+                }
+                
+                if ! cargo run --example dcdn_demo 2>&1 | tee -a "$TEST_LOG_FILE"; then
+                    log_error "DCDN demo failed"
+                else
+                    log_success "DCDN demo completed"
+                fi
+                
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
             21)
+                log_info "User selected: Run Live P2P Test"
+                echo ""
+                echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+                echo -e "${BLUE}   LIVE P2P TEST (Chat/Voice/Video)${NC}"
+                echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+                echo ""
+                read -p "Press Enter to start live test..."
+                ./scripts/live_test.sh
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            22)
                 log_info "User selected: Check Network Status"
                 "$SCRIPT_DIR/check_network.sh" --status
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            22)
+            23)
                 log_info "User selected: View Setup Log"
                 less "$LOG_FILE"
                 ;;
-            23)
+            24)
                 log_info "User selected: View Test Log"
                 less "$TEST_LOG_FILE"
                 ;;
-            24)
+            25)
                 log_info "User selected: Clean Build Artifacts"
                 clean_builds
                 echo ""
