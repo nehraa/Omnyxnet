@@ -47,12 +47,20 @@ app = FastAPI(
     version="1.0.0-DEMO"
 )
 
+# Get configured port for CORS
+DEMO_PORT = int(os.environ.get("DEMO_PORT", 8000))
+
 # Enable CORS for frontend (demo only - restricted to localhost)
 # WARNING: This CORS configuration is for demo purposes only.
 # In production, restrict origins and configure proper security.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
+    allow_origins=[
+        f"http://localhost:{DEMO_PORT}",
+        f"http://127.0.0.1:{DEMO_PORT}",
+        "http://localhost:8000",  # Default port fallback
+        "http://127.0.0.1:8000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -117,6 +125,12 @@ class DemoState:
             "level": level
         })
         # No manual slicing needed - deque with maxlen handles it
+    
+    def get_recent_logs(self, count: int = 20) -> List[Dict[str, str]]:
+        """Get the most recent N logs efficiently from deque."""
+        # Deque supports efficient iteration from right side
+        logs_list = list(self.logs)
+        return logs_list[-count:] if len(logs_list) > count else logs_list
             
     def get_uptime(self) -> str:
         """Get demo uptime as formatted string."""
@@ -163,23 +177,21 @@ async def get_data():
     Fetches the current state/data for tables and graphs.
     Returns metrics, nodes, and recent tasks.
     """
-    logs_list = list(state.logs)
     return {
         "metrics": state.data.get("metrics", {}),
         "nodes": state.data.get("nodes", []),
         "recent_tasks": state.data.get("recent_tasks", []),
         "execution_count": state.execution_count,
-        "logs": logs_list[-20:]  # Last 20 logs for the terminal view
+        "logs": state.get_recent_logs(20)  # Last 20 logs for the terminal view
     }
 
 
 @app.get("/api/logs")
 async def get_logs():
     """Get execution logs for the terminal view."""
-    logs_list = list(state.logs)
     return {
-        "logs": logs_list[-50:],
-        "total_logs": len(logs_list)
+        "logs": state.get_recent_logs(50),
+        "total_logs": len(state.logs)
     }
 
 
@@ -322,7 +334,6 @@ async def stream_events(request: Request):
                 break
             
             # Build combined data
-            logs_list = list(state.logs)
             data = {
                 "status": {
                     "status": state.data.get("system_status", "healthy"),
@@ -340,7 +351,7 @@ async def stream_events(request: Request):
                     "nodes": state.data.get("nodes", []),
                     "recent_tasks": state.data.get("recent_tasks", []),
                     "execution_count": state.execution_count,
-                    "logs": logs_list[-20:]
+                    "logs": state.get_recent_logs(20)
                 }
             }
             
