@@ -858,8 +858,32 @@
     }
     
     // Submit
-    document.getElementById('submitSurvey').addEventListener('click', () => {
+    document.getElementById('submitSurvey').addEventListener('click', async () => {
       responses.email = document.getElementById('emailInput').value;
+      
+      // Submit to backend API
+      const API_BASE = window.location.hostname === 'localhost' 
+        ? 'http://localhost:5000/api'
+        : '/api';
+      
+      try {
+        const response = await fetch(`${API_BASE}/survey`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(responses)
+        });
+        
+        if (response.ok) {
+          console.log('Survey submitted successfully');
+        } else {
+          console.warn('Survey submission failed, continuing anyway');
+        }
+      } catch (error) {
+        console.warn('Could not submit survey to backend:', error);
+        // Continue anyway - don't block user experience
+      }
       
       // Show success
       document.getElementById('surveyQuestions').style.display = 'none';

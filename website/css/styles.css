@@ -1671,6 +1671,48 @@ a:hover {
   border: 0;
 }
 
+/* ============================================
+   Background Patterns & Images
+   ============================================ */
+.particles-bg {
+  background-image: 
+    radial-gradient(circle at 20% 50%, rgba(32, 138, 141, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(50, 184, 198, 0.06) 0%, transparent 50%),
+    url('data:image/svg+xml,<svg width="60" height="60" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse"><circle cx="30" cy="30" r="1" fill="rgba(32,138,141,0.1)"/></pattern></defs><rect width="60" height="60" fill="url(%23grid)"/></svg>');
+  background-position: center;
+  background-size: cover;
+}
+
+.section-dark {
+  background: 
+    linear-gradient(135deg, rgba(31, 33, 33, 0.95) 0%, rgba(10, 10, 10, 0.95) 100%),
+    url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="darkgrid" width="100" height="100" patternUnits="userSpaceOnUse"><path d="M 100 0 L 0 0 0 100" fill="none" stroke="rgba(32,138,141,0.05)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23darkgrid)"/></svg>');
+}
+
+.tech-section {
+  position: relative;
+  overflow: hidden;
+}
+
+.tech-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    url('data:image/svg+xml,<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="techpattern" width="200" height="200" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="2" fill="rgba(32,138,141,0.15)"/><circle cx="150" cy="50" r="2" fill="rgba(50,184,198,0.1)"/><circle cx="50" cy="150" r="2" fill="rgba(32,138,141,0.1)"/><circle cx="150" cy="150" r="2" fill="rgba(50,184,198,0.15)"/><line x1="50" y1="50" x2="150" y2="50" stroke="rgba(32,138,141,0.08)" stroke-width="1"/><line x1="50" y1="150" x2="150" y2="150" stroke="rgba(32,138,141,0.08)" stroke-width="1"/><line x1="50" y1="50" x2="50" y2="150" stroke="rgba(32,138,141,0.08)" stroke-width="1"/><line x1="150" y1="50" x2="150" y2="150" stroke="rgba(32,138,141,0.08)" stroke-width="1"/></pattern></defs><rect width="200" height="200" fill="url(%23techpattern)"/></svg>');
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.tech-section > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *,
