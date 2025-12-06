@@ -367,10 +367,11 @@ start_demo_server() {
     
     log_info "Starting demo server on port $DEMO_PORT..."
     
-    cd "$DEMO_DIR"
+    # Export port for server to use
+    export DEMO_PORT=$DEMO_PORT
     
-    # Start server in background
-    python3 server.py &
+    # Start server in background with explicit path (no cd needed)
+    python3 "$DEMO_DIR/server.py" &
     SERVER_PID=$!
     
     # Wait for server to start
@@ -378,7 +379,7 @@ start_demo_server() {
     sleep 3
     
     # Check if server is running
-    if ! kill -0 $SERVER_PID 2>/dev/null; then
+    if ! kill -0 "$SERVER_PID" 2>/dev/null; then
         log_error "Demo server failed to start"
         exit 1
     fi
@@ -413,7 +414,9 @@ start_demo_server() {
     cleanup_demo() {
         echo ""
         log_info "Shutting down demo server..."
-        kill $SERVER_PID 2>/dev/null || true
+        if [ -n "$SERVER_PID" ]; then
+            kill "$SERVER_PID" 2>/dev/null || true
+        fi
         log_success "Demo server stopped"
         exit 0
     }
@@ -421,7 +424,7 @@ start_demo_server() {
     trap cleanup_demo INT TERM
     
     # Wait for server process
-    wait $SERVER_PID
+    wait "$SERVER_PID"
 }
 
 run_demo() {

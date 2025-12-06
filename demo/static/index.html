@@ -211,17 +211,48 @@
     
     <!-- Dashboard Script -->
     <script>
-        // API Base URL
+        // Configuration
         const API_BASE = '';
+        const REFRESH_INTERVAL_MS = 2000;  // Configurable refresh interval
+        const USE_SSE = true;  // Use Server-Sent Events for real-time updates
         
         // State
         let isProcessing = false;
+        let eventSource = null;
         
         // DOM Elements
         const executeBtn = document.getElementById('execute-btn');
         const resetBtn = document.getElementById('reset-btn');
         const terminalBody = document.getElementById('terminal-body');
         const systemStatus = document.getElementById('system-status');
+        
+        // XSS Protection: Escape HTML entities
+        function escapeHtml(unsafe) {
+            if (unsafe == null) return '';
+            return String(unsafe)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+        
+        // Add log to terminal (for local error messages)
+        function addTerminalLog(message, level = 'info') {
+            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+            const logClass = level === 'error' ? 'text-danger' : 
+                            level === 'success' ? 'text-success' : 
+                            level === 'warning' ? 'text-warning' : 'text-light';
+            
+            const logLine = document.createElement('div');
+            logLine.className = 'terminal-line';
+            logLine.innerHTML = `
+                <span class="terminal-timestamp">[${escapeHtml(timestamp)}]</span>
+                <span class="${logClass}">${escapeHtml(message)}</span>
+            `;
+            terminalBody.appendChild(logLine);
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
         
         // Update metrics display
         function updateMetrics(metrics) {
@@ -261,7 +292,13 @@
             document.getElementById('uptime').textContent = status.uptime || '00:00:00';
         }
         
-        // Update nodes display
+        // Show connection error in UI
+        function showConnectionError() {
+            systemStatus.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> Connection Error';
+            systemStatus.className = 'badge bg-danger me-3';
+        }
+        
+        // Update nodes display with XSS protection
         function updateNodes(nodes) {
             const container = document.getElementById('nodes-container');
             container.innerHTML = nodes.map(node => `
@@ -270,12 +307,12 @@
                         <div class="d-flex align-items-center">
                             <span class="node-status-dot ${node.status === 'online' ? 'online' : 'offline'}"></span>
                             <div>
-                                <strong>${node.name}</strong>
+                                <strong>${escapeHtml(node.name)}</strong>
                                 <br>
-                                <small class="text-muted">${node.description || node.type}</small>
+                                <small class="text-muted">${escapeHtml(node.description || node.type)}</small>
                             </div>
                         </div>
-                        <span class="badge ${getNodeTypeBadge(node.type)}">${node.type}</span>
+                        <span class="badge ${getNodeTypeBadge(node.type)}">${escapeHtml(node.type)}</span>
                     </div>
                 </div>
             `).join('');
@@ -291,27 +328,27 @@
             }
         }
         
-        // Update tasks table
+        // Update tasks table with XSS protection
         function updateTasks(tasks) {
             const tbody = document.getElementById('tasks-table');
             tbody.innerHTML = tasks.map(task => `
                 <tr>
-                    <td><code>${task.id}</code></td>
-                    <td>${task.type}</td>
-                    <td><span class="badge bg-success">${task.status}</span></td>
-                    <td>${task.duration_ms}ms</td>
+                    <td><code>${escapeHtml(task.id)}</code></td>
+                    <td>${escapeHtml(task.type)}</td>
+                    <td><span class="badge bg-success">${escapeHtml(task.status)}</span></td>
+                    <td>${escapeHtml(task.duration_ms)}ms</td>
                 </tr>
             `).join('');
         }
         
-        // Update terminal with logs
+        // Update terminal with logs (with XSS protection)
         function updateTerminal(logs) {
             if (!logs || logs.length === 0) return;
             
             terminalBody.innerHTML = logs.map(log => `
                 <div class="terminal-line">
-                    <span class="terminal-timestamp">[${log.timestamp}]</span>
-                    <span class="${getLogClass(log.level)}">${log.message}</span>
+                    <span class="terminal-timestamp">[${escapeHtml(log.timestamp)}]</span>
+                    <span class="${getLogClass(log.level)}">${escapeHtml(log.message)}</span>
                 </div>
             `).join('');
             
@@ -329,16 +366,55 @@
             }
         }
         
-        // Fetch and update all data
+        // Initialize SSE connection for real-time updates
+        function initSSE() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            eventSource = new EventSource(`${API_BASE}/api/events`);
+            
+            eventSource.onmessage = function(event) {
+                try {
+                    const data = JSON.parse(event.data);
+                    updateStatus(data.status);
+                    updateMetrics(data.data.metrics);
+                    updateNodes(data.data.nodes);
+                    updateTasks(data.data.recent_tasks);
+                    updateTerminal(data.data.logs);
+                } catch (e) {
+                    console.error('SSE parse error:', e);
+                }
+            };
+            
+            eventSource.onerror = function(e) {
+                console.error('SSE connection error, falling back to polling');
+                showConnectionError();
+                eventSource.close();
+                // Fall back to polling
+                setTimeout(() => {
+                    initPolling();
+                }, 2000);
+            };
+        }
+        
+        // Fallback polling mode
+        function initPolling() {
+            setInterval(refreshData, REFRESH_INTERVAL_MS);
+        }
+        
+        // Fetch and update all data (fallback polling)
         async function refreshData() {
             try {
                 // Fetch status
                 const statusRes = await fetch(`${API_BASE}/api/status`);
+                if (!statusRes.ok) throw new Error('Status API failed');
                 const status = await statusRes.json();
                 updateStatus(status);
                 
                 // Fetch data
                 const dataRes = await fetch(`${API_BASE}/api/data`);
+                if (!dataRes.ok) throw new Error('Data API failed');
                 const data = await dataRes.json();
                 updateMetrics(data.metrics);
                 updateNodes(data.nodes);
@@ -347,6 +423,7 @@
                 
             } catch (error) {
                 console.error('Failed to fetch data:', error);
+                showConnectionError();
             }
         }
         
@@ -366,13 +443,14 @@
                 
                 if (!res.ok) {
                     const error = await res.json();
-                    alert(error.detail || 'Failed to execute action');
+                    const errorMsg = error.detail || 'Failed to execute action';
+                    addTerminalLog(errorMsg, 'error');
                     return;
                 }
                 
             } catch (error) {
                 console.error('Execute failed:', error);
-                alert('Failed to execute action');
+                addTerminalLog('Failed to execute action - connection error', 'error');
             } finally {
                 executeBtn.disabled = false;
                 executeBtn.innerHTML = '<i class="bi bi-play-fill me-2"></i>EXECUTE ANALYSIS';
@@ -390,10 +468,14 @@
                 
                 if (res.ok) {
                     await refreshData();
+                    addTerminalLog('Demo state reset successfully', 'success');
+                } else {
+                    addTerminalLog('Failed to reset demo state', 'error');
                 }
                 
             } catch (error) {
                 console.error('Reset failed:', error);
+                addTerminalLog('Failed to reset - connection error', 'error');
             } finally {
                 resetBtn.disabled = false;
             }
@@ -403,9 +485,15 @@
         executeBtn.addEventListener('click', executeAction);
         resetBtn.addEventListener('click', resetDemo);
         
-        // Initial load and periodic refresh
-        refreshData();
-        setInterval(refreshData, 2000);
+        // Initialize: use SSE if supported, fallback to polling
+        if (USE_SSE && typeof(EventSource) !== "undefined") {
+            console.log('Using Server-Sent Events for real-time updates');
+            initSSE();
+        } else {
+            console.log('SSE not supported, using polling');
+            refreshData();
+            initPolling();
+        }
     </script>
 </body>
 </html>
