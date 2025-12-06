@@ -49,10 +49,20 @@ impl ChunkStore {
         let chunk_id = chunk.id;
         let chunk_arc = Arc::new(chunk);
 
+        // Check if chunk already exists and remove from old slot to prevent memory waste
+        if let Some((_, old_slot_idx)) = self.index.remove(&chunk_id) {
+            let mut old_slot = self.slots[old_slot_idx].write();
+            if let Some(ref old_chunk) = *old_slot {
+                if old_chunk.id == chunk_id {
+                    *old_slot = None;
+                }
+            }
+        }
+
         // Get next slot (circular)
         let slot_idx = self.write_head.fetch_add(1, Ordering::SeqCst) % self.capacity;
 
-        // Evict old chunk if slot is occupied
+        // Evict old chunk if slot is occupied and update index before releasing lock
         {
             let mut slot = self.slots[slot_idx].write();
             if let Some(old_chunk) = slot.take() {
@@ -60,10 +70,9 @@ impl ChunkStore {
                 self.evictions_total.fetch_add(1, Ordering::Relaxed);
             }
             *slot = Some(chunk_arc);
+            // Update index while holding the lock to avoid race condition
+            self.index.insert(chunk_id, slot_idx);
         }
-
-        // Update index
-        self.index.insert(chunk_id, slot_idx);
 
         Ok(())
     }

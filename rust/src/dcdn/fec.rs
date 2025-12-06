@@ -162,8 +162,24 @@ impl FecEngine {
         rs.reconstruct_data(&mut shard_options)
             .context("Reed-Solomon reconstruction failed")?;
         
-        // Extract reconstructed shards
-        shards = shard_options.into_iter().map(|opt| opt.unwrap()).collect();
+        // Extract reconstructed shards, handling possible reconstruction failures
+        let mut missing_indices = Vec::new();
+        shards = shard_options
+            .into_iter()
+            .enumerate()
+            .map(|(i, opt)| {
+                if let Some(shard) = opt {
+                    shard
+                } else {
+                    missing_indices.push(i);
+                    Vec::new() // Placeholder, won't be used if error is returned
+                }
+            })
+            .collect();
+        
+        if !missing_indices.is_empty() {
+            anyhow::bail!("Failed to reconstruct shards at indices: {:?}", missing_indices);
+        }
 
         // Extract recovered data packets
         let mut recovered = Vec::new();

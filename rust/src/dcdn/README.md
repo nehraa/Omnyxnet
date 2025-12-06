@@ -112,8 +112,11 @@ use std::time::Duration;
 let config = DcdnConfig::from_file("config/dcdn.toml")?;
 
 // Create components
+// Calculate chunk capacity from MB based on average chunk size (e.g., 100KB)
+let avg_chunk_size_kb = 100; // Assuming ~100KB chunks
+let capacity = config.storage.calculate_capacity(avg_chunk_size_kb);
 let store = ChunkStore::new(
-    config.storage.ring_buffer_size_mb * 1024 * 1024,
+    capacity,
     Duration::from_secs(config.storage.chunk_ttl_seconds)
 );
 

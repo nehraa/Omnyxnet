@@ -4,16 +4,28 @@ use pangea_ces::dcdn::*;
 use pangea_ces::dcdn::config::{QuicConfig, CongestionAlgo};
 use bytes::Bytes;
 use std::time::{Duration, Instant};
+use ed25519_dalek::{SigningKey, Signer, VerifyingKey};
 
-/// Helper function to create test chunk
+/// Helper to create a valid Ed25519 key pair for testing
+fn create_test_keypair() -> (SigningKey, VerifyingKey) {
+    let signing_key = SigningKey::from_bytes(&[42u8; 32]);
+    let verifying_key = signing_key.verifying_key();
+    (signing_key, verifying_key)
+}
+
+/// Helper function to create test chunk with valid signature
 fn create_test_chunk(id: u64, size: usize) -> ChunkData {
+    let data = Bytes::from(vec![id as u8; size]);
+    let (signing_key, _) = create_test_keypair();
+    let signature = signing_key.sign(&data);
+    
     ChunkData {
         id: ChunkId::new(id),
         sequence: id,
         timestamp: Instant::now(),
         source_peer: PeerId::new(1),
-        signature: Signature::from_bytes([0u8; 64]),
-        data: Bytes::from(vec![id as u8; size]),
+        signature: Signature::from_bytes(signature.to_bytes()),
+        data,
         fec_group: Some(FecGroupId::new(1)),
     }
 }
@@ -212,14 +224,15 @@ async fn test_p2p_bandwidth_allocation() {
 fn test_signature_verifier() {
     let verifier = SignatureVerifier::new();
     
-    // Add trusted key
+    // Add trusted key (use the actual public key from our test keypair)
     let peer_id = PeerId::new(1);
-    let public_key = PublicKey::from_bytes([42u8; 32]);
+    let (_, verifying_key) = create_test_keypair();
+    let public_key = PublicKey::from_bytes(verifying_key.to_bytes());
     verifier.add_trusted_key(peer_id, public_key);
     
     assert_eq!(verifier.trusted_key_count(), 1);
     
-    // Verify chunk
+    // Verify chunk (chunk now has valid signature)
     let chunk = create_test_chunk(1, 100);
     let result = verifier.verify(&chunk).unwrap();
     assert!(result);
@@ -236,7 +249,8 @@ fn test_signature_verifier_revocation() {
     let verifier = SignatureVerifier::new();
     
     let peer_id = PeerId::new(1);
-    let public_key = PublicKey::from_bytes([42u8; 32]);
+    let (_, verifying_key) = create_test_keypair();
+    let public_key = PublicKey::from_bytes(verifying_key.to_bytes());
     
     verifier.add_trusted_key(peer_id, public_key);
     verifier.revoke_key(peer_id);
@@ -255,7 +269,8 @@ fn test_signature_batch_verification() {
     let verifier = SignatureVerifier::new();
     
     let peer_id = PeerId::new(1);
-    let public_key = PublicKey::from_bytes([42u8; 32]);
+    let (_, verifying_key) = create_test_keypair();
+    let public_key = PublicKey::from_bytes(verifying_key.to_bytes());
     verifier.add_trusted_key(peer_id, public_key);
     
     // Create batch of chunks
@@ -284,6 +299,7 @@ async fn test_quic_transport_creation() {
         congestion_algorithm: CongestionAlgo::BBR,
         enable_gso: true,
         idle_timeout_ms: 30000,
+        max_chunk_size: 10 * 1024 * 1024,
     };
     
     let transport = QuicTransport::new(config);
@@ -327,7 +343,8 @@ fn test_integration_chunk_lifecycle() {
     let verifier = SignatureVerifier::new();
     
     let peer_id = PeerId::new(1);
-    let public_key = PublicKey::from_bytes([42u8; 32]);
+    let (_, verifying_key) = create_test_keypair();
+    let public_key = PublicKey::from_bytes(verifying_key.to_bytes());
     verifier.add_trusted_key(peer_id, public_key);
     
     // Create and store chunk

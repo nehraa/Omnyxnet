@@ -117,22 +117,15 @@ impl SignatureVerifier {
         )
     }
 
-    /// Internal Ed25519 verification (placeholder - would use ed25519-dalek in production)
-    fn verify_ed25519(&self, _data: &[u8], _signature: &[u8; 64], _public_key: &[u8; 32]) -> Result<bool> {
-        // TODO: SECURITY - Implement real Ed25519 verification before production use!
-        // This is a placeholder that always returns true.
-        // 
-        // In production, uncomment and use ed25519-dalek crate:
-        // use ed25519_dalek::{PublicKey, Signature, Verifier};
-        // 
-        // let pk = PublicKey::from_bytes(public_key)
-        //     .map_err(|e| anyhow::anyhow!("Invalid public key: {}", e))?;
-        // let sig = Signature::from_bytes(signature)
-        //     .map_err(|e| anyhow::anyhow!("Invalid signature: {}", e))?;
-        // Ok(pk.verify(data, &sig).is_ok())
-
-        // TEMPORARY: Always returns true for development/testing
-        Ok(true)
+    /// Internal Ed25519 verification using ed25519-dalek
+    fn verify_ed25519(&self, data: &[u8], signature: &[u8; 64], public_key: &[u8; 32]) -> Result<bool> {
+        use ed25519_dalek::{Signature, VerifyingKey, Verifier};
+        
+        let pk = VerifyingKey::from_bytes(public_key)
+            .map_err(|e| anyhow::anyhow!("Invalid public key: {}", e))?;
+        let sig = Signature::from_bytes(signature);
+        
+        Ok(pk.verify(data, &sig).is_ok())
     }
 }
 
@@ -146,6 +139,9 @@ impl Default for SignatureVerifier {
 pub struct VerificationBatch {
     chunks: Vec<ChunkData>,
     max_size: usize,
+    /// Timeout for batch processing (intended for future timeout-based flushing logic)
+    /// Currently stored but not actively used - could be used to trigger batch verification
+    /// when timeout expires even if batch is not full
     timeout: std::time::Duration,
 }
 

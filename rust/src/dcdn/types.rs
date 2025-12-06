@@ -2,7 +2,7 @@
 
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
-use std::time::Instant;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 /// Unique identifier for a chunk
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -29,7 +29,8 @@ pub struct PublicKey(pub [u8; 32]);
 pub struct ChunkData {
     pub id: ChunkId,
     pub sequence: u64,
-    #[serde(skip, default = "Instant::now")]
+    /// Unix timestamp in milliseconds for proper serialization and TTL logic
+    #[serde(with = "timestamp_serde")]
     pub timestamp: Instant,
     pub source_peer: PeerId,
     #[serde(with = "signature_serde")]
@@ -50,12 +51,24 @@ pub struct StorageStats {
 }
 
 /// Peer statistics for P2P engine
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct PeerStats {
     pub uploaded_bytes: u64,
     pub downloaded_bytes: u64,
     pub last_interaction: Option<Instant>,
     pub reliability_score: f32,
+}
+
+impl Default for PeerStats {
+    fn default() -> Self {
+        Self {
+            uploaded_bytes: 0,
+            downloaded_bytes: 0,
+            last_interaction: None,
+            // Initialize to 1.0 so new peers can be unchoked through regular algorithm
+            reliability_score: 1.0,
+        }
+    }
 }
 
 /// Network packet for transmission
@@ -148,5 +161,41 @@ mod bytes_serde {
     {
         let vec = <Vec<u8>>::deserialize(deserializer)?;
         Ok(Bytes::from(vec))
+    }
+}
+
+// Serde helper for Instant (serializes as Unix timestamp in milliseconds)
+mod timestamp_serde {
+    use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+    use serde::{Deserializer, Serializer, Deserialize};
+    
+    // Store the program start time to convert between Instant and SystemTime
+    lazy_static::lazy_static! {
+        static ref PROGRAM_START: (Instant, SystemTime) = (Instant::now(), SystemTime::now());
+    }
+
+    pub fn serialize<S>(instant: &Instant, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let elapsed = instant.duration_since(PROGRAM_START.0);
+        let system_time = PROGRAM_START.1 + elapsed;
+        let timestamp_ms = system_time
+            .duration_since(UNIX_EPOCH)
+            .map_err(|e| serde::ser::Error::custom(format!("Time error: {}", e)))?
+            .as_millis() as u64;
+        serializer.serialize_u64(timestamp_ms)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Instant, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let timestamp_ms = u64::deserialize(deserializer)?;
+        let system_time = UNIX_EPOCH + Duration::from_millis(timestamp_ms);
+        let elapsed_since_start = system_time
+            .duration_since(PROGRAM_START.1)
+            .unwrap_or(Duration::ZERO);
+        Ok(PROGRAM_START.0 + elapsed_since_start)
     }
 }
