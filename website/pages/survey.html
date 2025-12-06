@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Help shape the future of Pangea Net. Take our quick survey and see live results.">
+  <title>Survey - Pangea Net</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="../css/styles.css">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23208A8D'/><text x='50' y='68' font-size='50' fill='white' text-anchor='middle' font-family='Arial' font-weight='bold'>P</text></svg>">
+  
+  <style>
+    .survey-hero {
+      padding-top: 120px;
+      padding-bottom: var(--space-2xl);
+      text-align: center;
+    }
+    
+    .survey-hero h1 {
+      max-width: 600px;
+      margin: 0 auto var(--space-md);
+    }
+    
+    .survey-hero .lead {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    
+    .survey-container {
+      max-width: 700px;
+      margin: 0 auto;
+      padding-bottom: var(--space-4xl);
+    }
+    
+    /* Progress Bar */
+    .progress-bar {
+      background: rgba(32, 138, 141, 0.1);
+      border-radius: var(--radius-full);
+      height: 8px;
+      margin-bottom: var(--space-2xl);
+      overflow: hidden;
+    }
+    
+    .progress-fill {
+      background: var(--teal-main);
+      height: 100%;
+      border-radius: var(--radius-full);
+      transition: width 0.5s ease-out;
+    }
+    
+    .progress-text {
+      text-align: center;
+      font-size: 14px;
+      color: var(--gray);
+      margin-bottom: var(--space-xl);
+    }
+    
+    /* Question Card */
+    .question-card {
+      background: white;
+      border-radius: var(--radius-xl);
+      padding: var(--space-2xl);
+      box-shadow: var(--shadow-md);
+      border: 1px solid rgba(32, 138, 141, 0.08);
+      margin-bottom: var(--space-lg);
+    }
+    
+    .question-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: var(--teal-main);
+      color: white;
+      border-radius: var(--radius-full);
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: var(--space-md);
+    }
+    
+    .question-text {
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--charcoal-main);
+      margin-bottom: var(--space-xl);
+      line-height: 1.4;
+    }
+    
+    /* Options */
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+    
+    .option {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md) var(--space-lg);
+      background: var(--cream-main);
+      border: 2px solid transparent;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+    
+    .option:hover {
+      background: rgba(32, 138, 141, 0.05);
+      border-color: rgba(32, 138, 141, 0.2);
+    }
+    
+    .option.selected {
+      background: rgba(32, 138, 141, 0.1);
+      border-color: var(--teal-main);
+    }
+    
+    .option-radio {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--gray);
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all var(--transition-fast);
+    }
+    
+    .option.selected .option-radio {
+      border-color: var(--teal-main);
+      background: var(--teal-main);
+    }
+    
+    .option-radio::after {
+      content: '';
+      width: 10px;
+      height: 10px;
+      background: white;
+      border-radius: var(--radius-full);
+      opacity: 0;
+      transform: scale(0);
+      transition: all var(--transition-fast);
+    }
+    
+    .option.selected .option-radio::after {
+      opacity: 1;
+      transform: scale(1);
+    }
+    
+    .option-text {
+      font-size: 16px;
+      color: var(--charcoal-main);
+    }
+    
+    /* Star Rating */
+    .star-rating {
+      display: flex;
+      gap: var(--space-sm);
+      justify-content: center;
+    }
+    
+    .star {
+      width: 48px;
+      height: 48px;
+      cursor: pointer;
+      color: var(--gray-light);
+      transition: all var(--transition-fast);
+    }
+    
+    .star:hover,
+    .star.active {
+      color: #F59E0B;
+      transform: scale(1.1);
+    }
+    
+    .star.active {
+      animation: starPop 0.3s ease-out;
+    }
+    
+    @keyframes starPop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1.1); }
+    }
+    
+    .rating-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: var(--space-md);
+      font-size: 14px;
+      color: var(--gray);
+    }
+    
+    /* Email Input */
+    .email-input {
+      width: 100%;
+      padding: var(--space-md) var(--space-lg);
+      font-size: 16px;
+      border: 2px solid rgba(32, 138, 141, 0.2);
+      border-radius: var(--radius-md);
+      transition: all var(--transition-fast);
+    }
+    
+    .email-input:focus {
+      outline: none;
+      border-color: var(--teal-main);
+      box-shadow: 0 0 0 3px rgba(32, 138, 141, 0.1);
+    }
+    
+    .email-note {
+      font-size: 14px;
+      color: var(--gray);
+      margin-top: var(--space-sm);
+    }
+    
+    /* Navigation Buttons */
+    .survey-nav {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-md);
+      margin-top: var(--space-xl);
+    }
+    
+    .survey-nav .btn {
+      flex: 1;
+    }
+    
+    /* Results Section */
+    .result-card {
+      background: rgba(32, 138, 141, 0.05);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      margin-top: var(--space-lg);
+    }
+    
+    .result-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-md);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--teal-main);
+    }
+    
+    .result-header svg {
+      width: 16px;
+      height: 16px;
+    }
+    
+    .result-bar-container {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+    
+    .result-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+    
+    .result-label {
+      width: 120px;
+      font-size: 14px;
+      color: var(--charcoal-main);
+    }
+    
+    .result-bar-bg {
+      flex: 1;
+      height: 24px;
+      background: white;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    
+    .result-bar-fill {
+      height: 100%;
+      background: var(--teal-main);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: var(--space-sm);
+      font-size: 12px;
+      font-weight: 600;
+      color: white;
+      transition: width 1s ease-out;
+    }
+    
+    /* Success State */
+    .survey-success {
+      text-align: center;
+      padding: var(--space-3xl) var(--space-xl);
+    }
+    
+    .success-icon {
+      width: 80px;
+      height: 80px;
+      background: var(--success);
+      border-radius: var(--radius-full);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto var(--space-xl);
+      color: white;
+      font-size: 40px;
+      animation: successPop 0.5s ease-out;
+    }
+    
+    @keyframes successPop {
+      0% { transform: scale(0); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    
+    .survey-success h2 {
+      margin-bottom: var(--space-md);
+    }
+    
+    .survey-success p {
+      color: var(--gray);
+      margin-bottom: var(--space-2xl);
+    }
+    
+    .summary-card {
+      background: rgba(32, 138, 141, 0.05);
+      border-radius: var(--radius-lg);
+      padding: var(--space-xl);
+      text-align: left;
+      margin-bottom: var(--space-xl);
+    }
+    
+    .summary-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: var(--space-md);
+      color: var(--charcoal-main);
+    }
+    
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-sm) 0;
+      border-bottom: 1px solid rgba(32, 138, 141, 0.1);
+      font-size: 15px;
+    }
+    
+    .summary-item:last-child {
+      border-bottom: none;
+    }
+    
+    .summary-label {
+      color: var(--gray);
+    }
+    
+    .summary-value {
+      font-weight: 600;
+      color: var(--teal-main);
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="nav-logo-icon">P</span>
+        Pangea Net
+      </a>
+      
+      <ul class="nav-links">
+        <li><a href="../index.html#features" class="nav-link">Features</a></li>
+        <li><a href="../index.html#how-it-works" class="nav-link">How It Works</a></li>
+        <li><a href="../index.html#technology" class="nav-link">Technology</a></li>
+        <li><a href="about.html" class="nav-link">About</a></li>
+        <li><a href="technical.html" class="nav-link">Technical</a></li>
+        <li><a href="../index.html#cta" class="nav-link nav-cta">Get Early Access</a></li>
+      </ul>
+      
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Survey Hero -->
+  <section class="section survey-hero">
+    <div class="container">
+      <h1 class="scroll-animate">Help Shape the Future</h1>
+      <p class="lead scroll-animate" style="transition-delay: 0.1s">
+        Answer 7 quick questions. See live results. No email required. Takes 2 minutes.
+      </p>
+    </div>
+  </section>
+
+  <!-- Survey Container -->
+  <div class="container survey-container">
+    <!-- Progress Bar -->
+    <div class="progress-bar">
+      <div class="progress-fill" id="progressFill" style="width: 14.28%"></div>
+    </div>
+    <p class="progress-text" id="progressText">Question 1 of 7</p>
+    
+    <!-- Questions Container -->
+    <div id="surveyQuestions">
+      <!-- Question 1 -->
+      <div class="question-card" id="q1" data-question="1">
+        <span class="question-number">1</span>
+        <p class="question-text">How important is decentralized infrastructure to you?</p>
+        
+        <div class="star-rating" id="starRating">
+          <svg class="star" data-value="1" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          <svg class="star" data-value="2" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          <svg class="star" data-value="3" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          <svg class="star" data-value="4" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+          <svg class="star" data-value="5" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          </svg>
+        </div>
+        <div class="rating-labels">
+          <span>Not Important</span>
+          <span>Critical</span>
+        </div>
+        
+        <div class="result-card" style="display: none;" id="result1">
+          <div class="result-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+            Sample Results (Demo Data)
+          </div>
+          <div class="result-bar-container">
+            <div class="result-item">
+              <span class="result-label">Critical (5★)</span>
+              <div class="result-bar-bg">
+                <div class="result-bar-fill" style="width: 67%">67%</div>
+              </div>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Important (4★)</span>
+              <div class="result-bar-bg">
+                <div class="result-bar-fill" style="width: 21%">21%</div>
+              </div>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Moderate (3★)</span>
+              <div class="result-bar-bg">
+                <div class="result-bar-fill" style="width: 8%">8%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="survey-nav">
+          <button class="btn btn-secondary" disabled>Previous</button>
+          <button class="btn btn-primary" id="next1" disabled>Next</button>
+        </div>
+      </div>
+      
+      <!-- Question 2 -->
+      <div class="question-card" id="q2" data-question="2" style="display: none;">
+        <span class="question-number">2</span>
+        <p class="question-text">Would 3-5x faster P2P transfers change your infrastructure choices?</p>
+        
+        <div class="options" id="options2">
+          <div class="option" data-value="yes">
+            <div class="option-radio"></div>
+            <span class="option-text">Yes, definitely</span>
+          </div>
+          <div class="option" data-value="maybe">
+            <div class="option-radio"></div>
+            <span class="option-text">Maybe, depends on other factors</span>
+          </div>
+          <div class="option" data-value="no">
+            <div class="option-radio"></div>
+            <span class="option-text">No, speed isn't my priority</span>
+          </div>
+        </div>
+        
+        <div class="result-card" style="display: none;" id="result2">
+          <div class="result-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+            Sample Results
+          </div>
+          <div class="result-bar-container">
+            <div class="result-item">
+              <span class="result-label">Yes</span>
+              <div class="result-bar-bg">
+                <div class="result-bar-fill" style="width: 62%">62%</div>
+              </div>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Maybe</span>
+              <div class="result-bar-bg">
+                <div class="result-bar-fill" style="width: 29%">29%</div>
+              </div>
+            </div>
+            <div class="result-item">
+              <span class="result-label">No</span>
+              <div class="result-bar-bg">
+                <div class="result-bar-fill" style="width: 9%">9%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="survey-nav">
+          <button class="btn btn-secondary" id="prev2">Previous</button>
+          <button class="btn btn-primary" id="next2" disabled>Next</button>
+        </div>
+      </div>
+      
+      <!-- Question 3 -->
+      <div class="question-card" id="q3" data-question="3" style="display: none;">
+        <span class="question-number">3</span>
+        <p class="question-text">What's your biggest frustration with current P2P systems?</p>
+        
+        <div class="options" id="options3">
+          <div class="option" data-value="speed">
+            <div class="option-radio"></div>
+            <span class="option-text">Too slow for practical use</span>
+          </div>
+          <div class="option" data-value="complexity">
+            <div class="option-radio"></div>
+            <span class="option-text">Too complex to set up</span>
+          </div>
+          <div class="option" data-value="blockchain">
+            <div class="option-radio"></div>
+            <span class="option-text">Blockchain/token friction</span>
+          </div>
+          <div class="option" data-value="reliability">
+            <div class="option-radio"></div>
+            <span class="option-text">Unreliable uptime</span>
+          </div>
+          <div class="option" data-value="privacy">
+            <div class="option-radio"></div>
+            <span class="option-text">Privacy concerns</span>
+          </div>
+        </div>
+        
+        <div class="result-card" style="display: none;" id="result3">
+          <div class="result-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+            Top Pain Points (Sample Data)
+          </div>
+          <div class="result-bar-container">
+            <div class="result-item">
+              <span class="result-label">Speed</span>
+              <div class="result-bar-bg">
+                <div class="result-bar-fill" style="width: 34%">34%</div>
+              </div>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Complexity</span>
+              <div class="result-bar-bg">
+                <div class="result-bar-fill" style="width: 28%">28%</div>
+              </div>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Blockchain</span>
+              <div class="result-bar-bg">
+                <div class="result-bar-fill" style="width: 22%">22%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="survey-nav">
+          <button class="btn btn-secondary" id="prev3">Previous</button>
+          <button class="btn btn-primary" id="next3" disabled>Next</button>
+        </div>
+      </div>
+      
+      <!-- Question 4 -->
+      <div class="question-card" id="q4" data-question="4" style="display: none;">
+        <span class="question-number">4</span>
+        <p class="question-text">Would you try Pangea Net if available today?</p>
+        
+        <div class="options" id="options4">
+          <div class="option" data-value="definitely">
+            <div class="option-radio"></div>
+            <span class="option-text">Definitely, sign me up</span>
+          </div>
+          <div class="option" data-value="probably">
+            <div class="option-radio"></div>
+            <span class="option-text">Probably, after seeing more details</span>
+          </div>
+          <div class="option" data-value="maybe">
+            <div class="option-radio"></div>
+            <span class="option-text">Maybe, need to evaluate first</span>
+          </div>
+          <div class="option" data-value="no">
+            <div class="option-radio"></div>
+            <span class="option-text">Not interested</span>
+          </div>
+        </div>
+        
+        <div class="survey-nav">
+          <button class="btn btn-secondary" id="prev4">Previous</button>
+          <button class="btn btn-primary" id="next4" disabled>Next</button>
+        </div>
+      </div>
+      
+      <!-- Question 5 -->
+      <div class="question-card" id="q5" data-question="5" style="display: none;">
+        <span class="question-number">5</span>
+        <p class="question-text">What would you use decentralized infrastructure for?</p>
+        
+        <div class="options" id="options5">
+          <div class="option" data-value="storage">
+            <div class="option-radio"></div>
+            <span class="option-text">Decentralized storage/backup</span>
+          </div>
+          <div class="option" data-value="messaging">
+            <div class="option-radio"></div>
+            <span class="option-text">Encrypted messaging</span>
+          </div>
+          <div class="option" data-value="cdn">
+            <div class="option-radio"></div>
+            <span class="option-text">CDN alternative</span>
+          </div>
+          <div class="option" data-value="enterprise">
+            <div class="option-radio"></div>
+            <span class="option-text">Enterprise backup/compliance</span>
+          </div>
+          <div class="option" data-value="personal">
+            <div class="option-radio"></div>
+            <span class="option-text">Personal privacy tools</span>
+          </div>
+        </div>
+        
+        <div class="survey-nav">
+          <button class="btn btn-secondary" id="prev5">Previous</button>
+          <button class="btn btn-primary" id="next5" disabled>Next</button>
+        </div>
+      </div>
+      
+      <!-- Question 6 -->
+      <div class="question-card" id="q6" data-question="6" style="display: none;">
+        <span class="question-number">6</span>
+        <p class="question-text">When would you consider adopting?</p>
+        
+        <div class="options" id="options6">
+          <div class="option" data-value="immediately">
+            <div class="option-radio"></div>
+            <span class="option-text">Immediately (if available)</span>
+          </div>
+          <div class="option" data-value="3months">
+            <div class="option-radio"></div>
+            <span class="option-text">Next 3 months</span>
+          </div>
+          <div class="option" data-value="6months">
+            <div class="option-radio"></div>
+            <span class="option-text">Next 6-12 months</span>
+          </div>
+          <div class="option" data-value="evaluating">
+            <div class="option-radio"></div>
+            <span class="option-text">Just evaluating for now</span>
+          </div>
+        </div>
+        
+        <div class="survey-nav">
+          <button class="btn btn-secondary" id="prev6">Previous</button>
+          <button class="btn btn-primary" id="next6" disabled>Next</button>
+        </div>
+      </div>
+      
+      <!-- Question 7 -->
+      <div class="question-card" id="q7" data-question="7" style="display: none;">
+        <span class="question-number">7</span>
+        <p class="question-text">Join our beta waitlist (optional)</p>
+        
+        <input type="email" class="email-input" id="emailInput" placeholder="your@email.com">
+        <p class="email-note">Early testers get bigger impact on product direction. Completely optional.</p>
+        
+        <div class="survey-nav">
+          <button class="btn btn-secondary" id="prev7">Previous</button>
+          <button class="btn btn-primary" id="submitSurvey">Submit Survey</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Success State -->
+    <div id="surveySuccess" style="display: none;">
+      <div class="question-card survey-success">
+        <div class="success-icon">✓</div>
+        <h2>Thank You!</h2>
+        <p>Your responses help shape the future of Pangea Net.</p>
+        
+        <div class="summary-card">
+          <p class="summary-title">Your Response Summary</p>
+          <div class="summary-item">
+            <span class="summary-label">Importance</span>
+            <span class="summary-value" id="sum1">—</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Speed Priority</span>
+            <span class="summary-value" id="sum2">—</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Pain Point</span>
+            <span class="summary-value" id="sum3">—</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Interest Level</span>
+            <span class="summary-value" id="sum4">—</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Use Case</span>
+            <span class="summary-value" id="sum5">—</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Timeline</span>
+            <span class="summary-value" id="sum6">—</span>
+          </div>
+        </div>
+        
+        <div class="cta-buttons">
+          <a href="demo.html" class="btn btn-primary btn-large">
+            Try CLI Demo
+          </a>
+          <a href="../index.html" class="btn btn-secondary btn-large">
+            Back to Home
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-bottom">
+        <p>&copy; 2025 Pangea Net. All rights reserved.</p>
+        <div class="footer-social">
+          <a href="#" aria-label="GitHub">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+            </svg>
+          </a>
+          <a href="#" aria-label="Twitter">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="../js/main.js"></script>
+  <script>
+    // Survey Logic
+    const responses = {};
+    let currentQuestion = 1;
+    const totalQuestions = 7;
+    
+    // Star Rating
+    const stars = document.querySelectorAll('.star');
+    stars.forEach(star => {
+      star.addEventListener('click', () => {
+        const value = parseInt(star.dataset.value);
+        responses.q1 = value;
+        
+        stars.forEach((s, i) => {
+          if (i < value) {
+            s.classList.add('active');
+          } else {
+            s.classList.remove('active');
+          }
+        });
+        
+        document.getElementById('next1').disabled = false;
+        document.getElementById('result1').style.display = 'block';
+      });
+    });
+    
+    // Option Selection
+    document.querySelectorAll('.options').forEach(optionsGroup => {
+      optionsGroup.querySelectorAll('.option').forEach(option => {
+        option.addEventListener('click', () => {
+          const questionNum = optionsGroup.id.replace('options', '');
+          
+          // Deselect others
+          optionsGroup.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+          
+          // Select this one
+          option.classList.add('selected');
+          responses['q' + questionNum] = option.dataset.value;
+          
+          // Enable next button
+          document.getElementById('next' + questionNum).disabled = false;
+          
+          // Show result if exists
+          const resultCard = document.getElementById('result' + questionNum);
+          if (resultCard) {
+            resultCard.style.display = 'block';
+          }
+        });
+      });
+    });
+    
+    // Navigation
+    function showQuestion(num) {
+      document.querySelectorAll('.question-card').forEach(q => {
+        q.style.display = 'none';
+      });
+      document.getElementById('q' + num).style.display = 'block';
+      
+      // Update progress
+      document.getElementById('progressFill').style.width = ((num / totalQuestions) * 100) + '%';
+      document.getElementById('progressText').textContent = `Question ${num} of ${totalQuestions}`;
+      
+      currentQuestion = num;
+      
+      // Scroll to top of question
+      document.querySelector('.survey-container').scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    // Next buttons
+    for (let i = 1; i < totalQuestions; i++) {
+      document.getElementById('next' + i).addEventListener('click', () => {
+        showQuestion(i + 1);
+      });
+    }
+    
+    // Previous buttons
+    for (let i = 2; i <= totalQuestions; i++) {
+      document.getElementById('prev' + i).addEventListener('click', () => {
+        showQuestion(i - 1);
+      });
+    }
+    
+    // Submit
+    document.getElementById('submitSurvey').addEventListener('click', () => {
+      responses.email = document.getElementById('emailInput').value;
+      
+      // Show success
+      document.getElementById('surveyQuestions').style.display = 'none';
+      document.querySelector('.progress-bar').style.display = 'none';
+      document.querySelector('.progress-text').style.display = 'none';
+      document.getElementById('surveySuccess').style.display = 'block';
+      
+      // Fill summary
+      const labels = {
+        q1: responses.q1 ? responses.q1 + ' Stars' : '—',
+        q2: { yes: 'Yes', maybe: 'Maybe', no: 'No' }[responses.q2] || '—',
+        q3: { speed: 'Speed', complexity: 'Complexity', blockchain: 'Blockchain', reliability: 'Reliability', privacy: 'Privacy' }[responses.q3] || '—',
+        q4: { definitely: 'Definitely', probably: 'Probably', maybe: 'Maybe', no: 'Not Interested' }[responses.q4] || '—',
+        q5: { storage: 'Storage', messaging: 'Messaging', cdn: 'CDN', enterprise: 'Enterprise', personal: 'Personal' }[responses.q5] || '—',
+        q6: { immediately: 'Immediately', '3months': '3 Months', '6months': '6-12 Months', evaluating: 'Evaluating' }[responses.q6] || '—'
+      };
+      
+      document.getElementById('sum1').textContent = labels.q1;
+      document.getElementById('sum2').textContent = labels.q2;
+      document.getElementById('sum3').textContent = labels.q3;
+      document.getElementById('sum4').textContent = labels.q4;
+      document.getElementById('sum5').textContent = labels.q5;
+      document.getElementById('sum6').textContent = labels.q6;
+      
+      // Scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  </script>
+</body>
+</html>
