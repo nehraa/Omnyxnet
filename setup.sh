@@ -23,11 +23,13 @@ NC='\033[0m' # No Color
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+PROJECT_ROOT="$SCRIPT_DIR"
 INFRA_DIR="$SCRIPT_DIR/infra"
 SERVICES_DIR="$PROJECT_ROOT/services"
 TEST_LOG_FILE="$PROJECT_ROOT/test_e2e.log"
 DOCKER_COMPOSE_FILE="$INFRA_DIR/docker-compose.yaml"
+DEMO_DIR="$PROJECT_ROOT/demo"
+DEMO_PORT=8000
 
 # Test parameters
 TEST_TIMEOUT=300  # 5 minutes
@@ -304,6 +306,152 @@ error_summary() {
 }
 
 ################################################################################
+# Industry Demo Functions
+################################################################################
+
+validate_demo_environment() {
+    print_section "🎯 DEMO: Environment Validation"
+    
+    log_info "Checking for Python3..."
+    
+    if ! command -v python3 &> /dev/null; then
+        log_error "Python3 is required for the demo server."
+        log_info "Please install Python 3.8+ and try again."
+        exit 1
+    fi
+    log_success "Python3 found: $(python3 --version)"
+    
+    # Check pip
+    if ! command -v pip3 &> /dev/null && ! python3 -m pip --version &> /dev/null; then
+        log_error "pip is required for installing demo dependencies."
+        exit 1
+    fi
+    log_success "pip found"
+    
+    # Check demo directory exists
+    if [ ! -d "$DEMO_DIR" ]; then
+        log_error "Demo directory not found at $DEMO_DIR"
+        exit 1
+    fi
+    log_success "Demo directory validated"
+    
+    # Check demo files exist
+    if [ ! -f "$DEMO_DIR/server.py" ]; then
+        log_error "Demo server not found at $DEMO_DIR/server.py"
+        exit 1
+    fi
+    log_success "Demo server file found"
+    
+    if [ ! -f "$DEMO_DIR/static/index.html" ]; then
+        log_error "Demo dashboard not found at $DEMO_DIR/static/index.html"
+        exit 1
+    fi
+    log_success "Demo dashboard found"
+}
+
+install_demo_dependencies() {
+    print_section "📦 DEMO: Installing Dependencies"
+    
+    log_info "Installing web server dependencies..."
+    
+    if python3 -m pip install -r "$DEMO_DIR/requirements.txt" -q; then
+        log_success "Demo dependencies installed successfully"
+    else
+        log_error "Failed to install demo dependencies"
+        exit 1
+    fi
+}
+
+start_demo_server() {
+    print_section "🌐 DEMO: Starting Local Server"
+    
+    log_info "Starting demo server on port $DEMO_PORT..."
+    
+    cd "$DEMO_DIR"
+    
+    # Start server in background
+    python3 server.py &
+    SERVER_PID=$!
+    
+    # Wait for server to start
+    log_info "Waiting for server to initialize..."
+    sleep 3
+    
+    # Check if server is running
+    if ! kill -0 $SERVER_PID 2>/dev/null; then
+        log_error "Demo server failed to start"
+        exit 1
+    fi
+    log_success "Demo server running (PID: $SERVER_PID)"
+    
+    # Try to open browser
+    DEMO_URL="http://localhost:$DEMO_PORT"
+    log_info "Opening dashboard in browser: $DEMO_URL"
+    
+    if command -v open &> /dev/null; then
+        open "$DEMO_URL" 2>/dev/null || true
+    elif command -v xdg-open &> /dev/null; then
+        xdg-open "$DEMO_URL" 2>/dev/null || true
+    elif command -v start &> /dev/null; then
+        start "$DEMO_URL" 2>/dev/null || true
+    else
+        log_warning "Could not auto-open browser. Please navigate to: $DEMO_URL"
+    fi
+    
+    echo ""
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}  🚀 PANGEA NET DEMO IS RUNNING${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo "  Dashboard URL:  $DEMO_URL"
+    echo "  Server PID:     $SERVER_PID"
+    echo ""
+    echo "  Press CTRL+C to stop the demo server."
+    echo ""
+    
+    # Cleanup on exit
+    cleanup_demo() {
+        echo ""
+        log_info "Shutting down demo server..."
+        kill $SERVER_PID 2>/dev/null || true
+        log_success "Demo server stopped"
+        exit 0
+    }
+    
+    trap cleanup_demo INT TERM
+    
+    # Wait for server process
+    wait $SERVER_PID
+}
+
+run_demo() {
+    print_section "🚀 PANGEA NETWORK - INDUSTRY DEMO"
+    
+    echo "  This demo showcases the Pangea distributed network capabilities"
+    echo "  through an interactive web dashboard."
+    echo ""
+    
+    validate_demo_environment
+    install_demo_dependencies
+    start_demo_server
+}
+
+show_help() {
+    echo ""
+    echo "Usage: ./setup.sh [OPTIONS]"
+    echo ""
+    echo "Options:"
+    echo "  --demo      Launch the industry demo dashboard"
+    echo "  --help      Show this help message"
+    echo "  (no args)   Run the full E2E test suite"
+    echo ""
+    echo "Examples:"
+    echo "  ./setup.sh           # Run E2E tests with Docker"
+    echo "  ./setup.sh --demo    # Start the demo web dashboard"
+    echo ""
+}
+
+################################################################################
 # Main Execution Flow
 ################################################################################
 
@@ -333,4 +481,20 @@ main() {
 }
 
 # Run main function
-main "$@"
+case "${1:-}" in
+    --demo)
+        run_demo
+        ;;
+    --help|-h)
+        show_help
+        exit 0
+        ;;
+    "")
+        main "$@"
+        ;;
+    *)
+        log_error "Unknown option: $1"
+        show_help
+        exit 1
+        ;;
+esac

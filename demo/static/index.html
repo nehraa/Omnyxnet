@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pangea Net - Command Center</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Custom Styles -->
+    <link href="/static/style.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary">
+        <div class="container-fluid">
+            <a class="navbar-brand d-flex align-items-center" href="#">
+                <i class="bi bi-hdd-network me-2 text-primary"></i>
+                <span class="fw-bold">Pangea Net</span>
+            </a>
+            <div class="d-flex align-items-center">
+                <span id="system-status" class="badge bg-success me-3">
+                    <i class="bi bi-circle-fill me-1 pulse"></i>
+                    System Online
+                </span>
+                <span class="text-muted small">v1.0.0-DEMO</span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        <!-- Section B: Metrics Deck -->
+        <div class="row g-4 mb-4">
+            <!-- Metric Card 1: Files Processed -->
+            <div class="col-md-4 col-lg-2">
+                <div class="card bg-dark border-secondary h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-file-earmark-check text-success metric-icon"></i>
+                        <h3 id="metric-files" class="metric-value">150</h3>
+                        <p class="text-muted mb-0 small">Files Processed</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Metric Card 2: Success Rate -->
+            <div class="col-md-4 col-lg-2">
+                <div class="card bg-dark border-secondary h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-check-circle text-info metric-icon"></i>
+                        <h3 id="metric-success" class="metric-value">98.5%</h3>
+                        <p class="text-muted mb-0 small">Success Rate</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Metric Card 3: Active Nodes -->
+            <div class="col-md-4 col-lg-2">
+                <div class="card bg-dark border-secondary h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-diagram-3 text-warning metric-icon"></i>
+                        <h3 id="metric-nodes" class="metric-value">3</h3>
+                        <p class="text-muted mb-0 small">Active Nodes</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Metric Card 4: Compute Tasks -->
+            <div class="col-md-4 col-lg-2">
+                <div class="card bg-dark border-secondary h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-cpu text-primary metric-icon"></i>
+                        <h3 id="metric-tasks" class="metric-value">45</h3>
+                        <p class="text-muted mb-0 small">Compute Tasks</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Metric Card 5: Network Latency -->
+            <div class="col-md-4 col-lg-2">
+                <div class="card bg-dark border-secondary h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-speedometer2 text-success metric-icon"></i>
+                        <h3 id="metric-latency" class="metric-value">0.33ms</h3>
+                        <p class="text-muted mb-0 small">Network Latency</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Metric Card 6: Status -->
+            <div class="col-md-4 col-lg-2">
+                <div class="card bg-dark border-secondary h-100">
+                    <div class="card-body text-center">
+                        <i id="status-icon" class="bi bi-pause-circle text-secondary metric-icon"></i>
+                        <h3 id="metric-status" class="metric-value text-secondary">Idle</h3>
+                        <p class="text-muted mb-0 small">Active Status</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Section C: Action Center -->
+            <div class="col-lg-6">
+                <div class="card bg-dark border-secondary h-100">
+                    <div class="card-header border-secondary">
+                        <i class="bi bi-lightning-charge me-2"></i>
+                        <span class="fw-bold">Action Center</span>
+                    </div>
+                    <div class="card-body">
+                        <!-- Configuration -->
+                        <div class="mb-4">
+                            <label class="form-label text-muted">Complexity Level</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="complexity" id="complexity-low" value="low">
+                                <label class="btn btn-outline-secondary" for="complexity-low">Low</label>
+                                
+                                <input type="radio" class="btn-check" name="complexity" id="complexity-medium" value="medium" checked>
+                                <label class="btn btn-outline-secondary" for="complexity-medium">Medium</label>
+                                
+                                <input type="radio" class="btn-check" name="complexity" id="complexity-high" value="high">
+                                <label class="btn btn-outline-secondary" for="complexity-high">High</label>
+                            </div>
+                        </div>
+                        
+                        <!-- Execute Button -->
+                        <div class="d-grid gap-2 mb-4">
+                            <button id="execute-btn" class="btn btn-primary btn-lg execute-btn">
+                                <i class="bi bi-play-fill me-2"></i>
+                                EXECUTE ANALYSIS
+                            </button>
+                            <button id="reset-btn" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-counterclockwise me-2"></i>
+                                Reset Demo State
+                            </button>
+                        </div>
+                        
+                        <!-- Terminal Log -->
+                        <div class="terminal" id="terminal">
+                            <div class="terminal-header">
+                                <span class="terminal-dot red"></span>
+                                <span class="terminal-dot yellow"></span>
+                                <span class="terminal-dot green"></span>
+                                <span class="ms-2 small text-muted">pangea-console</span>
+                            </div>
+                            <div class="terminal-body" id="terminal-body">
+                                <div class="terminal-line">
+                                    <span class="terminal-prompt">$</span>
+                                    <span class="text-muted">Waiting for command...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Nodes Panel -->
+            <div class="col-lg-6">
+                <div class="card bg-dark border-secondary h-100">
+                    <div class="card-header border-secondary">
+                        <i class="bi bi-hdd-stack me-2"></i>
+                        <span class="fw-bold">Network Nodes</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="nodes-container">
+                            <!-- Node cards will be dynamically inserted here -->
+                        </div>
+                        
+                        <!-- Recent Tasks -->
+                        <h6 class="mt-4 mb-3">
+                            <i class="bi bi-list-check me-2"></i>
+                            Recent Tasks
+                        </h6>
+                        <div class="table-responsive">
+                            <table class="table table-dark table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Task ID</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tasks-table">
+                                    <!-- Tasks will be dynamically inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="row mt-4">
+            <div class="col-12 text-center text-muted small">
+                <p class="mb-0">
+                    Pangea Net Demo | Uptime: <span id="uptime">00:00:00</span> | 
+                    <i class="bi bi-github me-1"></i>
+                    <a href="#" class="text-muted">github.com/pangea-net</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Dashboard Script -->
+    <script>
+        // API Base URL
+        const API_BASE = '';
+        
+        // State
+        let isProcessing = false;
+        
+        // DOM Elements
+        const executeBtn = document.getElementById('execute-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const terminalBody = document.getElementById('terminal-body');
+        const systemStatus = document.getElementById('system-status');
+        
+        // Update metrics display
+        function updateMetrics(metrics) {
+            document.getElementById('metric-files').textContent = metrics.files_processed || 0;
+            document.getElementById('metric-success').textContent = (metrics.success_rate || 0) + '%';
+            document.getElementById('metric-nodes').textContent = metrics.nodes_active || 0;
+            document.getElementById('metric-tasks').textContent = metrics.compute_tasks || 0;
+            document.getElementById('metric-latency').textContent = (metrics.network_latency_ms || 0) + 'ms';
+        }
+        
+        // Update status display
+        function updateStatus(status) {
+            const statusIcon = document.getElementById('status-icon');
+            const statusText = document.getElementById('metric-status');
+            
+            if (status.is_processing) {
+                statusIcon.className = 'bi bi-gear-fill text-warning metric-icon spin';
+                statusText.textContent = 'Processing...';
+                statusText.className = 'metric-value text-warning';
+                isProcessing = true;
+            } else {
+                statusIcon.className = 'bi bi-pause-circle text-secondary metric-icon';
+                statusText.textContent = 'Idle';
+                statusText.className = 'metric-value text-secondary';
+                isProcessing = false;
+            }
+            
+            // Update system status badge
+            if (status.status === 'healthy') {
+                systemStatus.innerHTML = '<i class="bi bi-circle-fill me-1 pulse"></i> System Online';
+                systemStatus.className = 'badge bg-success me-3';
+            } else {
+                systemStatus.innerHTML = '<i class="bi bi-exclamation-circle-fill me-1"></i> System Warning';
+                systemStatus.className = 'badge bg-warning me-3';
+            }
+            
+            document.getElementById('uptime').textContent = status.uptime || '00:00:00';
+        }
+        
+        // Update nodes display
+        function updateNodes(nodes) {
+            const container = document.getElementById('nodes-container');
+            container.innerHTML = nodes.map(node => `
+                <div class="node-card mb-3 p-3 rounded border border-secondary">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <span class="node-status-dot ${node.status === 'online' ? 'online' : 'offline'}"></span>
+                            <div>
+                                <strong>${node.name}</strong>
+                                <br>
+                                <small class="text-muted">${node.description || node.type}</small>
+                            </div>
+                        </div>
+                        <span class="badge ${getNodeTypeBadge(node.type)}">${node.type}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Get badge class for node type
+        function getNodeTypeBadge(type) {
+            switch (type) {
+                case 'orchestrator': return 'bg-primary';
+                case 'compute': return 'bg-warning';
+                case 'ai-worker': return 'bg-info';
+                default: return 'bg-secondary';
+            }
+        }
+        
+        // Update tasks table
+        function updateTasks(tasks) {
+            const tbody = document.getElementById('tasks-table');
+            tbody.innerHTML = tasks.map(task => `
+                <tr>
+                    <td><code>${task.id}</code></td>
+                    <td>${task.type}</td>
+                    <td><span class="badge bg-success">${task.status}</span></td>
+                    <td>${task.duration_ms}ms</td>
+                </tr>
+            `).join('');
+        }
+        
+        // Update terminal with logs
+        function updateTerminal(logs) {
+            if (!logs || logs.length === 0) return;
+            
+            terminalBody.innerHTML = logs.map(log => `
+                <div class="terminal-line">
+                    <span class="terminal-timestamp">[${log.timestamp}]</span>
+                    <span class="${getLogClass(log.level)}">${log.message}</span>
+                </div>
+            `).join('');
+            
+            // Auto-scroll to bottom
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+        
+        // Get CSS class for log level
+        function getLogClass(level) {
+            switch (level) {
+                case 'success': return 'text-success';
+                case 'error': return 'text-danger';
+                case 'warning': return 'text-warning';
+                default: return 'text-light';
+            }
+        }
+        
+        // Fetch and update all data
+        async function refreshData() {
+            try {
+                // Fetch status
+                const statusRes = await fetch(`${API_BASE}/api/status`);
+                const status = await statusRes.json();
+                updateStatus(status);
+                
+                // Fetch data
+                const dataRes = await fetch(`${API_BASE}/api/data`);
+                const data = await dataRes.json();
+                updateMetrics(data.metrics);
+                updateNodes(data.nodes);
+                updateTasks(data.recent_tasks);
+                updateTerminal(data.logs);
+                
+            } catch (error) {
+                console.error('Failed to fetch data:', error);
+            }
+        }
+        
+        // Execute action
+        async function executeAction() {
+            if (isProcessing) return;
+            
+            const complexity = document.querySelector('input[name="complexity"]:checked').value;
+            
+            try {
+                executeBtn.disabled = true;
+                executeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+                
+                const res = await fetch(`${API_BASE}/api/action/run?complexity=${complexity}`, {
+                    method: 'POST'
+                });
+                
+                if (!res.ok) {
+                    const error = await res.json();
+                    alert(error.detail || 'Failed to execute action');
+                    return;
+                }
+                
+            } catch (error) {
+                console.error('Execute failed:', error);
+                alert('Failed to execute action');
+            } finally {
+                executeBtn.disabled = false;
+                executeBtn.innerHTML = '<i class="bi bi-play-fill me-2"></i>EXECUTE ANALYSIS';
+            }
+        }
+        
+        // Reset demo
+        async function resetDemo() {
+            try {
+                resetBtn.disabled = true;
+                
+                const res = await fetch(`${API_BASE}/api/reset`, {
+                    method: 'POST'
+                });
+                
+                if (res.ok) {
+                    await refreshData();
+                }
+                
+            } catch (error) {
+                console.error('Reset failed:', error);
+            } finally {
+                resetBtn.disabled = false;
+            }
+        }
+        
+        // Event listeners
+        executeBtn.addEventListener('click', executeAction);
+        resetBtn.addEventListener('click', resetDemo);
+        
+        // Initial load and periodic refresh
+        refreshData();
+        setInterval(refreshData, 2000);
+    </script>
+</body>
+</html>
