@@ -58,8 +58,10 @@ services:
       -libp2p=true 
       -libp2p-port=9082
       -mdns=true
-      -peers=/ip4/172.30.0.10/tcp/9081
       -local
+    # Note: Peer discovery happens automatically via mDNS in local mode.
+    # For explicit peer connection, use full multiaddr format:
+    # -peers=/ip4/172.30.0.10/tcp/9081/p2p/12D3KooWPeerIDHere
     ports:
       - "8081:8080"
     networks:
@@ -86,8 +88,10 @@ services:
       -libp2p=true 
       -libp2p-port=9083
       -mdns=true
-      -peers=/ip4/172.30.0.10/tcp/9081
       -local
+    # Note: Peer discovery happens automatically via mDNS in local mode.
+    # For explicit peer connection, use full multiaddr format:
+    # -peers=/ip4/172.30.0.10/tcp/9081/p2p/12D3KooWPeerIDHere
     ports:
       - "8082:8080"
     networks:
@@ -114,8 +118,10 @@ services:
       -libp2p=true 
       -libp2p-port=9084
       -mdns=true
-      -peers=/ip4/172.30.0.10/tcp/9081
       -local
+    # Note: Peer discovery happens automatically via mDNS in local mode.
+    # For explicit peer connection, use full multiaddr format:
+    # -peers=/ip4/172.30.0.10/tcp/9081/p2p/12D3KooWPeerIDHere
     ports:
       - "8083:8080"
     networks:
