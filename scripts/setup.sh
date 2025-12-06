@@ -539,7 +539,6 @@ start_manager_node() {
         -capnp-addr=":${CAPNP_PORT}" \
         -libp2p=true \
         -libp2p-port="${LIBP2P_PORT}" \
-        -mdns=true \
         -local \
         2>&1 | tee -a "$HOME/.wgt/logs/network.log" &
     
@@ -661,7 +660,6 @@ start_worker_node() {
         -capnp-addr=":${CAPNP_PORT}" \
         -libp2p=true \
         -libp2p-port="${LIBP2P_PORT}" \
-        -mdns=true \
         -peers="${MANAGER_PEER}" \
         -local \
         2>&1 | tee -a "$HOME/.wgt/logs/network.log" &
