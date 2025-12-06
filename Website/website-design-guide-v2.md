@@ -50,7 +50,7 @@ to be 3-5x faster than existing systems"
 ```
 
 **What You've Built:**
-- Real P2P performance: **0.33ms latency** (300x better than IPFS)
+- Real P2P performance: **0.33ms latency** (3-5x better than existing p2p protocols)
 - ML-powered failure prediction: **80% accuracy**, 10-minute warning
 - Enterprise-grade reliability: **99.9% uptime** with predictive migration
 - Multi-language architecture: Python + Go + Rust seamlessly integrated
@@ -65,7 +65,7 @@ This isn't theoretical. This works.
 2. **Test genuine market traction** - Survey to validate actual interest from 3 target segments
 3. **Establish premium positioning** - Elegant, minimalist, mission-driven (human-focused, not hype-focused)
 4. **Capture early adopters** - Get on waitlist, show working CLI demo
-5. **Create founder credibility** - Your story + research depth + 2 years obsession = legitimate
+5. **Create founder credibility** - Your story + research depth + years of obsession = legitimate
 6. **Hint at architectural sophistication** - Deep without being overwhelming
 
 ### Why This Website Matters
@@ -91,7 +91,7 @@ Your three target segments have fundamentally different psychological needs:
 
 **Emotional Triggers:**
 - **Specificity** - "0.33ms latency" hits harder than "very fast"
-- **Evidence of obsession** - 2 years of research = you care about this RIGHT
+- **Evidence of obsession** - Several years of research = you care about this RIGHT
 - **Architecture clarity** - They can sense if you understand your own system
 - **No marketing BS** - They hate hype. Give them facts.
 

@@ -42,7 +42,7 @@
 
 ### Target Segments (Prioritized)
 1. **Privacy-Conscious Users** - Activists, journalists, whistleblowers, international families, remote teams needing true encryption
-2. **Technical Founders/CTOs** - Looking for better infrastructure than IPFS/AWS for their applications
+2. **Technical Founders/CTOs** - Looking for better infrastructure with superior performance for their applications
 3. **Developers & Researchers** - Want to build on open protocols without vendor lock-in
 
 ### Core Brand Pillars
@@ -268,7 +268,7 @@ Your numbers:
 - "80% accuracy" > "predictive ML"
 - "69.21 MB/s throughput" > "high performance"
 - "99.9% uptime" > "reliable"
-- "3-5x faster than IPFS" > "better performance"
+- "3-5x better than existing p2p protocols" > "better performance"
 - "10-minute failure prediction" > "predictive capability"
 - "8 years combined research" > "experienced team"
 
@@ -571,7 +571,7 @@ GRID OF 4 KEY ADVANTAGES:
 [CARD 1: Performance]
 Icon: Speedometer or trending up graph (animated)
 Headline: "0.33ms P2P Latency"
-Subheadline: "300x better than IPFS baseline"
+Subheadline: "3-5x better than existing p2p protocols"
 Copy: "By adapting transfers to network conditions in real-time, 
 we eliminate the bottleneck that makes other P2P slow."
 Visual: Animated bar chart trending up
@@ -717,7 +717,7 @@ STATS BAR (underneath diagram):
 ┌──────────────────────────────────────────────────┐
 │ 15,000+ Lines of Production Code                 │
 │ 86 Automated Tests Passing                       │
-│ 2 Years Academic Research                        │
+│ Several Years of Academic Research                │
 │ 3 Languages Working in Harmony                   │
 └──────────────────────────────────────────────────┘
 
@@ -814,15 +814,15 @@ Networking became my obsession—not the devices,
 but how systems fail, how they're protected, 
 how we choose what matters.
 
-After 2 years studying why peer-to-peer systems fail,
+After several years studying why peer-to-peer systems fail,
 I realized something: They fail not because decentralization 
 is harder, but because no one optimized for it.
-IPFS is incredible. BitTorrent pioneered the space.
+Existing p2p protocols were pioneering. BitTorrent was revolutionary.
 But they were built before modern phones had ML accelerators,
 before 5G existed, before we understood how to predict failures.
 
-I spent 2 years building what's only possible today:
-Decentralized infrastructure that's faster, cheaper, 
+I spent several years building what's only possible today:
+Decentralized infrastructure that's 3-5x better than existing p2p protocols, 
 and more private than anything centralized.
 
 But here's the real reason I'm building this:
@@ -950,9 +950,9 @@ Your phone is a supercomputer. A thousand times more powerful
 than Apollo 11's computer. Yet we use these devices to run bloatware
 and send surveillance data to servers in Virginia.
 
-I spent 2 years building what's only possible in 2025:
+I spent several years building what's only possible in 2025:
 A network that predicts failures before they happen.
-That transfers data 3-5x faster than centralized systems.
+That transfers data 3-5x better than existing p2p protocols.
 That never gives anyone access to your data.
 
 But the real reason I'm building this is simpler:
@@ -964,7 +964,7 @@ The technology is finally mature. The market is ready.
 This is the moment."
 
 ACHIEVEMENTS (Subtle list):
-- "2 years intensive research in distributed systems"
+- "Several years of intensive research in distributed systems"
 - "Research assistant in distributed computing"
 - "Multiple papers on P2P protocol optimization"  
 - "Built working prototype with measurable improvements"
@@ -1038,7 +1038,7 @@ SUBSECTION 2: Performance Metrics
 Column 1: P2P Latency
 - Headline: "0.33ms"
 - Subheadline: "P2P Average"
-- Context: "300x better than IPFS baseline"
+- Context: "3-5x better than existing p2p protocols"
 - Icon: Network nodes with connecting lines
 - Color: Teal accent on number
 
@@ -1231,7 +1231,7 @@ SUBSECTION 1: Market Size
 [TAM VISUALIZATION - Three overlapping circles]
 
 Circle 1: Decentralized Storage
-- IPFS/Filecoin ecosystem
+- Decentralized infrastructure ecosystem
 - Size: $10B+ potential
 - Growing with Web3
 
@@ -1259,7 +1259,7 @@ SUBSECTION 2: Why Existing Solutions Fall Short
 
 [COMPARISON TABLE]
 
-Criteria          | IPFS    | BitTorrent | Filecoin | AWS      | Pangea
+Criteria          | Existing P2P | BitTorrent | Filecoin | AWS      | Pangea
 -----------------|---------|------------|----------|----------|----------
 Speed             | Slow    | Medium     | Slow     | Very Fast| Fastest
 Privacy           | Optional| Partial    | No       | No       | Default
@@ -1276,7 +1276,7 @@ TONE: Respectful, not shady
       - Collaborative, not competitive
 
 COPY BELOW TABLE:
-"IPFS proved decentralized storage could work at scale.
+"Existing p2p protocols proved decentralized systems could work at scale.
 Filecoin created economic incentives for persistence.
 BitTorrent showed the world P2P could be powerful.
 
@@ -1294,12 +1294,12 @@ SUBSECTION 3: Our Unique Advantages
    - Patent-worthy IP
 
 2. All-in-One Platform
-   - Competitors do ONE thing (IPFS = storage, BitTorrent = sharing)
+   - Competitors do ONE thing (storage, sharing, etc.)
    - We do storage + messaging + calls + translation
    - Network effects compound
 
 3. Business Model That Works
-   - IPFS has no revenue model (relies on funding)
+   - Some competitors lack sustainable revenue models (rely on funding)
    - Filecoin's blockchain creates friction for mainstream adoption
    - We use proven SaaS model
    - Can undercut AWS by 40-60% and still profit
@@ -1825,7 +1825,7 @@ PATTERN: Usually question or claim
 ```
 RULE 1: Specificity > Vagueness
 ❌ "Our infrastructure is very fast"
-✅ "0.33ms P2P latency, 300x better than IPFS"
+✅ "0.33ms P2P latency, 3-5x better than existing p2p protocols"
 
 RULE 2: One idea per sentence
 ❌ "Our system is faster, more secure, and more reliable 
@@ -2220,7 +2220,7 @@ when every theory says it should work?
 The answer: It's not impossible. It's just not been done right.
 
 Most P2P systems were built before the technology matured.
-IPFS was revolutionary. BitTorrent was pioneering.
+Existing p2p systems were revolutionary. BitTorrent was pioneering.
 But they were built when phones were slow,
 when internet uploads were measured in kilobits,
 when we didn't have machine learning accelerators in our pockets.
