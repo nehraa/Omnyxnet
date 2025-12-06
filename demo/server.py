@@ -608,14 +608,7 @@ def main():
     logger.info(f"🌐 Port: {port}")
     logger.info("🔒 Binding to localhost only (127.0.0.1) for security")
     
-    # Try to auto-connect to Go node on startup
-    if GO_CLIENT_AVAILABLE:
-        logger.info("🔍 Attempting to auto-connect to Go node...")
-        if state.connect_to_go_node():
-            logger.info("✅ Auto-connected to Go node successfully")
-        else:
-            logger.info("ℹ️  No Go node found - using simulated data")
-            logger.info("   Start a Go node and use the Connect button in the UI")
+    # Note: Auto-connect is handled in the startup event
     
     uvicorn.run(
         app,
