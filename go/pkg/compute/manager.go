@@ -1018,10 +1018,11 @@ func generateJobID() string {
 
 // truncateID safely truncates a string ID for logging, handling UTF-8 properly
 func truncateID(id string, maxLen int) string {
+	// Fast path: if byte length is within limit, no truncation needed
 	if len(id) <= maxLen {
 		return id
 	}
-	// Convert to runes to handle multi-byte UTF-8 characters safely
+	// Convert to runes only when truncation is needed to handle multi-byte UTF-8 safely
 	runes := []rune(id)
 	if len(runes) <= maxLen {
 		return id
