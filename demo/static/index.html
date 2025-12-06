@@ -33,70 +33,48 @@
     </nav>
 
     <div class="container-fluid py-4">
-        <!-- Section B: Metrics Deck -->
+        <!-- Section B: Real-Time Status (Fake metrics removed) -->
         <div class="row g-4 mb-4">
-            <!-- Metric Card 1: Files Processed -->
-            <div class="col-md-4 col-lg-2">
-                <div class="card bg-dark border-secondary h-100">
-                    <div class="card-body text-center">
-                        <i class="bi bi-file-earmark-check text-success metric-icon"></i>
-                        <h3 id="metric-files" class="metric-value">150</h3>
-                        <p class="text-muted mb-0 small">Files Processed</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Metric Card 2: Success Rate -->
-            <div class="col-md-4 col-lg-2">
-                <div class="card bg-dark border-secondary h-100">
-                    <div class="card-body text-center">
-                        <i class="bi bi-check-circle text-info metric-icon"></i>
-                        <h3 id="metric-success" class="metric-value">98.5%</h3>
-                        <p class="text-muted mb-0 small">Success Rate</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Metric Card 3: Active Nodes -->
-            <div class="col-md-4 col-lg-2">
+            <!-- Active Nodes -->
+            <div class="col-md-3">
                 <div class="card bg-dark border-secondary h-100">
                     <div class="card-body text-center">
                         <i class="bi bi-diagram-3 text-warning metric-icon"></i>
-                        <h3 id="metric-nodes" class="metric-value">3</h3>
+                        <h3 id="metric-nodes" class="metric-value">0</h3>
                         <p class="text-muted mb-0 small">Active Nodes</p>
                     </div>
                 </div>
             </div>
             
-            <!-- Metric Card 4: Compute Tasks -->
-            <div class="col-md-4 col-lg-2">
-                <div class="card bg-dark border-secondary h-100">
-                    <div class="card-body text-center">
-                        <i class="bi bi-cpu text-primary metric-icon"></i>
-                        <h3 id="metric-tasks" class="metric-value">45</h3>
-                        <p class="text-muted mb-0 small">Compute Tasks</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Metric Card 5: Network Latency -->
-            <div class="col-md-4 col-lg-2">
-                <div class="card bg-dark border-secondary h-100">
-                    <div class="card-body text-center">
-                        <i class="bi bi-speedometer2 text-success metric-icon"></i>
-                        <h3 id="metric-latency" class="metric-value">0.33ms</h3>
-                        <p class="text-muted mb-0 small">Network Latency</p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Metric Card 6: Status -->
-            <div class="col-md-4 col-lg-2">
+            <!-- Connection Status -->
+            <div class="col-md-3">
                 <div class="card bg-dark border-secondary h-100">
                     <div class="card-body text-center">
                         <i id="status-icon" class="bi bi-pause-circle text-secondary metric-icon"></i>
                         <h3 id="metric-status" class="metric-value text-secondary">Idle</h3>
-                        <p class="text-muted mb-0 small">Active Status</p>
+                        <p class="text-muted mb-0 small">System Status</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- P2P Peers -->
+            <div class="col-md-3">
+                <div class="card bg-dark border-secondary h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-people text-info metric-icon"></i>
+                        <h3 id="metric-peers" class="metric-value">0</h3>
+                        <p class="text-muted mb-0 small">Connected Peers</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Execution Count -->
+            <div class="col-md-3">
+                <div class="card bg-dark border-secondary h-100">
+                    <div class="card-body text-center">
+                        <i class="bi bi-check2-circle text-success metric-icon"></i>
+                        <h3 id="metric-executions" class="metric-value">0</h3>
+                        <p class="text-muted mb-0 small">Executions</p>
                     </div>
                 </div>
             </div>
@@ -111,21 +89,6 @@
                         <span class="fw-bold">Action Center</span>
                     </div>
                     <div class="card-body">
-                        <!-- Configuration -->
-                        <div class="mb-4">
-                            <label class="form-label text-muted">Complexity Level</label>
-                            <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="complexity" id="complexity-low" value="low">
-                                <label class="btn btn-outline-secondary" for="complexity-low">Low</label>
-                                
-                                <input type="radio" class="btn-check" name="complexity" id="complexity-medium" value="medium" checked>
-                                <label class="btn btn-outline-secondary" for="complexity-medium">Medium</label>
-                                
-                                <input type="radio" class="btn-check" name="complexity" id="complexity-high" value="high">
-                                <label class="btn btn-outline-secondary" for="complexity-high">High</label>
-                            </div>
-                        </div>
-                        
                         <!-- Connection Panel -->
                         <div class="mb-4">
                             <label class="form-label text-muted">
@@ -498,13 +461,11 @@
         async function executeAction() {
             if (isProcessing) return;
             
-            const complexity = document.querySelector('input[name="complexity"]:checked').value;
-            
             try {
                 executeBtn.disabled = true;
                 executeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
                 
-                const res = await fetch(`${API_BASE}/api/action/run?complexity=${complexity}`, {
+                const res = await fetch(`${API_BASE}/api/action/run`, {
                     method: 'POST'
                 });
                 

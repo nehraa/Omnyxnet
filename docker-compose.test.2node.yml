@@ -59,8 +59,10 @@ services:
       -libp2p=true 
       -libp2p-port=9082
       -mdns=true
-      -peers=/ip4/172.28.0.10/tcp/9081
       -local
+    # Note: Peer discovery happens automatically via mDNS in local mode.
+    # For explicit peer connection, use full multiaddr format:
+    # -peers=/ip4/172.28.0.10/tcp/9081/p2p/12D3KooWBhSNFXL9HQQBAJDsmMM4bFgFxN9pRJ9xGmBQd3bVZwjx
     ports:
       - "8081:8080"   # Cap'n Proto RPC
       - "9082:9082"   # libp2p P2P

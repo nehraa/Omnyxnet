@@ -63,14 +63,8 @@ SEED_DATA_FILE = DEMO_DIR / "demo_seed.json"
 GO_NODE_HOST = os.environ.get("GO_NODE_HOST", "localhost")
 GO_NODE_PORT = int(os.environ.get("GO_NODE_PORT", 8080))
 
-# Processing complexity delay configuration (in seconds)
-# Extracted as constants for maintainability and testability
-COMPLEXITY_DELAYS = {
-    "low": 0.3,
-    "medium": 0.5,
-    "high": 0.8
-}
-DEFAULT_COMPLEXITY_DELAY = 0.5
+# Note: Artificial "complexity delays" have been removed.
+# All processing now happens at actual network speed without fake delays.
 
 # FastAPI application
 app = FastAPI(
@@ -164,15 +158,14 @@ class DemoState:
             return None
         
         try:
-            # Get network metrics from Go node
+            # Get network metrics from Go node  
             metrics = self.go_client.get_network_metrics()
             if metrics:
                 return {
-                    "files_processed": self.data.get("metrics", {}).get("files_processed", 0),
-                    "success_rate": 98.5,  # Calculated
                     "nodes_active": metrics.get("peerCount", 0) + 1,
-                    "compute_tasks": self.execution_count,
-                    "network_latency_ms": metrics.get("avgRttMs", 0.33),
+                    "connected_peers": metrics.get("peerCount", 0),
+                    "executions": self.execution_count,
+                    "network_latency_ms": metrics.get("avgRttMs", 0),
                     "throughput_mbps": metrics.get("bandwidthMbps", 0)
                 }
         except Exception as e:
@@ -184,15 +177,14 @@ class DemoState:
         if SEED_DATA_FILE.exists():
             with open(SEED_DATA_FILE, "r") as f:
                 return json.load(f)
-        # Default seed data if file doesn't exist
+        # Default seed data if file doesn't exist (cleaned up - no fake metrics)
         return {
             "metrics": {
-                "files_processed": 150,
-                "success_rate": 98.5,
-                "nodes_active": 3,
-                "compute_tasks": 45,
-                "network_latency_ms": 0.33,
-                "throughput_mbps": 125.5
+                "nodes_active": 0,
+                "connected_peers": 0,
+                "executions": 0,
+                "network_latency_ms": 0,
+                "throughput_mbps": 0
             },
             "nodes": [
                 {"id": 1, "name": "go-orchestrator", "status": "online", "type": "orchestrator"},
@@ -362,7 +354,7 @@ async def get_logs():
     }
 
 
-async def simulate_processing(complexity: str = "medium"):
+async def simulate_processing():
     """
     Simulates the distributed processing pipeline.
     This would normally trigger the actual core logic.
@@ -370,8 +362,8 @@ async def simulate_processing(complexity: str = "medium"):
     """
     state.add_log("🚀 Initializing distributed pipeline...", "info")
     
-    # Use configured complexity delays
-    delay = COMPLEXITY_DELAYS.get(complexity, DEFAULT_COMPLEXITY_DELAY)
+    # Small delay for visual feedback only (not artificial complexity delay)
+    delay = 0.2
     
     try:
         # Simulate Go orchestrator initialization
@@ -394,11 +386,11 @@ async def simulate_processing(complexity: str = "medium"):
         await asyncio.sleep(delay)
         state.add_log("🔄 Gradient synchronization in progress...", "info")
         
-        # Update metrics and recent_tasks with lock protection
+        # Update execution count with lock protection
         async with state.processing_lock:
             metrics = state.data.get("metrics", {})
-            metrics["files_processed"] = metrics.get("files_processed", 0) + 10
-            metrics["compute_tasks"] = metrics.get("compute_tasks", 0) + 1
+            # Note: Fake metrics removed - only real execution count tracked
+            metrics["executions"] = metrics.get("executions", 0) + 1
             
             # Add completed task
             tasks = state.data.get("recent_tasks", [])
@@ -425,17 +417,12 @@ async def simulate_processing(complexity: str = "medium"):
 
 
 @app.post("/api/action/run")
-async def run_action(
-    background_tasks: BackgroundTasks, 
-    complexity: str = Query(default="medium", pattern="^(low|medium|high)$")
-):
+async def run_action(background_tasks: BackgroundTasks):
     """
     The Big Button - triggers the main distributed processing logic.
     
-    Args:
-        complexity: Processing complexity level (low, medium, high)
-    
-    Note: Input validation is handled by FastAPI Query pattern regex.
+    Note: Artificial "complexity" parameter has been removed. 
+    Processing now runs at actual network speed.
     """
     # Use lock to prevent race conditions
     async with state.processing_lock:
@@ -447,13 +434,13 @@ async def run_action(
         state.is_processing = True
     
     # Start processing in background
-    background_tasks.add_task(simulate_processing, complexity)
+    background_tasks.add_task(simulate_processing)
     
-    state.add_log(f"📦 Starting execution (complexity: {complexity})...", "info")
+    state.add_log(f"📦 Starting execution...", "info")
     
     return {
         "status": "started",
-        "message": f"Execution started with {complexity} complexity",
+        "message": "Execution started",
         "execution_id": state.execution_count + 1
     }
 

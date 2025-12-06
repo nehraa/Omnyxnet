@@ -66,7 +66,7 @@ All network information is stored at:
   "updated_at": "2025-12-05T14:30:00+00:00",
   "local_node": {
     "node_id": "node-1",
-    "multiaddr": "/ip4/192.168.1.100/tcp/9081",
+    "multiaddr": "/ip4/192.168.1.100/tcp/9081/p2p/12D3KooWBhSNFXL9HQQBAJDsmMM4bFgFxN9pRJ9xGmBQd3bVZwjx",
     "capnp_port": 8080,
     "mode": "manager",
     "started_at": "2025-12-05T14:00:00+00:00",
@@ -139,11 +139,11 @@ source scripts/network_registry.sh
 # Initialize registry
 init_registry
 
-# Save local node info
-save_local_node "node-1" "/ip4/192.168.1.100/tcp/9081" "8080" "manager"
+# Save local node info (with full multiaddr including peer ID)
+save_local_node "node-1" "/ip4/192.168.1.100/tcp/9081/p2p/12D3KooWBhSNFXL9HQQBAJDsmMM4bFgFxN9pRJ9xGmBQd3bVZwjx" "8080" "manager"
 
-# Save a peer
-save_peer "node-2" "/ip4/192.168.1.101/tcp/9082" "8081" "connected"
+# Save a peer (with full multiaddr including peer ID)
+save_peer "node-2" "/ip4/192.168.1.101/tcp/9082/p2p/12D3KooWAnotherValidPeerIDGoesHereBase58Encoded52Chars" "8081" "connected"
 
 # Get all peers
 get_peers  # Returns JSON array
