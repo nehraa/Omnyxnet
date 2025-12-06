@@ -29,7 +29,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 import uvicorn
 
 # Add project root to path for Cap'n Proto client access
@@ -63,6 +63,15 @@ SEED_DATA_FILE = DEMO_DIR / "demo_seed.json"
 GO_NODE_HOST = os.environ.get("GO_NODE_HOST", "localhost")
 GO_NODE_PORT = int(os.environ.get("GO_NODE_PORT", 8080))
 
+# Processing complexity delay configuration (in seconds)
+# Extracted as constants for maintainability and testability
+COMPLEXITY_DELAYS = {
+    "low": 0.3,
+    "medium": 0.5,
+    "high": 0.8
+}
+DEFAULT_COMPLEXITY_DELAY = 0.5
+
 # FastAPI application
 app = FastAPI(
     title="Pangea Net Demo API",
@@ -85,8 +94,8 @@ app.add_middleware(
         "http://127.0.0.1:8000",
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # ============================================================
@@ -136,8 +145,8 @@ class DemoState:
         if self.go_client:
             try:
                 self.go_client.disconnect()
-            except Exception:
-                pass
+            except Exception as e:
+                self.add_log(f"Error during Go node disconnect: {e}", "warning")
             self.go_client = None
             self.connected_to_go = False
     
@@ -266,10 +275,16 @@ async def connect_to_go():
         )
     
     if state.connected_to_go:
-        return {"status": "already_connected", "message": "Already connected to Go node"}
+        return JSONResponse(
+            status_code=200,
+            content={"status": "already_connected", "message": "Already connected to Go node"}
+        )
     
     if state.connect_to_go_node():
-        return {"status": "connected", "message": f"Connected to Go node at {GO_NODE_HOST}:{GO_NODE_PORT}"}
+        return JSONResponse(
+            status_code=201,
+            content={"status": "connected", "message": f"Connected to Go node at {GO_NODE_HOST}:{GO_NODE_PORT}"}
+        )
     else:
         raise HTTPException(
             status_code=503,
@@ -320,9 +335,8 @@ async def simulate_processing(complexity: str = "medium"):
     """
     state.add_log("🚀 Initializing distributed pipeline...", "info")
     
-    # Complexity affects timing
-    delays = {"low": 0.3, "medium": 0.5, "high": 0.8}
-    delay = delays.get(complexity, 0.5)
+    # Use configured complexity delays
+    delay = COMPLEXITY_DELAYS.get(complexity, DEFAULT_COMPLEXITY_DELAY)
     
     try:
         # Simulate Go orchestrator initialization
@@ -345,21 +359,22 @@ async def simulate_processing(complexity: str = "medium"):
         await asyncio.sleep(delay)
         state.add_log("🔄 Gradient synchronization in progress...", "info")
         
-        # Update metrics
-        metrics = state.data.get("metrics", {})
-        metrics["files_processed"] = metrics.get("files_processed", 0) + 10
-        metrics["compute_tasks"] = metrics.get("compute_tasks", 0) + 1
-        
-        # Add completed task
-        tasks = state.data.get("recent_tasks", [])
-        new_task = {
-            "id": f"task-{state.execution_count + 4:03d}",
-            "type": ["gradient_sync", "data_shard", "ai_inference"][state.execution_count % 3],
-            "status": "completed",
-            "duration_ms": int(delay * 5 * 1000)
-        }
-        tasks.insert(0, new_task)
-        state.data["recent_tasks"] = tasks[:10]  # Keep last 10
+        # Update metrics and recent_tasks with lock protection
+        async with state.processing_lock:
+            metrics = state.data.get("metrics", {})
+            metrics["files_processed"] = metrics.get("files_processed", 0) + 10
+            metrics["compute_tasks"] = metrics.get("compute_tasks", 0) + 1
+            
+            # Add completed task
+            tasks = state.data.get("recent_tasks", [])
+            new_task = {
+                "id": f"task-{state.execution_count + 4:03d}",
+                "type": ["gradient_sync", "data_shard", "ai_inference"][state.execution_count % 3],
+                "status": "completed",
+                "duration_ms": int(delay * 5 * 1000)
+            }
+            tasks.insert(0, new_task)
+            state.data["recent_tasks"] = tasks[:10]  # Keep last 10
         
         await asyncio.sleep(delay)
         state.add_log("✅ Task completed successfully!", "success")
@@ -369,7 +384,9 @@ async def simulate_processing(complexity: str = "medium"):
         state.add_log(f"❌ Error: {str(e)}", "error")
         
     finally:
-        state.is_processing = False
+        # Use lock to safely update is_processing flag
+        async with state.processing_lock:
+            state.is_processing = False
 
 
 @app.post("/api/action/run")
@@ -504,10 +521,11 @@ def main():
     logger.info(f"📁 Static files: {STATIC_DIR}")
     logger.info(f"📊 Seed data: {SEED_DATA_FILE}")
     logger.info(f"🌐 Port: {port}")
+    logger.info("🔒 Binding to localhost only (127.0.0.1) for security")
     
     uvicorn.run(
         app,
-        host="0.0.0.0",
+        host="127.0.0.1",  # Bind to localhost only to match CORS policy
         port=port,
         log_level="info"
     )

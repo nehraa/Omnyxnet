@@ -213,20 +213,30 @@
     <script>
         // Configuration
         // API_BASE is empty for same-origin requests (secure by default)
-        // This is hardcoded and not user-controllable
+        // This constant is defined in the code and is not user-configurable at runtime
         const API_BASE = '';
         const REFRESH_INTERVAL_MS = 2000;  // Configurable refresh interval
+        const SSE_RECONNECT_DELAY_MS = REFRESH_INTERVAL_MS;  // Use same timing for SSE reconnection
         const USE_SSE = true;  // Use Server-Sent Events for real-time updates
         
         // State
         let isProcessing = false;
         let eventSource = null;
+        let sseActive = false;
         
         // DOM Elements
         const executeBtn = document.getElementById('execute-btn');
         const resetBtn = document.getElementById('reset-btn');
         const terminalBody = document.getElementById('terminal-body');
         const systemStatus = document.getElementById('system-status');
+        
+        // Clean up SSE connection on page unload
+        window.addEventListener('beforeunload', function() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+            }
+        });
         
         // XSS Protection: Escape HTML entities
         function escapeHtml(unsafe) {
@@ -375,6 +385,7 @@
             }
             
             eventSource = new EventSource(`${API_BASE}/api/events`);
+            sseActive = true;
             
             eventSource.onmessage = function(event) {
                 try {
@@ -393,16 +404,23 @@
                 console.error('SSE connection error, falling back to polling');
                 showConnectionError();
                 eventSource.close();
-                // Fall back to polling
-                setTimeout(() => {
-                    initPolling();
-                }, 2000);
+                sseActive = false;
+                // Fall back to polling with consistent timing
+                initPolling(SSE_RECONNECT_DELAY_MS);
             };
         }
         
         // Fallback polling mode
-        function initPolling() {
-            setInterval(refreshData, REFRESH_INTERVAL_MS);
+        function initPolling(initialDelay = 0) {
+            if (initialDelay > 0) {
+                setTimeout(() => {
+                    refreshData();
+                    setInterval(refreshData, REFRESH_INTERVAL_MS);
+                }, initialDelay);
+            } else {
+                refreshData();
+                setInterval(refreshData, REFRESH_INTERVAL_MS);
+            }
         }
         
         // Fetch and update all data (fallback polling)
@@ -444,8 +462,16 @@
                 });
                 
                 if (!res.ok) {
-                    const error = await res.json();
-                    const errorMsg = error.detail || 'Failed to execute action';
+                    // Robust error handling with fallback message
+                    let errorMsg = 'Failed to execute action';
+                    try {
+                        const error = await res.json();
+                        if (error && typeof error === 'object' && typeof error.detail === 'string' && error.detail.trim() !== '') {
+                            errorMsg = error.detail;
+                        }
+                    } catch (e) {
+                        // If parsing fails, keep fallback errorMsg
+                    }
                     addTerminalLog(errorMsg, 'error');
                     return;
                 }
@@ -469,7 +495,10 @@
                 });
                 
                 if (res.ok) {
-                    await refreshData();
+                    // Only refresh data if SSE is not active; otherwise, SSE will update the UI
+                    if (!sseActive) {
+                        await refreshData();
+                    }
                     addTerminalLog('Demo state reset successfully', 'success');
                 } else {
                     addTerminalLog('Failed to reset demo state', 'error');

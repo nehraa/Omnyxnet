@@ -367,26 +367,39 @@ start_demo_server() {
     
     log_info "Starting demo server on port $DEMO_PORT..."
     
-    # Export port for server to use
-    export DEMO_PORT=$DEMO_PORT
+    # Export port for server to use (simplified export)
+    export DEMO_PORT
     
     # Start server in background with explicit path (no cd needed)
     python3 "$DEMO_DIR/server.py" &
     SERVER_PID=$!
     
-    # Wait for server to start
-    log_info "Waiting for server to initialize..."
-    sleep 3
+    # Wait a moment for process to start
+    sleep 1
     
-    # Check if server is running
+    # Check if server process is running
     if ! kill -0 "$SERVER_PID" 2>/dev/null; then
-        log_error "Demo server failed to start"
+        log_error "Demo server process failed to start"
         exit 1
     fi
-    log_success "Demo server running (PID: $SERVER_PID)"
+    
+    # Robust check: Wait for server to accept connections
+    DEMO_URL="http://localhost:$DEMO_PORT"
+    MAX_WAIT=15
+    WAITED=0
+    log_info "Waiting for server to accept connections..."
+    until curl -s --max-time 1 "$DEMO_URL" >/dev/null 2>&1; do
+        sleep 1
+        WAITED=$((WAITED+1))
+        if [ "$WAITED" -ge "$MAX_WAIT" ]; then
+            log_error "Demo server did not respond at $DEMO_URL after $MAX_WAIT seconds"
+            kill "$SERVER_PID" 2>/dev/null || true
+            exit 1
+        fi
+    done
+    log_success "Demo server running and accepting connections (PID: $SERVER_PID)"
     
     # Try to open browser
-    DEMO_URL="http://localhost:$DEMO_PORT"
     log_info "Opening dashboard in browser: $DEMO_URL"
     
     if command -v open &> /dev/null; then
