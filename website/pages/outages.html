@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="The Truth About Centralized Cloud - Real outages, real costs, real data losses">
+  <title>Cloud Outages Board - Pangea Net</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Space+Grotesk:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="../css/styles.css">
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23208A8D'/><text x='50' y='68' font-size='50' fill='white' text-anchor='middle' font-family='Arial' font-weight='bold'>P</text></svg>">
+  
+  <style>
+    /* Detective Board Theme */
+    body {
+      background: linear-gradient(180deg, #2c1810 0%, #1a0f0a 100%);
+      color: #f5f3f0;
+    }
+    
+    .board-hero {
+      padding-top: 120px;
+      padding-bottom: var(--space-3xl);
+      text-align: center;
+      position: relative;
+      background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" opacity="0.03"><rect width="100" height="100" fill="%23000"/><circle cx="50" cy="50" r="40" fill="none" stroke="%23ff0000" stroke-width="2"/></svg>');
+    }
+    
+    .board-hero h1 {
+      font-family: 'Special Elite', 'Courier New', monospace;
+      font-size: 3.5rem;
+      color: #ff3333;
+      text-shadow: 0 0 20px rgba(255, 51, 51, 0.5), 
+                   3px 3px 0 rgba(0, 0, 0, 0.5);
+      margin-bottom: var(--space-lg);
+      letter-spacing: 2px;
+    }
+    
+    .board-hero .subtitle {
+      font-family: 'Special Elite', monospace;
+      font-size: 1.3rem;
+      color: #d4a574;
+      max-width: 700px;
+      margin: 0 auto;
+      line-height: 1.8;
+    }
+    
+    /* Cork Board Container */
+    .cork-board {
+      background: 
+        linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px),
+        linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px),
+        #d4a574;
+      background-size: 20px 20px;
+      border: 20px solid #8b6f47;
+      box-shadow: 
+        inset 0 0 50px rgba(0,0,0,0.3),
+        0 10px 40px rgba(0,0,0,0.5);
+      padding: var(--space-3xl);
+      margin: var(--space-2xl) auto;
+      max-width: 1400px;
+      position: relative;
+      border-radius: 4px;
+    }
+    
+    .cork-board::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(circle at 20% 30%, rgba(139, 111, 71, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 70%, rgba(139, 111, 71, 0.3) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    
+    /* Stats Banner */
+    .stats-banner {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--space-lg);
+      margin-bottom: var(--space-3xl);
+      padding: var(--space-xl);
+      background: rgba(0, 0, 0, 0.4);
+      border: 3px dashed #ff3333;
+      border-radius: var(--radius-md);
+      position: relative;
+    }
+    
+    .stat-box {
+      text-align: center;
+      padding: var(--space-md);
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: var(--radius-sm);
+      border: 2px solid rgba(255, 51, 51, 0.3);
+      position: relative;
+    }
+    
+    .stat-box::before {
+      content: '📍';
+      position: absolute;
+      top: -15px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.5rem;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    }
+    
+    .stat-value {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: #ff3333;
+      font-family: 'Special Elite', monospace;
+      text-shadow: 0 0 10px rgba(255, 51, 51, 0.5);
+      margin-bottom: var(--space-xs);
+    }
+    
+    .stat-label {
+      font-size: 0.9rem;
+      color: #d4a574;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
+    }
+    
+    /* Incident Cards (Polaroid style) */
+    .incidents-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: var(--space-2xl);
+      margin-bottom: var(--space-3xl);
+      position: relative;
+    }
+    
+    .incident-card {
+      background: #fffef7;
+      padding: var(--space-md);
+      padding-bottom: var(--space-2xl);
+      box-shadow: 
+        0 2px 8px rgba(0,0,0,0.3),
+        0 8px 24px rgba(0,0,0,0.2);
+      transform: rotate(var(--rotation, 0deg));
+      position: relative;
+      border-radius: 2px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .incident-card:hover {
+      transform: rotate(0deg) translateY(-8px) scale(1.05);
+      z-index: 10;
+      box-shadow: 
+        0 8px 16px rgba(0,0,0,0.4),
+        0 16px 48px rgba(0,0,0,0.3);
+    }
+    
+    .incident-card::before {
+      content: '📌';
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2rem;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    }
+    
+    .incident-company {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1a0f0a;
+      margin-bottom: var(--space-sm);
+      font-family: 'Special Elite', monospace;
+    }
+    
+    .incident-date {
+      font-size: 0.85rem;
+      color: #8b6f47;
+      margin-bottom: var(--space-md);
+      font-weight: 600;
+    }
+    
+    .incident-stat {
+      display: flex;
+      justify-content: space-between;
+      padding: var(--space-xs) 0;
+      border-bottom: 1px dashed #d4a574;
+      font-size: 0.9rem;
+    }
+    
+    .incident-stat:last-of-type {
+      border-bottom: none;
+    }
+    
+    .stat-key {
+      color: #666;
+      font-weight: 600;
+    }
+    
+    .stat-val {
+      color: #1a0f0a;
+      font-weight: 700;
+    }
+    
+    .incident-description {
+      margin-top: var(--space-md);
+      padding-top: var(--space-md);
+      border-top: 2px solid #d4a574;
+      font-size: 0.9rem;
+      color: #333;
+      line-height: 1.6;
+      font-style: italic;
+    }
+    
+    .incident-badges {
+      display: flex;
+      gap: var(--space-sm);
+      margin-top: var(--space-md);
+      flex-wrap: wrap;
+    }
+    
+    .badge {
+      padding: var(--space-xs) var(--space-sm);
+      background: #ff3333;
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border-radius: var(--radius-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .badge.security {
+      background: #ff6b00;
+    }
+    
+    .badge.data-loss {
+      background: #cc0000;
+    }
+    
+    /* Red Yarn Connections */
+    .yarn-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+    
+    .yarn-line {
+      stroke: #ff3333;
+      stroke-width: 2;
+      fill: none;
+      opacity: 0.4;
+      filter: drop-shadow(0 0 2px rgba(255, 51, 51, 0.6));
+    }
+    
+    /* Loading State */
+    .loading {
+      text-align: center;
+      padding: var(--space-4xl);
+      color: #d4a574;
+      font-family: 'Special Elite', monospace;
+      font-size: 1.5rem;
+    }
+    
+    .loading::after {
+      content: '...';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+    
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+    
+    /* Navigation override for dark theme */
+    .nav {
+      background: rgba(26, 15, 10, 0.95);
+      border-bottom: 2px solid #8b6f47;
+    }
+    
+    .nav-logo, .nav-link {
+      color: #d4a574 !important;
+    }
+    
+    .nav-link:hover {
+      color: #ff3333 !important;
+    }
+    
+    /* Update button */
+    .update-btn {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      padding: var(--space-md) var(--space-xl);
+      background: #ff3333;
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(255, 51, 51, 0.4);
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+    
+    .update-btn:hover {
+      background: #cc0000;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(255, 51, 51, 0.6);
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .board-hero h1 {
+        font-size: 2.5rem;
+      }
+      
+      .incidents-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .cork-board {
+        padding: var(--space-lg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-container">
+      <a href="../index.html" class="nav-logo">
+        <span class="nav-logo-icon">P</span>
+        Pangea Net
+      </a>
+      
+      <ul class="nav-links">
+        <li><a href="../index.html#features" class="nav-link">Features</a></li>
+        <li><a href="../index.html#how-it-works" class="nav-link">How It Works</a></li>
+        <li><a href="../index.html#technology" class="nav-link">Technology</a></li>
+        <li><a href="about.html" class="nav-link">About</a></li>
+        <li><a href="outages.html" class="nav-link" style="color: #ff3333 !important;">Outages</a></li>
+        <li><a href="survey.html" class="nav-link nav-cta">Survey</a></li>
+      </ul>
+      
+      <button class="nav-toggle" aria-label="Toggle navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="board-hero">
+    <div class="container">
+      <h1>THE EVIDENCE BOARD</h1>
+      <p class="subtitle">
+        "Too big to fail?" Think again. Here's what they don't want you to see:<br>
+        Real outages. Real costs. Real people affected.
+      </p>
+    </div>
+  </section>
+
+  <!-- Main Cork Board -->
+  <div class="container">
+    <div class="cork-board">
+      <!-- Stats Banner -->
+      <div class="stats-banner" id="statsBanner">
+        <div class="stat-box">
+          <div class="stat-value" id="totalIncidents">-</div>
+          <div class="stat-label">Major Incidents</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="totalDowntime">-</div>
+          <div class="stat-label">Hours Offline</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="totalLoss">$-</div>
+          <div class="stat-label">Lost Revenue</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="totalUsers">-</div>
+          <div class="stat-label">Users Affected</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="securityIncidents">-</div>
+          <div class="stat-label">Security Breaches</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="dataLoss">-</div>
+          <div class="stat-label">Data Loss Events</div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div class="loading" id="loadingIndicator">
+        Gathering evidence from the field
+      </div>
+
+      <!-- Incidents Grid -->
+      <div class="incidents-grid" id="incidentsGrid" style="display: none;">
+        <!-- Cards will be dynamically inserted here -->
+      </div>
+
+      <!-- Red Yarn SVG -->
+      <svg class="yarn-svg" id="yarnSvg"></svg>
+    </div>
+  </div>
+
+  <!-- Update Button -->
+  <button class="update-btn" id="updateBtn" onclick="fetchOutages()">
+    🔄 Refresh Data
+  </button>
+
+  <!-- Footer -->
+  <footer class="footer" style="background: #1a0f0a; border-top: 2px solid #8b6f47;">
+    <div class="container">
+      <div class="footer-bottom">
+        <p style="color: #d4a574;">&copy; 2025 Pangea Net. The truth is out there.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="../js/main.js"></script>
+  <script>
+    // API Configuration
+    const API_BASE = window.location.hostname === 'localhost' 
+      ? 'http://localhost:5000/api'
+      : '/api';
+    
+    // Rotation angles for cards
+    const rotations = [-3, -2, -1, 0, 1, 2, 3, -2.5, 1.5, -1.5, 2.5, -0.5, 0.5];
+    
+    // Fetch outages data
+    async function fetchOutages() {
+      const loading = document.getElementById('loadingIndicator');
+      const grid = document.getElementById('incidentsGrid');
+      const updateBtn = document.getElementById('updateBtn');
+      
+      updateBtn.disabled = true;
+      updateBtn.textContent = '🔄 Updating...';
+      loading.style.display = 'block';
+      grid.style.display = 'none';
+      
+      try {
+        const response = await fetch(`${API_BASE}/outages`);
+        const data = await response.json();
+        
+        // Update stats
+        updateStats(data.totals);
+        
+        // Render incidents
+        renderIncidents(data.outages);
+        
+        // Draw yarn connections
+        setTimeout(drawYarnConnections, 100);
+        
+        loading.style.display = 'none';
+        grid.style.display = 'grid';
+        
+        // Store last update time
+        localStorage.setItem('lastUpdate', new Date().toISOString());
+      } catch (error) {
+        console.error('Error fetching outages:', error);
+        loading.textContent = 'Error loading data. Using cached information.';
+        
+        // Try to use cached data
+        const cachedData = getCachedData();
+        if (cachedData) {
+          updateStats(cachedData.totals);
+          renderIncidents(cachedData.outages);
+          loading.style.display = 'none';
+          grid.style.display = 'grid';
+        }
+      } finally {
+        updateBtn.disabled = false;
+        updateBtn.textContent = '🔄 Refresh Data';
+      }
+    }
+    
+    function updateStats(totals) {
+      document.getElementById('totalIncidents').textContent = totals.total_incidents || 0;
+      document.getElementById('totalDowntime').textContent = (totals.total_duration_hours || 0).toFixed(1);
+      document.getElementById('totalLoss').textContent = '$' + (totals.total_financial_loss_millions || 0).toFixed(0) + 'M';
+      document.getElementById('totalUsers').textContent = formatNumber(totals.total_affected_users || 0);
+      document.getElementById('securityIncidents').textContent = totals.security_incidents || 0;
+      document.getElementById('dataLoss').textContent = totals.data_loss_incidents || 0;
+    }
+    
+    function renderIncidents(outages) {
+      const grid = document.getElementById('incidentsGrid');
+      grid.innerHTML = '';
+      
+      outages.forEach((incident, index) => {
+        const card = document.createElement('div');
+        card.className = 'incident-card';
+        card.style.setProperty('--rotation', `${rotations[index % rotations.length]}deg`);
+        
+        let badges = '';
+        if (incident.security_incident) {
+          badges += '<span class="badge security">🔓 Security Breach</span>';
+        }
+        if (incident.data_loss) {
+          badges += '<span class="badge data-loss">💾 Data Loss</span>';
+        }
+        
+        card.innerHTML = `
+          <div class="incident-company">${escapeHtml(incident.company)}</div>
+          <div class="incident-date">📅 ${formatDate(incident.date)}</div>
+          
+          <div class="incident-stat">
+            <span class="stat-key">Duration:</span>
+            <span class="stat-val">${incident.duration_hours.toFixed(1)}h</span>
+          </div>
+          <div class="incident-stat">
+            <span class="stat-key">Financial Loss:</span>
+            <span class="stat-val">$${incident.financial_loss_millions}M</span>
+          </div>
+          <div class="incident-stat">
+            <span class="stat-key">Users Affected:</span>
+            <span class="stat-val">${formatNumber(incident.affected_users)}</span>
+          </div>
+          
+          <div class="incident-description">
+            "${escapeHtml(incident.description)}"
+          </div>
+          
+          ${badges ? `<div class="incident-badges">${badges}</div>` : ''}
+        `;
+        
+        grid.appendChild(card);
+      });
+    }
+    
+    function drawYarnConnections() {
+      const svg = document.getElementById('yarnSvg');
+      const corkBoard = document.querySelector('.cork-board');
+      const cards = document.querySelectorAll('.incident-card');
+      
+      if (!svg || cards.length === 0) return;
+      
+      svg.innerHTML = '';
+      
+      // Create random connections between cards
+      const numConnections = Math.min(15, Math.floor(cards.length * 1.5));
+      
+      for (let i = 0; i < numConnections; i++) {
+        const card1 = cards[Math.floor(Math.random() * cards.length)];
+        const card2 = cards[Math.floor(Math.random() * cards.length)];
+        
+        if (card1 === card2) continue;
+        
+        const rect1 = card1.getBoundingClientRect();
+        const rect2 = card2.getBoundingClientRect();
+        const boardRect = corkBoard.getBoundingClientRect();
+        
+        const x1 = rect1.left - boardRect.left + rect1.width / 2;
+        const y1 = rect1.top - boardRect.top + rect1.height / 2;
+        const x2 = rect2.left - boardRect.left + rect2.width / 2;
+        const y2 = rect2.top - boardRect.top + rect2.height / 2;
+        
+        // Create curved path
+        const cx = (x1 + x2) / 2 + (Math.random() - 0.5) * 100;
+        const cy = (y1 + y2) / 2 + (Math.random() - 0.5) * 100;
+        
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`);
+        path.setAttribute('class', 'yarn-line');
+        svg.appendChild(path);
+      }
+    }
+    
+    function formatNumber(num) {
+      if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+      }
+      if (num >= 1000) {
+        return (num / 1000).toFixed(1) + 'K';
+      }
+      return num.toString();
+    }
+    
+    function formatDate(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+      });
+    }
+    
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    function getCachedData() {
+      try {
+        const cached = localStorage.getItem('outagesData');
+        return cached ? JSON.parse(cached) : null;
+      } catch {
+        return null;
+      }
+    }
+    
+    // Redraw yarn on window resize
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(drawYarnConnections, 250);
+    });
+    
+    // Load data on page load
+    fetchOutages();
+  </script>
+</body>
+</html>
