@@ -2,7 +2,7 @@
 
 **Version:** 0.6.0-alpha  
 **Status:** 🚀 **Distributed Compute System Ready** 🎯  
-**Last Updated:** 2025-12-03
+**Last Updated:** 2025-12-07
 
 > 🚀 **NEW in v0.6.0:** **Distributed Compute System** with hierarchical task delegation!
 > - **WASM Sandbox** for secure computation with resource limits
@@ -50,7 +50,9 @@ For complete setup from scratch:
 For detailed setup instructions, see [SETUP_GUIDE.md](docs/SETUP_GUIDE.md).
 
 For testing guides:
-- [TESTING_QUICK_START.md](docs/TESTING_QUICK_START.md) - Localhost testing
+- [START_HERE.md](docs/START_HERE.md) - Testing overview and navigation
+- [TESTING_QUICK_START.md](docs/TESTING_QUICK_START.md) - Quick testing commands
+- [docs/testing/TESTING_INDEX.md](docs/testing/TESTING_INDEX.md) - Complete testing documentation hub
 - [CROSS_DEVICE_TESTING.md](docs/CROSS_DEVICE_TESTING.md) - WAN/multi-device testing
 
 ## 🏗️ Project Structure
@@ -400,14 +402,18 @@ cd python && python main.py --help         # Python development
 
 ## 📊 Project Maturity
 
-This project is in **alpha stage (v0.3.0-alpha)**:
-- ✅ Core features implemented and working locally
-- 🚧 Integration testing in progress
-- ❌ Not production-ready
-- 📅 WAN testing planned for future releases
+This project is in **alpha stage (v0.6.0-alpha)**:
+- ✅ Core features implemented and working (P2P, Storage, Compute)
+- ✅ Comprehensive testing suite (86+ tests passing across all components)
+- ✅ Cross-device communication proven functional
+- ✅ Distributed compute system operational
+- 🚧 Phase 2 ML features framework complete, model integration in progress
+- 🚧 Production hardening and monitoring ongoing
+- ❌ Not recommended for production deployment yet
+- 📅 Phase 3 features (DKG, advanced security) planned for future releases
 
-For detailed status of each component and feature, see [VERSION.md](VERSION.md).
+For detailed status of each component and feature, see [VERSION.md](docs/VERSION.md).
 
 ---
 
-*Last Updated: 2025-11-22*
+*Last Updated: 2025-12-07*
