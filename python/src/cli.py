@@ -1704,17 +1704,12 @@ def demo():
     
     try:
         # Run the Rust DCDN demo
-        result = subprocess.run(
+        subprocess.run(
             ["cargo", "run", "--example", "dcdn_demo"],
             cwd=str(rust_dir),
             check=True
         )
-        
-        if result.returncode == 0:
-            click.echo("\n✅ DCDN demo completed successfully")
-        else:
-            click.echo(f"\n❌ DCDN demo failed with code {result.returncode}", err=True)
-            sys.exit(1)
+        click.echo("\n✅ DCDN demo completed successfully")
     
     except subprocess.CalledProcessError as e:
         click.echo(f"\n❌ DCDN demo failed: {e}", err=True)
@@ -1801,17 +1796,12 @@ def test():
     
     try:
         click.echo("Running Rust DCDN test suite...\n")
-        result = subprocess.run(
+        subprocess.run(
             ["cargo", "test", "--test", "test_dcdn"],
             cwd=str(rust_dir),
             check=True
         )
-        
-        if result.returncode == 0:
-            click.echo("\n✅ All DCDN tests passed")
-        else:
-            click.echo(f"\n❌ Tests failed with code {result.returncode}", err=True)
-            sys.exit(1)
+        click.echo("\n✅ All DCDN tests passed")
     
     except subprocess.CalledProcessError as e:
         click.echo(f"\n❌ Tests failed: {e}", err=True)
