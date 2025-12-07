@@ -140,6 +140,16 @@ class LogView(MDScrollView):
         self.log_label.text += f"[{timestamp}] {message}\n"
 
 
+class TabContent(MDBoxLayout, MDTabsBase):
+    """Helper tab class that mixes MDTabsBase with a BoxLayout.
+
+    MDTabs requires the tab content to inherit from MDTabsBase and an
+    EventDispatcher-based layout. This class provides a simple reusable
+    container for tab pages.
+    """
+    pass
+
+
 class MainScreen(MDScreen):
     """Main screen of the application."""
     
@@ -163,7 +173,8 @@ class MainScreen(MDScreen):
         tabs = MDTabs()
         
         # Tab 1: Node Management
-        tab1 = MDTabsBase(title="Nodes")
+        tab1 = TabContent()
+        tab1.title = "Nodes"
         tab1_content = MDBoxLayout(orientation='vertical', padding=10)
         tab1_content.add_widget(MDRaisedButton(
             text="List All Nodes",
@@ -176,7 +187,8 @@ class MainScreen(MDScreen):
         tabs.add_widget(tab1)
         
         # Tab 2: Compute
-        tab2 = MDTabsBase(title="Compute")
+        tab2 = TabContent()
+        tab2.title = "Compute"
         tab2_content = MDBoxLayout(orientation='vertical', padding=10)
         tab2_content.add_widget(MDRaisedButton(
             text="Submit Compute Task",
@@ -189,7 +201,8 @@ class MainScreen(MDScreen):
         tabs.add_widget(tab2)
         
         # Tab 3: DCDN
-        tab3 = MDTabsBase(title="DCDN")
+        tab3 = TabContent()
+        tab3.title = "DCDN"
         tab3_content = MDBoxLayout(orientation='vertical', padding=10)
         tab3_content.add_widget(MDRaisedButton(
             text="Run DCDN Demo",
@@ -294,7 +307,18 @@ class PangeaDesktopApp(MDApp):
         def connect_thread():
             try:
                 self.go_client = GoNodeClient(host=host, port=port)
-                if self.go_client.connect():
+                # Some client implementations may not expose a sync `connect()` method.
+                # Guard the call to avoid attribute errors and to satisfy static analyzers.
+                if hasattr(self.go_client, 'connect'):
+                    try:
+                        success = self.go_client.connect()
+                    except Exception:
+                        success = False
+                else:
+                    # Assume client auto-connects when constructed
+                    success = True
+
+                if success:
                     self.connected = True
                     self.log_message(f"✅ Connected to {host}:{port}")
                 else:
