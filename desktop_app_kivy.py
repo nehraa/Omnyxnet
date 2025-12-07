@@ -80,7 +80,9 @@ class ConnectionCard(MDCard):
         self.padding = 20
         self.spacing = 10
         self.size_hint_y = None
-        self.height = 380
+        # Dynamic height based on content
+        self.bind(minimum_height=self.setter('height'))
+        self.height = 380  # Reasonable default
         
         # Title
         self.add_widget(MDLabel(
@@ -162,7 +164,7 @@ class ConnectionCard(MDCard):
         # Peer multiaddr input
         peer_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=10)
         self.peer_input = MDTextField(
-            text="/ip4/127.0.0.1/tcp/7777/p2p/...",
+            text="/ip4/192.168.1.x/tcp/PORT/p2p/PEERID",
             hint_text="Paste full multiaddr",
             size_hint_x=0.7
         )
@@ -684,8 +686,14 @@ class PangeaDesktopApp(MDApp):
             return
         
         multiaddr = self.main_screen.connection_card.peer_input.text.strip()
-        if not multiaddr or multiaddr.startswith("/ip4/127"):
+        # Basic validation - ensure it looks like a multiaddr
+        if not multiaddr or not multiaddr.startswith("/ip"):
             self.show_warning("Invalid Multiaddr", "Please enter a valid peer multiaddr")
+            return
+        
+        # Check if it's the placeholder text
+        if "192.168.1.x" in multiaddr or "PEERID" in multiaddr:
+            self.show_warning("Invalid Multiaddr", "Please replace placeholder values with actual peer address")
             return
         
         self.log_message(f"🔗 Attempting to connect to peer: {multiaddr[:50]}...")
@@ -693,8 +701,10 @@ class PangeaDesktopApp(MDApp):
         def peer_connect_thread():
             try:
                 self.log_message(f"📡 Peer connection initiated to: {multiaddr}")
-                time.sleep(1)
-                self.log_message(f"✅ Successfully connected to peer!")
+                # In a real implementation, this would call the Go node RPC method to connect to peer
+                # For now, this is a placeholder that logs the attempt
+                # TODO: Implement actual peer connection via go_client
+                self.log_message(f"ℹ️  Peer connection feature requires implementation via Cap'n Proto RPC")
                 self.log_message(f"   Multiaddr: {multiaddr[:80]}...")
             except Exception as e:
                 self.log_message(f"❌ Peer connection failed: {str(e)}")
@@ -817,7 +827,10 @@ class PangeaDesktopApp(MDApp):
                 exit_manager=self.exit_file_manager,
                 select_path=self.select_file_path,
             )
-        self.file_manager.show('/')
+        # Start from user's home directory for security
+        import os
+        start_path = os.path.expanduser('~')
+        self.file_manager.show(start_path)
     
     def exit_file_manager(self, *args):
         """Close file manager."""
