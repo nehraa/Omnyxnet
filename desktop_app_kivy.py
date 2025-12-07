@@ -46,6 +46,7 @@ logger = logging.getLogger(__name__)
 from kivy.clock import Clock
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
+from kivy.metrics import dp
 
 # KivyMD imports
 from kivymd.app import MDApp
@@ -77,57 +78,24 @@ class ConnectionCard(MDCard):
         super().__init__(**kwargs)
         self.app_ref = app_ref
         self.orientation = 'vertical'
-        self.padding = 20
-        self.spacing = 10
+        self.padding = dp(20)
+        self.spacing = dp(10)
         self.size_hint_y = None
-        # Dynamic height based on content
-        self.bind(minimum_height=self.setter('height'))
-        self.height = 380  # Reasonable default
+        self.adaptive_height = True
         
         # Title
         self.add_widget(MDLabel(
             text="Node Connection",
             font_style="H6",
             size_hint_y=None,
-            height=40
+            height=dp(40),
+            adaptive_height=True
         ))
         
-        # Local Node Connection Section
-        local_label = MDLabel(
-            text="Local Node Connection",
-            font_style="Subtitle1",
-            size_hint_y=None,
-            height=30
-        )
-        self.add_widget(local_label)
-        
-        # Host input
-        host_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=10)
-        host_layout.add_widget(MDLabel(text="Host:", size_hint_x=0.2))
-        self.host_input = MDTextField(
-            text="localhost",
-            hint_text="Go node host",
-            size_hint_x=0.8
-        )
-        host_layout.add_widget(self.host_input)
-        self.add_widget(host_layout)
-        
-        # Port input
-        port_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=10)
-        port_layout.add_widget(MDLabel(text="Port:", size_hint_x=0.2))
-        self.port_input = MDTextField(
-            text="8080",
-            hint_text="Go node port",
-            input_filter='int',
-            size_hint_x=0.8
-        )
-        port_layout.add_widget(self.port_input)
-        self.add_widget(port_layout)
-        
         # Connect/Disconnect buttons
-        button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=10)
+        button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
         self.connect_btn = MDRaisedButton(
-            text="Connect",
+            text="Connect to Local Node",
             size_hint_x=0.5,
             on_release=lambda x: self.app_ref.connect_to_node()
         )
@@ -146,9 +114,10 @@ class ConnectionCard(MDCard):
         self.status_label = MDLabel(
             text="● Disconnected",
             size_hint_y=None,
-            height=30,
+            height=dp(30),
             theme_text_color="Custom",
-            text_color=(1, 0, 0, 1)
+            text_color=(1, 0, 0, 1),
+            adaptive_height=True
         )
         self.add_widget(self.status_label)
         
@@ -157,16 +126,18 @@ class ConnectionCard(MDCard):
             text="Peer Connection (Multiaddr)",
             font_style="Subtitle1",
             size_hint_y=None,
-            height=30
+            height=dp(30),
+            adaptive_height=True
         )
         self.add_widget(peer_label)
         
         # Peer multiaddr input
-        peer_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=10)
+        peer_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.peer_input = MDTextField(
             text="/ip4/192.168.1.x/tcp/PORT/p2p/PEERID",
             hint_text="Paste full multiaddr",
-            size_hint_x=0.7
+            size_hint_x=0.7,
+            mode="rectangle"
         )
         peer_layout.add_widget(self.peer_input)
         
@@ -183,7 +154,8 @@ class ConnectionCard(MDCard):
             text="💡 Paste the full multiaddr from another node (e.g., /ip4/192.168.1.x/tcp/PORT/p2p/PEERID)",
             font_style="Caption",
             size_hint_y=None,
-            height=30
+            height=dp(40),
+            adaptive_height=True
         )
         self.add_widget(help_text)
 
@@ -302,11 +274,11 @@ class MainScreen(MDScreen):
         tab = TabContent()
         tab.title = "Node Management"
         tab.orientation = 'vertical'
-        tab.padding = 10
-        tab.spacing = 10
+        tab.padding = dp(10)
+        tab.spacing = dp(10)
         
         # Buttons
-        button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=10)
+        button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
         button_layout.add_widget(MDRaisedButton(
             text="List All Nodes",
             on_release=lambda x: app_ref.list_nodes()
@@ -332,22 +304,23 @@ class MainScreen(MDScreen):
         tab = TabContent()
         tab.title = "Compute Tasks"
         tab.orientation = 'vertical'
-        tab.padding = 10
-        tab.spacing = 10
+        tab.padding = dp(10)
+        tab.spacing = dp(10)
         
         # Task type selector
-        task_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=10)
-        task_layout.add_widget(MDLabel(text="Task Type:", size_hint_x=0.3))
+        task_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
+        task_layout.add_widget(MDLabel(text="Task Type:", size_hint_x=0.3, size_hint_y=None, height=dp(40), pos_hint={'center_y': 0.5}))
         self.task_type_input = MDTextField(
             text="Matrix Multiply",
             hint_text="Task type",
-            size_hint_x=0.7
+            size_hint_x=0.7,
+            mode="rectangle"
         )
         task_layout.add_widget(self.task_type_input)
         tab.add_widget(task_layout)
         
         # Action buttons
-        button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=10)
+        button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
         button_layout.add_widget(MDRaisedButton(
             text="Submit Task",
             on_release=lambda x: app_ref.submit_compute_task()
@@ -373,17 +346,19 @@ class MainScreen(MDScreen):
         tab = TabContent()
         tab.title = "File Operations"
         tab.orientation = 'vertical'
-        tab.padding = 10
-        tab.spacing = 10
+        tab.padding = dp(20)
+        tab.spacing = dp(10)
         
         # Upload section
-        upload_label = MDLabel(text="Upload File", font_style="H6", size_hint_y=None, height=30)
+        upload_label = MDLabel(text="Upload File", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
         tab.add_widget(upload_label)
         
-        upload_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=10)
+        upload_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.upload_path_input = MDTextField(
             hint_text="Select file to upload",
-            size_hint_x=0.6
+            size_hint_x=0.6,
+            mode="rectangle",
+            readonly=True
         )
         upload_layout.add_widget(self.upload_path_input)
         upload_layout.add_widget(MDRaisedButton(
@@ -399,14 +374,15 @@ class MainScreen(MDScreen):
         tab.add_widget(upload_layout)
         
         # Download section
-        download_label = MDLabel(text="Download File", font_style="H6", size_hint_y=None, height=30)
+        download_label = MDLabel(text="Download File", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
         tab.add_widget(download_label)
         
-        download_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=10)
-        download_layout.add_widget(MDLabel(text="File Hash:", size_hint_x=0.2))
+        download_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
+        download_layout.add_widget(MDLabel(text="File Hash:", size_hint_x=0.2, size_hint_y=None, height=dp(40), pos_hint={'center_y': 0.5}))
         self.download_hash_input = MDTextField(
             hint_text="Enter file hash",
-            size_hint_x=0.6
+            size_hint_x=0.6,
+            mode="rectangle"
         )
         download_layout.add_widget(self.download_hash_input)
         download_layout.add_widget(MDRaisedButton(
@@ -420,7 +396,7 @@ class MainScreen(MDScreen):
         tab.add_widget(MDRaisedButton(
             text="List Available Files",
             size_hint_y=None,
-            height=50,
+            height=dp(50),
             on_release=lambda x: app_ref.list_files()
         ))
         
@@ -435,14 +411,14 @@ class MainScreen(MDScreen):
         tab = TabContent()
         tab.title = "Communications"
         tab.orientation = 'vertical'
-        tab.padding = 10
-        tab.spacing = 10
+        tab.padding = dp(10)
+        tab.spacing = dp(10)
         
         # Liveness testing
-        test_label = MDLabel(text="Liveness Testing", font_style="H6", size_hint_y=None, height=30)
+        test_label = MDLabel(text="Liveness Testing", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
         tab.add_widget(test_label)
         
-        button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=10)
+        button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
         button_layout.add_widget(MDRaisedButton(
             text="Test P2P Connection",
             on_release=lambda x: app_ref.test_p2p_connection()
@@ -468,11 +444,11 @@ class MainScreen(MDScreen):
         tab = TabContent()
         tab.title = "Network Info"
         tab.orientation = 'vertical'
-        tab.padding = 10
-        tab.spacing = 10
+        tab.padding = dp(10)
+        tab.spacing = dp(10)
         
         # Buttons
-        button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=50, spacing=10)
+        button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
         button_layout.add_widget(MDRaisedButton(
             text="Show Peers",
             on_release=lambda x: app_ref.show_peers()
@@ -619,12 +595,8 @@ class PangeaDesktopApp(MDApp):
             self.show_error("Error", "Cap'n Proto client not available. Install dependencies first.")
             return
         
-        host = self.main_screen.connection_card.host_input.text
-        try:
-            port = int(self.main_screen.connection_card.port_input.text)
-        except ValueError:
-            self.show_error("Error", "Invalid port number")
-            return
+        host = self.node_host
+        port = self.node_port
         
         self.log_message(f"🔗 Connecting to {host}:{port}...")
         
@@ -854,7 +826,57 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message(f"⬆️  Uploading {filepath}...")
-        self.main_screen.file_output.add_text(f"Uploading: {filepath}")
+        self.main_screen.file_output.add_text(f"Starting upload: {filepath}")
+        
+        def upload_thread():
+            try:
+                # 1. Read file
+                try:
+                    with open(filepath, 'rb') as f:
+                        data = f.read()
+                except Exception as e:
+                    self.log_message(f"❌ File read error: {str(e)}")
+                    return
+
+                # 2. Get peers
+                peers = []
+                try:
+                    peers = self.go_client.get_connected_peers()
+                except Exception as e:
+                    self.log_message(f"⚠️  Could not get peers: {str(e)}")
+
+                if not peers:
+                    # Fallback for single-node testing: Generate local hash
+                    import hashlib
+                    file_hash = hashlib.sha256(data).hexdigest()
+                    self.log_message(f"⚠️  No peers connected. Generated local hash.")
+                    Clock.schedule_once(lambda dt: self.on_upload_complete(file_hash, simulated=True), 0)
+                    return
+
+                # 3. Upload
+                try:
+                    result = self.go_client.upload(data, peers)
+                    if result and 'fileHash' in result:
+                        Clock.schedule_once(lambda dt: self.on_upload_complete(result['fileHash']), 0)
+                    else:
+                        self.log_message("❌ Upload failed: No result returned")
+                except Exception as e:
+                    self.log_message(f"❌ Upload RPC error: {str(e)}")
+
+            except Exception as e:
+                self.log_message(f"❌ Upload error: {str(e)}")
+
+        threading.Thread(target=upload_thread, daemon=True).start()
+
+    def on_upload_complete(self, file_hash, simulated=False):
+        """Handle upload completion."""
+        msg = f"✅ Upload complete! Hash: {file_hash}"
+        if simulated:
+            msg += " (Local)"
+        self.log_message(msg)
+        self.main_screen.file_output.add_text(msg)
+        # Auto-fill download hash for convenience
+        self.main_screen.download_hash_input.text = file_hash
     
     def download_file(self):
         """Download file from network."""
