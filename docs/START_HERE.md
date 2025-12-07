@@ -1,6 +1,10 @@
-# 🎯 START HERE - Cross-Device Testing
+# 🎯 START HERE - Pangea Net Testing & Documentation
 
-**You want to test Pangea Net on multiple devices. This is your guide.**
+**Version:** 0.6.0-alpha  
+**Last Updated:** 2025-12-07  
+**Status:** Complete Documentation & Testing Guide
+
+**You want to test Pangea Net. This is your central navigation guide.**
 
 ---
 
@@ -51,17 +55,34 @@ This verifies all components work on your machine before testing across devices.
 
 ---
 
-## 📚 Documentation Structure
+## 📚 Complete Documentation Structure
 
-We have five guides:
-
+### Testing Documentation (⭐ Complete)
 | Guide | When to Use | What's Inside |
 |-------|-------------|---------------|
-| **[TESTING_QUICK_START.md](TESTING_QUICK_START.md)** | You want TL;DR | Commands only, no fluff |
-| **[CROSS_DEVICE_TESTING.md](CROSS_DEVICE_TESTING.md)** | You want details | Architecture, data flows, debugging |
-| **[CLI_MATRIX_MULTIPLY.md](CLI_MATRIX_MULTIPLY.md)** | Matrix multiply | CLI reference, examples |
-| **[NETWORK_CONNECTION.md](NETWORK_CONNECTION.md)** | Network setup | Registry, Manager/Worker modes |
+| **[testing/TESTING_INDEX.md](testing/TESTING_INDEX.md)** ⭐ | Central testing hub | All testing docs, 86+ tests, navigation |
+| **[testing/PHASE1_TEST_SUITE.md](testing/PHASE1_TEST_SUITE.md)** | Phase 1 tests | P2P, Streaming, Opus, Brotli |
+| **[testing/PHASE2_TEST_SUITE.md](testing/PHASE2_TEST_SUITE.md)** ⭐ | Phase 2 tests | ML Framework, Translation, Lipsync |
+| **[testing/COMPUTE_TEST_SUITE.md](testing/COMPUTE_TEST_SUITE.md)** ⭐ | Compute tests | WASM Sandbox, Verification, 86+ tests |
+| **[TESTING_QUICK_START.md](TESTING_QUICK_START.md)** | TL;DR commands | Quick commands, no details |
+
+### Setup & Testing Guides
+| Guide | When to Use | What's Inside |
+|-------|-------------|---------------|
+| **[SETUP_GUIDE.md](SETUP_GUIDE.md)** | Initial setup | Dependencies, installation |
+| **[QUICK_START.md](QUICK_START.md)** | Get running fast | 5-minute quickstart |
+| **[CROSS_DEVICE_TESTING.md](CROSS_DEVICE_TESTING.md)** | Multi-device tests | Architecture, data flows, debugging |
 | **[CONTAINERIZED_TESTING.md](CONTAINERIZED_TESTING.md)** | Docker tests | Container testing guide |
+| **[LIVE_TEST_GUIDE.md](LIVE_TEST_GUIDE.md)** | Live network tests | Real network testing |
+
+### Feature-Specific Guides
+| Guide | Feature | What's Inside |
+|-------|---------|---------------|
+| **[DISTRIBUTED_COMPUTE.md](DISTRIBUTED_COMPUTE.md)** | Compute System | Architecture, MapReduce, WASM |
+| **[DISTRIBUTED_COMPUTE_QUICK_START.md](DISTRIBUTED_COMPUTE_QUICK_START.md)** | Compute Quick | Quick compute setup |
+| **[CLI_MATRIX_MULTIPLY.md](CLI_MATRIX_MULTIPLY.md)** | Matrix multiply | CLI reference, examples |
+| **[STREAMING_GUIDE.md](STREAMING_GUIDE.md)** | Streaming | Voice, video streaming |
+| **[NETWORK_CONNECTION.md](NETWORK_CONNECTION.md)** | Network setup | Registry, Manager/Worker modes |
 
 ---
 

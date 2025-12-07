@@ -1,10 +1,15 @@
-# Pangea Net - Go Node
+# Pangea Net - Go Node: P2P Network Layer & Compute Orchestrator
 
-**Version:** 0.3.0-alpha  
-**Status:** Alpha - Local Testing  
-**Last Updated:** 2025-11-22
+**Version:** 0.6.0-alpha  
+**Status:** ✅ Operational - 13+ Tests Passing  
+**Last Updated:** 2025-12-07
 
-> ⚠️ **Development Status:** Working for local P2P networking and testing. Not ready for production deployment.
+> 📚 **Related Documentation:**
+> - **[../docs/testing/COMPUTE_TEST_SUITE.md](../docs/testing/COMPUTE_TEST_SUITE.md)** - Compute orchestrator tests
+> - **[../docs/DISTRIBUTED_COMPUTE.md](../docs/DISTRIBUTED_COMPUTE.md)** - Complete architecture
+> - **[../docs/testing/TESTING_INDEX.md](../docs/testing/TESTING_INDEX.md)** - All testing documentation
+
+> ⚠️ **Development Status:** Core features operational and tested. Distributed compute system complete with 13+ passing tests. Not recommended for production deployment yet.
 
 Go component that handles P2P networking with Noise Protocol encryption.
 

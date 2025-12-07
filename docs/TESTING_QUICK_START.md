@@ -1,6 +1,15 @@
 # Testing Quick Start - For the Impatient
 
+**Version:** 0.6.0-alpha  
+**Last Updated:** 2025-12-07
+
 **You asked for simple. Here it is.**
+
+> 📚 **For detailed testing information:**
+> - **[testing/TESTING_INDEX.md](testing/TESTING_INDEX.md)** - Complete testing hub with 86+ tests ⭐
+> - **[testing/PHASE1_TEST_SUITE.md](testing/PHASE1_TEST_SUITE.md)** - Phase 1 P2P & Streaming tests
+> - **[testing/PHASE2_TEST_SUITE.md](testing/PHASE2_TEST_SUITE.md)** - Phase 2 ML Framework tests ⭐
+> - **[testing/COMPUTE_TEST_SUITE.md](testing/COMPUTE_TEST_SUITE.md)** - Distributed Compute tests ⭐
 
 ## 🚀 Test on Localhost (One Command)
 

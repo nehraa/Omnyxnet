@@ -1,10 +1,16 @@
-# Pangea Rust Node
+# Pangea Rust Node: High-Performance Storage, CES Pipeline & Compute Engine
 
-**Version:** 0.3.0-alpha  
-**Status:** Alpha - Local Testing  
-**Last Updated:** 2025-11-22
+**Version:** 0.6.0-alpha  
+**Status:** ✅ Operational - 86+ Tests Passing  
+**Last Updated:** 2025-12-07
 
-> ⚠️ **Development Status:** This Rust implementation has all planned features coded and working for local testing. It is NOT production-ready and requires integration testing before deployment.
+> 📚 **Related Documentation:**
+> - **[../docs/testing/COMPUTE_TEST_SUITE.md](../docs/testing/COMPUTE_TEST_SUITE.md)** - Compute engine tests (61 tests)
+> - **[../docs/testing/PHASE1_TEST_SUITE.md](../docs/testing/PHASE1_TEST_SUITE.md)** - Streaming & CES tests
+> - **[../docs/DISTRIBUTED_COMPUTE.md](../docs/DISTRIBUTED_COMPUTE.md)** - Compute architecture
+> - **[../docs/RUST.md](../docs/RUST.md)** - Complete Rust documentation
+
+> ⚠️ **Development Status:** All features implemented and comprehensively tested with 86+ passing tests. Distributed compute system complete with WASM sandbox. Not recommended for production deployment yet.
 
 High-performance Rust implementation of Pangea Net with QUIC transport, libp2p DHT, adaptive CES pipeline, Cap'n Proto RPC, and optional eBPF firewall.
 

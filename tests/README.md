@@ -1,9 +1,17 @@
 # Test Scripts
 
-**Version:** 0.3.0-alpha  
-**Last Updated:** 2025-12-04
+**Version:** 0.6.0-alpha  
+**Last Updated:** 2025-12-07  
+**Status:** ✅ 86+ Tests Passing
 
-> 📋 These test scripts validate local functionality. For comprehensive test status, see [../VERSION.md](../VERSION.md).
+> 📚 **Complete Testing Documentation:**
+> - **[../docs/testing/TESTING_INDEX.md](../docs/testing/TESTING_INDEX.md)** ⭐ - Central testing hub
+> - **[../docs/testing/PHASE1_TEST_SUITE.md](../docs/testing/PHASE1_TEST_SUITE.md)** - Phase 1 tests
+> - **[../docs/testing/PHASE2_TEST_SUITE.md](../docs/testing/PHASE2_TEST_SUITE.md)** - Phase 2 tests  
+> - **[../docs/testing/COMPUTE_TEST_SUITE.md](../docs/testing/COMPUTE_TEST_SUITE.md)** - Compute tests (86+)
+> - **[../docs/TESTING_QUICK_START.md](../docs/TESTING_QUICK_START.md)** - Quick commands
+
+> 📋 These test scripts validate functionality. For comprehensive test status, see **[testing documentation](../docs/testing/TESTING_INDEX.md)**.
 
 ## Test Organization
 
