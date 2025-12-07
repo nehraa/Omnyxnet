@@ -119,11 +119,13 @@ install_system_deps() {
         log_info "Detected apt-get (Debian/Ubuntu)"
         sudo apt-get update
         sudo apt-get install -y build-essential pkg-config libssl-dev capnproto python3 python3-pip python3-venv \
-            python3-tk portaudio19-dev libportaudio2 libportaudiocpp0 libopencv-dev
+            portaudio19-dev libportaudio2 libportaudiocpp0 libopencv-dev \
+            python3-dev libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+            libgstreamer1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good
         log_success "System dependencies installed"
     elif command_exists brew; then
         log_info "Detected Homebrew (macOS)"
-        brew install capnp openssl pkg-config python3 python-tk@3.11
+        brew install capnp openssl pkg-config python3 sdl2 sdl2_image sdl2_mixer sdl2_ttf gstreamer
         log_success "System dependencies installed"
     else
         log_error "Unsupported package manager. Please install dependencies manually:"
@@ -399,7 +401,7 @@ show_menu() {
     echo "19) Distributed Compute Menu"
     echo "20) DCDN Demo (Distributed CDN System)"
     echo "21) Run Live P2P Test (Chat/Voice/Video)"
-    echo "22) Launch Desktop App (GUI Interface)"
+    echo "22) Launch Desktop App (Kivy+KivyMD GUI)"
     echo "23) Check Network Status"
     echo "24) View Setup Log"
     echo "25) View Test Log"
@@ -1140,27 +1142,166 @@ main() {
                 echo -e "${BLUE}   DCDN DEMO - Distributed CDN System${NC}"
                 echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
                 echo ""
-                echo "Running interactive DCDN demo..."
-                echo "This demonstrates:"
-                echo "  • ChunkStore (lock-free ring buffer)"
-                echo "  • FEC Engine (Reed-Solomon recovery)"
-                echo "  • P2P Engine (tit-for-tat bandwidth allocation)"
-                echo "  • Ed25519 signature verification"
-                echo "  • Complete chunk lifecycle"
+                echo "Choose DCDN test type:"
+                echo "  1) Interactive Demo (local)"
+                echo "  2) Container Tests (virtual containers)"
+                echo "  3) Cross-Device Tests (assumes connection established)"
+                echo "  q) Back to main menu"
                 echo ""
-                read -p "Press Enter to start demo..."
+                read -p "Select option (1-3/q): " dcdn_choice
                 
-                cd "$PROJECT_ROOT/rust" || {
-                    log_error "Failed to navigate to rust directory"
-                    read -p "Press Enter to continue..."
-                    return 1
-                }
-                
-                if ! cargo run --example dcdn_demo 2>&1 | tee -a "$TEST_LOG_FILE"; then
-                    log_error "DCDN demo failed"
-                else
-                    log_success "DCDN demo completed"
-                fi
+                case "$dcdn_choice" in
+                    1)
+                        echo ""
+                        echo "Running interactive DCDN demo..."
+                        echo "This demonstrates:"
+                        echo "  • ChunkStore (lock-free ring buffer)"
+                        echo "  • FEC Engine (Reed-Solomon recovery)"
+                        echo "  • P2P Engine (tit-for-tat bandwidth allocation)"
+                        echo "  • Ed25519 signature verification"
+                        echo "  • Complete chunk lifecycle"
+                        echo ""
+                        read -p "Press Enter to start demo..."
+                        
+                        cd "$PROJECT_ROOT/rust" || {
+                            log_error "Failed to navigate to rust directory"
+                            read -p "Press Enter to continue..."
+                            continue
+                        }
+                        
+                        if ! cargo run --example dcdn_demo 2>&1 | tee -a "$TEST_LOG_FILE"; then
+                            log_error "DCDN demo failed"
+                        else
+                            log_success "DCDN demo completed"
+                        fi
+                        ;;
+                    
+                    2)
+                        echo ""
+                        echo "Running DCDN Container Tests..."
+                        echo ""
+                        echo "This will:"
+                        echo "  • Create virtual container environment"
+                        echo "  • Deploy DCDN nodes in containers"
+                        echo "  • Test chunk transfer between containers"
+                        echo "  • Verify FEC recovery in isolated network"
+                        echo ""
+                        read -p "Press Enter to start container tests..."
+                        
+                        # Check if Docker/Podman is available
+                        if command_exists docker; then
+                            CONTAINER_CMD="docker"
+                        elif command_exists podman; then
+                            CONTAINER_CMD="podman"
+                        else
+                            log_error "Docker or Podman required for container tests"
+                            echo "Install with:"
+                            echo "  Debian/Ubuntu: sudo apt-get install docker.io"
+                            echo "  macOS: brew install docker"
+                            read -p "Press Enter to continue..."
+                            continue
+                        fi
+                        
+                        log_info "Using container runtime: $CONTAINER_CMD"
+                        
+                        # Run DCDN container tests
+                        cd "$PROJECT_ROOT/rust" || {
+                            log_error "Failed to navigate to rust directory"
+                            read -p "Press Enter to continue..."
+                            continue
+                        }
+                        
+                        # Build DCDN test image
+                        log_info "Building DCDN test container..."
+                        $CONTAINER_CMD build -t pangea-dcdn-test -f - . <<'EOF'
+FROM rust:1.75-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y pkg-config libssl-dev
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+COPY examples ./examples
+COPY tests ./tests
+COPY config ./config
+RUN cargo build --release --example dcdn_demo
+RUN cargo build --release --lib
+CMD ["cargo", "test", "--test", "test_dcdn"]
+EOF
+                        
+                        if [ $? -eq 0 ]; then
+                            log_success "Container image built successfully"
+                            
+                            # Run tests in container
+                            log_info "Running DCDN tests in container..."
+                            $CONTAINER_CMD run --rm pangea-dcdn-test 2>&1 | tee -a "$TEST_LOG_FILE"
+                            
+                            if [ ${PIPESTATUS[0]} -eq 0 ]; then
+                                log_success "Container tests passed"
+                            else
+                                log_error "Container tests failed"
+                            fi
+                        else
+                            log_error "Failed to build container image"
+                        fi
+                        ;;
+                    
+                    3)
+                        echo ""
+                        echo "Running DCDN Cross-Device Tests..."
+                        echo ""
+                        echo "Prerequisites:"
+                        echo "  • Two devices must be on the same network"
+                        echo "  • Connection should already be established"
+                        echo "  • Firewall ports opened for QUIC"
+                        echo ""
+                        
+                        read -p "Enter remote device IP address: " remote_ip
+                        read -p "Enter remote device DCDN port (default 9090): " remote_port
+                        remote_port="${remote_port:-9090}"
+                        
+                        log_info "Testing DCDN connection to ${remote_ip}:${remote_port}"
+                        
+                        # Test if remote is reachable
+                        if nc -z -w 5 "$remote_ip" "$remote_port" 2>/dev/null; then
+                            log_success "Remote DCDN node is reachable"
+                            
+                            # Run cross-device DCDN test
+                            cd "$PROJECT_ROOT/python" || {
+                                log_error "Failed to navigate to python directory"
+                                read -p "Press Enter to continue..."
+                                continue
+                            }
+                            
+                            source .venv/bin/activate 2>/dev/null || {
+                                log_error "Python virtual environment not found"
+                                read -p "Press Enter to continue..."
+                                continue
+                            }
+                            
+                            log_info "Running DCDN cross-device test..."
+                            python3 main.py dcdn test --remote="${remote_ip}:${remote_port}" 2>&1 | tee -a "$TEST_LOG_FILE"
+                            
+                            if [ ${PIPESTATUS[0]} -eq 0 ]; then
+                                log_success "Cross-device test completed"
+                            else
+                                log_error "Cross-device test failed"
+                            fi
+                        else
+                            log_error "Cannot reach remote DCDN node at ${remote_ip}:${remote_port}"
+                            echo "Make sure:"
+                            echo "  1. Remote device is running DCDN node"
+                            echo "  2. Firewall allows port ${remote_port}"
+                            echo "  3. Devices are on same network or have route"
+                        fi
+                        ;;
+                    
+                    q|Q)
+                        continue
+                        ;;
+                    
+                    *)
+                        echo -e "${RED}Invalid option${NC}"
+                        ;;
+                esac
                 
                 echo ""
                 read -p "Press Enter to continue..."
@@ -1181,7 +1322,7 @@ main() {
                 log_info "User selected: Launch Desktop App"
                 echo ""
                 echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
-                echo -e "${BLUE}   PANGEA NET DESKTOP APPLICATION${NC}"
+                echo -e "${BLUE}   PANGEA NET DESKTOP APPLICATION (Kivy+KivyMD)${NC}"
                 echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
                 echo ""
                 echo "Launching Desktop GUI Application..."
@@ -1193,15 +1334,16 @@ main() {
                 echo "  • File operations (upload/download)"
                 echo "  • P2P communications (chat/voice/video)"
                 echo "  • Network monitoring"
+                echo "  • DCDN operations"
                 echo ""
                 
-                # Check if tkinter is available
-                if ! python3 -c "import tkinter" 2>/dev/null; then
-                    log_error "tkinter is not installed"
+                # Check if Kivy is available
+                if ! python3 -c "import kivy" 2>/dev/null; then
+                    log_error "Kivy is not installed"
                     echo ""
-                    echo "Please install tkinter:"
-                    echo "  Debian/Ubuntu: sudo apt-get install python3-tk"
-                    echo "  macOS: brew install python-tk@3.11"
+                    echo "Please install Kivy dependencies:"
+                    echo "  cd python && source .venv/bin/activate"
+                    echo "  pip install kivy>=2.2.0 kivymd>=1.1.1"
                     echo ""
                     read -p "Press Enter to continue..."
                     continue
@@ -1209,7 +1351,7 @@ main() {
                 
                 # Launch desktop app
                 cd "$PROJECT_ROOT"
-                python3 desktop_app.py
+                python3 desktop_app_kivy.py
                 
                 echo ""
                 read -p "Press Enter to continue..."

@@ -20,6 +20,7 @@ import asyncio
 import json
 import logging
 import os
+import subprocess
 import sys
 from collections import deque
 from datetime import datetime
@@ -572,6 +573,104 @@ async def stream_events(request: Request):
             "X-Accel-Buffering": "no"
         }
     )
+
+
+# ============================================================
+# DCDN Endpoints
+# ============================================================
+
+@app.get("/api/dcdn/info")
+async def dcdn_info():
+    """Get DCDN system information."""
+    return {
+        "status": "available",
+        "components": {
+            "quic_transport": "Low-latency packet delivery (quinn)",
+            "fec_engine": "Reed-Solomon forward error correction",
+            "p2p_engine": "Tit-for-tat bandwidth allocation",
+            "signature_verifier": "Ed25519 cryptographic verification",
+            "chunk_store": "Lock-free ring buffer storage"
+        },
+        "performance": {
+            "chunk_lookup": "O(1) - constant time",
+            "fec_encoding": "~500 MB/s",
+            "fec_decoding": "~300 MB/s",
+            "storage": ">1 GB/s (lock-free, in-memory)",
+            "signature_verify": "~0.1 ms per chunk"
+        },
+        "implementation": "Rust for maximum performance"
+    }
+
+
+@app.post("/api/dcdn/demo")
+async def run_dcdn_demo(background_tasks: BackgroundTasks):
+    """Run DCDN demo via Python CLI."""
+    state.add_log("🌐 Starting DCDN demo...", "info")
+    
+    async def demo_task():
+        try:
+            # Call Python CLI dcdn demo command
+            result = subprocess.run(
+                [sys.executable, str(PROJECT_ROOT / "python" / "main.py"), "dcdn", "demo"],
+                cwd=str(PROJECT_ROOT),
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode == 0:
+                state.add_log("✅ DCDN demo completed successfully", "success")
+                # Parse and log demo output
+                for line in result.stdout.split('\n'):
+                    if line.strip():
+                        state.add_log(f"  {line.strip()}", "info")
+            else:
+                state.add_log(f"❌ DCDN demo failed: {result.stderr}", "error")
+        
+        except subprocess.TimeoutExpired:
+            state.add_log("❌ DCDN demo timed out", "error")
+        except Exception as e:
+            state.add_log(f"❌ Error running DCDN demo: {str(e)}", "error")
+    
+    background_tasks.add_task(demo_task)
+    
+    return {
+        "status": "started",
+        "message": "DCDN demo started in background"
+    }
+
+
+@app.post("/api/dcdn/test")
+async def run_dcdn_test(background_tasks: BackgroundTasks):
+    """Run DCDN tests via Python CLI."""
+    state.add_log("🧪 Starting DCDN tests...", "info")
+    
+    async def test_task():
+        try:
+            result = subprocess.run(
+                [sys.executable, str(PROJECT_ROOT / "python" / "main.py"), "dcdn", "test"],
+                cwd=str(PROJECT_ROOT),
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            
+            if result.returncode == 0:
+                state.add_log("✅ All DCDN tests passed", "success")
+            else:
+                state.add_log(f"❌ DCDN tests failed: {result.stderr}", "error")
+        
+        except subprocess.TimeoutExpired:
+            state.add_log("❌ DCDN tests timed out", "error")
+        except Exception as e:
+            state.add_log(f"❌ Error running DCDN tests: {str(e)}", "error")
+    
+    background_tasks.add_task(test_task)
+    
+    return {
+        "status": "started",
+        "message": "DCDN tests started in background"
+    }
 
 
 # ============================================================
