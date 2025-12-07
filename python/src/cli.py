@@ -4,6 +4,7 @@ Provides simple commands for common operations.
 """
 import click
 import logging
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -1693,9 +1694,6 @@ def demo():
     click.echo("Running interactive DCDN demo from Rust implementation...")
     click.echo("")
     
-    import subprocess
-    from pathlib import Path
-    
     # Get project root
     project_root = Path(__file__).parent.parent.parent
     rust_dir = project_root / "rust"
@@ -1793,9 +1791,6 @@ def test():
     click.echo("🧪 Running DCDN Tests")
     click.echo("=" * 60)
     click.echo("")
-    
-    import subprocess
-    from pathlib import Path
     
     project_root = Path(__file__).parent.parent.parent
     rust_dir = project_root / "rust"
