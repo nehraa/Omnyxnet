@@ -42,20 +42,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Kivy imports
-from kivy.app import App
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.tabbedpanel import TabbedPanel, TabbedPanelItem
-from kivy.uix.button import Button
-from kivy.uix.label import Label
-from kivy.uix.textinput import TextInput
-from kivy.uix.scrollview import ScrollView
 from kivy.clock import Clock
-from kivy.properties import StringProperty, BooleanProperty
 
 # KivyMD imports
 from kivymd.app import MDApp
 from kivymd.uix.screen import MDScreen
-from kivymd.uix.button import MDRaisedButton, MDFlatButton
+from kivymd.uix.button import MDRaisedButton
 from kivymd.uix.textfield import MDTextField
 from kivymd.uix.label import MDLabel
 from kivymd.uix.tab import MDTabs, MDTabsBase
