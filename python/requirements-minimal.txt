@@ -4,6 +4,10 @@ numpy>=1.24.0
 click>=8.1.0
 pyyaml>=6.0
 
+# GUI dependencies for desktop app
+kivy>=2.2.0
+kivymd>=1.1.1
+
 ## Minimal extras for live testing
 # These are small additions to enable live audio/video demos
 sounddevice>=0.4.8
