@@ -1,9 +1,15 @@
 # Quick Start Guide - Pangea Net
 
-**Version:** 0.3.0-alpha  
-**Last Updated:** 2025-11-22
+**Version:** 0.6.0-alpha  
+**Last Updated:** 2025-12-07  
+**Status:** Complete Guide
 
-> ⚠️ **Alpha Software:** This is development software. Works locally, NOT production-ready.
+> 📚 **More Documentation:**
+> - **[START_HERE.md](START_HERE.md)** - Complete navigation guide
+> - **[testing/TESTING_INDEX.md](testing/TESTING_INDEX.md)** - All testing docs (86+ tests)
+> - **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Detailed setup
+
+> ⚠️ **Alpha Software:** v0.6.0-alpha with distributed compute system. Works across devices with 86+ tests passing. NOT production-ready yet.
 
 ## 🚀 New to Pangea Net? Start Here!
 

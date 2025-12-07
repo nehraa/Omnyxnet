@@ -1,5 +1,14 @@
 # Pangea Net - Complete Setup Guide
 
+**Version:** 0.6.0-alpha  
+**Last Updated:** 2025-12-07  
+**Status:** Complete Guide
+
+> 📚 **Related Documentation:**
+> - **[QUICK_START.md](QUICK_START.md)** - 5-minute quickstart
+> - **[testing/TESTING_INDEX.md](testing/TESTING_INDEX.md)** - All testing guides
+> - **[START_HERE.md](START_HERE.md)** - Navigation hub
+
 This guide covers the complete setup process from scratch, including all dependencies, builds, and testing.
 
 ## Quick Start
