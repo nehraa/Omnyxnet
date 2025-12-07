@@ -119,11 +119,11 @@ install_system_deps() {
         log_info "Detected apt-get (Debian/Ubuntu)"
         sudo apt-get update
         sudo apt-get install -y build-essential pkg-config libssl-dev capnproto python3 python3-pip python3-venv \
-            portaudio19-dev libportaudio2 libportaudiocpp0 libopencv-dev
+            python3-tk portaudio19-dev libportaudio2 libportaudiocpp0 libopencv-dev
         log_success "System dependencies installed"
     elif command_exists brew; then
         log_info "Detected Homebrew (macOS)"
-        brew install capnp openssl pkg-config python3
+        brew install capnp openssl pkg-config python3 python-tk@3.11
         log_success "System dependencies installed"
     else
         log_error "Unsupported package manager. Please install dependencies manually:"
@@ -399,10 +399,11 @@ show_menu() {
     echo "19) Distributed Compute Menu"
     echo "20) DCDN Demo (Distributed CDN System)"
     echo "21) Run Live P2P Test (Chat/Voice/Video)"
-    echo "22) Check Network Status"
-    echo "23) View Setup Log"
-    echo "24) View Test Log"
-    echo "25) Clean Build Artifacts"
+    echo "22) Launch Desktop App (GUI Interface)"
+    echo "23) Check Network Status"
+    echo "24) View Setup Log"
+    echo "25) View Test Log"
+    echo "26) Clean Build Artifacts"
     echo "0) Exit"
     echo ""
     echo -n "Select an option: "
@@ -1177,20 +1178,57 @@ main() {
                 read -p "Press Enter to continue..."
                 ;;
             22)
+                log_info "User selected: Launch Desktop App"
+                echo ""
+                echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+                echo -e "${BLUE}   PANGEA NET DESKTOP APPLICATION${NC}"
+                echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+                echo ""
+                echo "Launching Desktop GUI Application..."
+                echo ""
+                echo "The desktop app provides:"
+                echo "  • Graphical interface for all CLI features"
+                echo "  • Node connection management"
+                echo "  • Compute task submission"
+                echo "  • File operations (upload/download)"
+                echo "  • P2P communications (chat/voice/video)"
+                echo "  • Network monitoring"
+                echo ""
+                
+                # Check if tkinter is available
+                if ! python3 -c "import tkinter" 2>/dev/null; then
+                    log_error "tkinter is not installed"
+                    echo ""
+                    echo "Please install tkinter:"
+                    echo "  Debian/Ubuntu: sudo apt-get install python3-tk"
+                    echo "  macOS: brew install python-tk@3.11"
+                    echo ""
+                    read -p "Press Enter to continue..."
+                    continue
+                fi
+                
+                # Launch desktop app
+                cd "$PROJECT_ROOT"
+                python3 desktop_app.py
+                
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            23)
                 log_info "User selected: Check Network Status"
                 "$SCRIPT_DIR/check_network.sh" --status
                 echo ""
                 read -p "Press Enter to continue..."
                 ;;
-            23)
+            24)
                 log_info "User selected: View Setup Log"
                 less "$LOG_FILE"
                 ;;
-            24)
+            25)
                 log_info "User selected: View Test Log"
                 less "$TEST_LOG_FILE"
                 ;;
-            25)
+            26)
                 log_info "User selected: Clean Build Artifacts"
                 clean_builds
                 echo ""
