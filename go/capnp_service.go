@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"time"
 
 	"capnproto.org/go/capnp/v3"
@@ -231,7 +232,13 @@ func (s *nodeServiceServer) ConnectToPeer(ctx context.Context, call NodeService_
 	port := peer.Port()
 
 	// Construct peer address
-	peerAddr := fmt.Sprintf("%s:%d", host, port)
+	// If host starts with "/", treat it as a multiaddr (e.g. /ip4/...)
+	var peerAddr string
+	if strings.HasPrefix(host, "/") {
+		peerAddr = host
+	} else {
+		peerAddr = fmt.Sprintf("%s:%d", host, port)
+	}
 
 	// Connect using network adapter
 	err = s.network.ConnectToPeer(peerAddr, peerID)
