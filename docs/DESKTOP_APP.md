@@ -4,7 +4,7 @@
 
 The Pangea Net Desktop Application is a standalone GUI application that provides complete access to all Pangea Net functionality **without requiring command-line interaction or a web browser**.
 
-This application replaces the browser-based demo and provides direct Cap'n Proto RPC connectivity to the Go node for real-time network operations.
+This application replaces the browser-based demo and provides direct Cap'n Proto RPC connectivity to the Go node for real-time network operations. It is built using **Kivy and KivyMD**, offering a modern, touch-friendly interface.
 
 ## Features
 
@@ -17,15 +17,21 @@ All Python CLI commands are accessible through the GUI:
 - Network topology visualization
 - Health status monitoring
 
+### ✅ DCDN Integration
+- **DCDN Demo**: Run the Decentralized Content Delivery Network demo directly from the GUI.
+- **DCDN Info**: View system information and status for the DCDN components.
+- **Container Tests**: Run isolated DCDN tests in Docker/Podman containers.
+
 ### ✅ Direct Cap'n Proto Connectivity
 - Native RPC connection to Go nodes (no HTTP)
 - Real-time data from actual network operations
 - Full multiaddr support for peer connections
 - No fake/simulated metrics
 
-### ✅ Desktop Application
+### ✅ Modern Desktop Experience
 - Native window application (not browser-based)
 - Cross-platform (Linux, macOS, Windows)
+- Material Design interface (KivyMD)
 - No web server required
 - Runs entirely locally
 
@@ -38,16 +44,26 @@ All Python CLI commands are accessible through the GUI:
    python3 --version
    ```
 
-2. **Python dependencies**
+2. **System Dependencies (SDL2 & GStreamer)**
+   
+   **Ubuntu/Debian:**
+   ```bash
+   sudo apt-get install libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev \
+       libgstreamer1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+   ```
+
+   **macOS:**
+   ```bash
+   brew install sdl2 sdl2_image sdl2_mixer sdl2_ttf gstreamer
+   ```
+
+3. **Python dependencies**
    ```bash
    cd python
    pip install -r requirements.txt
+   # Ensure Kivy and KivyMD are installed
+   pip install "kivy>=2.2.0" "kivymd>=1.1.1"
    ```
-
-3. **Tkinter** (usually included with Python)
-   - Linux: `sudo apt-get install python3-tk`
-   - macOS: Included with Python
-   - Windows: Included with Python
 
 4. **Cap'n Proto compiler**
    ```bash
@@ -78,7 +94,7 @@ go build -o bin/go-node .
 
 2. **Launch the desktop app**:
    ```bash
-   python3 desktop_app.py
+   python3 desktop_app_kivy.py
    ```
 
 3. **Connect to the node**:
@@ -103,27 +119,27 @@ go build -o bin/go-node .
 - **List Workers**: View available compute workers
 - **Check Task Status**: Monitor running tasks
 
-#### 3. File Operations (Receptors)
+#### 3. DCDN & Streaming
+- **DCDN Info**: View DCDN system status
+- **Run Demo**: Execute the DCDN streaming demo
+- **Container Tests**: Run isolated tests
+
+#### 4. File Operations (Receptors)
 - **Upload File**: Browse and upload files to the network
 - **Download File**: Download files by hash
 - **List Available Files**: View all files in the network
 
-#### 4. Communications
+#### 5. Communications
 - **Test P2P Connection**: Verify peer-to-peer connectivity
 - **Ping All Nodes**: Check liveness of all nodes
 - **Check Network Health**: Overall network status
-
-#### 5. Network Info
-- **Show Peers**: List connected peers with multiaddr
-- **Network Topology**: Visualize network structure
-- **Connection Stats**: View network statistics
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────┐
 │       Desktop Application (GUI)         │
-│         (Tkinter-based)                 │
+│         (Kivy/KivyMD)                   │
 └──────────────┬──────────────────────────┘
                │ Cap'n Proto RPC
                ↓
@@ -162,63 +178,29 @@ export GO_NODE_PORT=8080
 export LOG_LEVEL=INFO
 ```
 
-### Command Line Options
-
-Currently, all configuration is done through the GUI. Future versions may support command-line arguments.
-
 ## Comparison: Desktop App vs Browser Demo
 
 | Feature | Browser Demo | Desktop App |
 |---------|--------------|-------------|
-| **Interface** | Web browser | Native window |
+| **Interface** | Web browser | Native window (Kivy) |
 | **Connection** | HTTP/WebSocket | Cap'n Proto RPC |
 | **Data** | Simulated/fake | Real from network |
 | **Metrics** | Fake stats | Actual network data |
 | **CLI Access** | Limited | Complete |
-| **Dependencies** | FastAPI, uvicorn | Tkinter (built-in) |
-| **Installation** | `pip install fastapi uvicorn` | Python only |
-| **Startup** | `./setup.sh --demo` | `python3 desktop_app.py` |
+| **Dependencies** | FastAPI, uvicorn | Kivy, KivyMD, SDL2 |
+| **Installation** | `pip install fastapi uvicorn` | Python + System libs |
+| **Startup** | `./setup.sh --demo` | `python3 desktop_app_kivy.py` |
 
 ## Development
 
 ### Adding New Features
 
-1. **Add a new tab** in `create_tabbed_interface()`
+1. **Add a new tab** in the KV string or Python builder
 2. **Add button handlers** for the operation
 3. **Implement RPC call** using `self.go_client`
 4. **Display results** in the tab's output area
 
-Example:
-```python
-def my_new_feature(self):
-    """Example new feature."""
-    if not self.connected:
-        messagebox.showwarning("Not Connected", "Please connect first")
-        return
-    
-    self.log_message("🔥 Running new feature...")
-    
-    def feature_thread():
-        try:
-            result = self.go_client.my_rpc_call()
-            self.message_queue.put(("result", result))
-        except Exception as e:
-            self.message_queue.put(("error", str(e)))
-    
-    threading.Thread(target=feature_thread, daemon=True).start()
-```
-
-### Testing
-
-```bash
-# Run with debug logging
-LOG_LEVEL=DEBUG python3 desktop_app.py
-
-# Test without Go node (will show connection error)
-python3 desktop_app.py
-```
-
-## Troubleshooting
+### Troubleshooting
 
 ### "Cap'n Proto client not available"
 ```bash
@@ -232,38 +214,15 @@ pip install pycapnp
 3. Check firewall settings
 4. Try explicit IP: `127.0.0.1` instead of `localhost`
 
-### "ModuleNotFoundError: No module named 'tkinter'"
+### "ModuleNotFoundError: No module named 'kivy'"
 ```bash
-# Linux
-sudo apt-get install python3-tk
-
-# macOS
-# Reinstall Python with tkinter support
-brew reinstall python-tk
+pip install kivy kivymd
 ```
 
 ### GUI doesn't respond
 - Check system log (bottom panel) for errors
 - Restart the application
 - Verify Go node is responsive: `curl localhost:8080` (should timeout, not refuse)
-
-## Limitations and Future Work
-
-### Current Limitations
-1. **Single node connection**: Can only connect to one Go node at a time
-2. **Basic UI**: Functional but not polished
-3. **Limited visualization**: Network topology is text-based
-4. **No persistence**: Connection settings not saved between sessions
-
-### Planned Enhancements
-1. **Multi-node support**: Connect to multiple nodes simultaneously
-2. **Advanced UI**: Better styling, icons, and layout
-3. **Visual topology**: Graphical network map
-4. **Configuration persistence**: Save settings and history
-5. **Real-time updates**: Auto-refresh for metrics
-6. **Dark/light themes**: User-selectable themes
-7. **Logging export**: Save logs to file
-8. **Task scheduling**: Schedule recurring compute tasks
 
 ## Security Considerations
 
@@ -300,5 +259,5 @@ For issues or questions:
 
 ---
 
-**Last Updated**: 2025-12-06  
-**Version**: 1.0.0-alpha
+**Last Updated**: 2025-12-07  
+**Version**: 0.6.0-alpha

@@ -312,3 +312,24 @@ All changes maintain backward compatibility while improving functionality and us
 
 **Last Updated**: 2025-12-06  
 **Version**: 0.6.1-alpha
+
+## 2025-12-07 - Documentation & DCDN Update
+
+### 1. Comprehensive Documentation Update
+**Status**: ✅ Completed
+- Updated `README.md` with new DCDN and Desktop App sections.
+- Updated `ARCHITECTURE.md` to include Rust Data Plane.
+- Created `DCDN.md` to document the new streaming architecture.
+- Updated `DESKTOP_APP.md` to reflect the switch to Kivy/KivyMD.
+- Updated `TESTING_GUIDE.md` with containerized testing instructions.
+
+### 2. DCDN Integration
+**Status**: ✅ Integrated
+- Added Rust-based Data Plane for high-performance streaming.
+- Integrated DCDN demo into the Desktop App.
+- Added containerized tests for DCDN verification.
+
+### 3. GUI Framework Switch
+**Status**: ✅ Completed
+- Replaced Tkinter with Kivy/KivyMD for a modern, touch-friendly UI.
+- Added system dependencies (SDL2, GStreamer) to documentation.

@@ -75,6 +75,23 @@ python main.py test manual-connect 10.0.0.5:9081 3
 
 ---
 
+## 🐳 Container Tests (DCDN)
+
+Tests the Rust DCDN implementation in an isolated Docker/Podman container.
+
+```bash
+# Via shell script
+./scripts/test_pangea.sh
+# Then select option 20.2
+
+# This will:
+# 1. Build the Rust DCDN container image
+# 2. Run the test suite inside the container
+# 3. Verify chunk transfer and FEC recovery
+```
+
+---
+
 ## 💬 Test Messaging
 
 ```bash

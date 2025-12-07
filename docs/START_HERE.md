@@ -25,6 +25,17 @@ cd python && source .venv/bin/activate
 python main.py compute matrix-multiply --size 10 --generate --verify
 ```
 
+### Step 3: Run DCDN Demo (Test Streaming)
+
+```bash
+# Via Desktop App (Recommended)
+python3 desktop_app_kivy.py
+# Go to "DCDN" tab -> "Run Demo"
+
+# Via CLI
+python main.py dcdn demo
+```
+
 ### Test Everything on Localhost (30 seconds)
 
 ```bash

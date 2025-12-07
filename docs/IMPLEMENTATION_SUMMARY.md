@@ -98,14 +98,14 @@ This implementation addresses all requirements from the problem statement for th
 **Status**: COMPLETED
 
 **What was done**:
-- Created `desktop_app.py` - Native desktop application
-- Uses Python Tkinter (cross-platform GUI framework)
+- Created `desktop_app_kivy.py` - Native desktop application
+- Uses Python Kivy/KivyMD (modern, touch-friendly GUI framework)
 - Runs as standalone desktop window
 - **NO browser required**
 - Completely local application
 
 **Files created**:
-- `desktop_app.py` (872 lines)
+- `desktop_app_kivy.py`
 - `DESKTOP_APP.md` (comprehensive documentation)
 
 #### ✅ CLI Call Wiring

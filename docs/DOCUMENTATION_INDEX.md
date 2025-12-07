@@ -36,6 +36,11 @@
    - Key guarantees
    - Verification checklist
 
+5. **[DCDN.md](DCDN.md)** ⭐ **NEW**
+   - Decentralized Content Delivery Network
+   - Streaming architecture
+   - Containerized testing
+
 ---
 
 ## 📚 Complete Documentation
