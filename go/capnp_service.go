@@ -243,6 +243,7 @@ func (s *nodeServiceServer) ConnectToPeer(ctx context.Context, call NodeService_
 	// Connect using network adapter
 	err = s.network.ConnectToPeer(peerAddr, peerID)
 	if err != nil {
+		log.Printf("❌ RPC ConnectToPeer failed for %s: %v", peerAddr, err)
 		results.SetSuccess(false)
 		return nil // Don't fail RPC call, just indicate failure
 	}
