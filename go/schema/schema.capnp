@@ -244,6 +244,25 @@ interface NodeService {
     
     # Get node compute capacity
     getComputeCapacity @26 () -> (capacity :ComputeCapacity);
+    
+    # === mDNS Discovery Service ===
+    
+    # Get list of peers discovered via mDNS
+    getMdnsDiscovered @27 () -> (peers :List(DiscoveredPeer));
+    
+    # Connect to an mDNS-discovered peer
+    connectMdnsPeer @28 (peerID :Text) -> (success :Bool, errorMsg :Text);
+    
+    # === Configuration Management ===
+    
+    # Load configuration from disk
+    loadConfig @29 () -> (config :ConfigData, success :Bool, errorMsg :Text);
+    
+    # Save configuration to disk
+    saveConfig @30 (config :ConfigData) -> (success :Bool, errorMsg :Text);
+    
+    # Update a configuration value
+    updateConfigValue @31 (key :Text, value :Text) -> (success :Bool);
 }
 
 # === Distributed Compute Structures ===
@@ -278,5 +297,31 @@ struct ComputeCapacity {
     currentLoad @2 :Float32;
     diskMb @3 :UInt64;
     bandwidthMbps @4 :Float32;
+}
+
+# === mDNS Discovery Structures ===
+
+struct DiscoveredPeer {
+    peerId @0 :Text;
+    multiaddrs @1 :List(Text);
+    discoveredAt @2 :Int64;
+}
+
+# === Configuration Structures ===
+
+struct ConfigData {
+    nodeId @0 :UInt32;
+    capnpAddr @1 :Text;
+    libp2pPort @2 :Int32;
+    useLibp2p @3 :Bool;
+    localMode @4 :Bool;
+    bootstrapPeers @5 :List(Text);
+    lastSavedAt @6 :Text;
+    customSettings @7 :List(KeyValue);
+}
+
+struct KeyValue {
+    key @0 :Text;
+    value @1 :Text;
 }
 
