@@ -1,10 +1,16 @@
-# Pangea Net Python AI Component
+# Pangea Net Python: CLI, AI Layer & Compute SDK
 
-**Version:** 0.3.0-alpha  
-**Status:** Alpha - Local Testing  
-**Last Updated:** 2025-12-04
+**Version:** 0.6.0-alpha  
+**Status:** ✅ Operational - All Tests Passing  
+**Last Updated:** 2025-12-07
 
-> ⚠️ **Development Status:** Core AI features implemented and functional for local testing. Requires validation with real network data before production use.
+> 📚 **Related Documentation:**
+> - **[../docs/testing/PHASE2_TEST_SUITE.md](../docs/testing/PHASE2_TEST_SUITE.md)** - Phase 2 ML framework tests (14 tests)
+> - **[../docs/testing/COMPUTE_TEST_SUITE.md](../docs/testing/COMPUTE_TEST_SUITE.md)** - Compute SDK tests
+> - **[../docs/PYTHON_API.md](../docs/PYTHON_API.md)** - Python API reference
+> - **[../docs/PHASE2_IMPLEMENTATION_COMPLETE.md](../docs/PHASE2_IMPLEMENTATION_COMPLETE.md)** - Phase 2 details
+
+> ⚠️ **Development Status:** Core features operational with comprehensive tests passing. Phase 2 ML framework complete and ready for model integration. Compute SDK fully functional. Not recommended for production deployment yet.
 
 Python AI component that monitors Go nodes and predicts network threats using 1D CNN.
 

@@ -1,5 +1,13 @@
 # Quick Start: Cross-Device Distributed Compute Testing
 
+**Version:** 0.6.0-alpha  
+**Last Updated:** 2025-12-07
+
+> 📚 **Related Documentation:**
+> - **[testing/COMPUTE_TEST_SUITE.md](testing/COMPUTE_TEST_SUITE.md)** - Complete testing guide
+> - **[DISTRIBUTED_COMPUTE.md](DISTRIBUTED_COMPUTE.md)** - Full architecture details
+> - **[DISTRIBUTED_COMPUTE_COMPLETE.md](DISTRIBUTED_COMPUTE_COMPLETE.md)** - Implementation status
+
 ## New: Matrix Multiply CLI
 
 The easiest way to test distributed compute is now the Matrix Multiply CLI:
