@@ -35,13 +35,15 @@ func NewConfigManager(nodeID uint32) *ConfigManager {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		log.Printf("⚠️  Could not get user home directory: %v", err)
-		homeDir = "."
+		// Use temp directory as fallback for security
+		homeDir = os.TempDir()
 	}
 	
 	configDir := filepath.Join(homeDir, ".pangea")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		log.Printf("⚠️  Could not create config directory: %v", err)
-		configDir = "."
+		// Use temp directory as final fallback
+		configDir = os.TempDir()
 	}
 	
 	configPath := filepath.Join(configDir, fmt.Sprintf("node_%d_config.json", nodeID))
@@ -86,8 +88,8 @@ func (cm *ConfigManager) SaveConfig(config *NodeConfig) error {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 	
-	// Update timestamp
-	config.LastSavedAt = fmt.Sprintf("%v", time.Now())
+	// Update timestamp with standardized format
+	config.LastSavedAt = time.Now().Format(time.RFC3339)
 	
 	// Convert to JSON
 	data, err := json.MarshalIndent(config, "", "  ")

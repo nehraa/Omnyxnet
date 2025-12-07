@@ -14,7 +14,7 @@
 #   - DCDN operations
 # =============================================================================
 
-set -e
+set -euo pipefail
 
 # Colors for output
 RED='\033[0;31m'
@@ -259,6 +259,8 @@ generate_report() {
     SUCCESS_RATE=0
     if [ $TOTAL_TESTS -gt 0 ]; then
         SUCCESS_RATE=$((TESTS_PASSED * 100 / TOTAL_TESTS))
+    else
+        SUCCESS_RATE=0
     fi
     
     echo -e "${GREEN}Tests Passed: $TESTS_PASSED${NC}"

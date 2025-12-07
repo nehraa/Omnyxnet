@@ -1460,8 +1460,9 @@ class PangeaDesktopApp(MDApp):
             self.show_warning("Invalid Hash Format", "File hash must be hexadecimal (0-9, a-f)")
             return
         
-        if len(file_hash) < 8:
-            self.show_warning("Hash Too Short", "File hash is too short (minimum 8 characters)")
+        # For SHA-256, expect exactly 64 characters
+        if len(file_hash) != 64:
+            self.show_warning("Invalid Hash Length", f"SHA-256 hash must be exactly 64 characters (got {len(file_hash)})")
             return
         
         self.log_message(f"⬇️  Downloading file {file_hash[:16]}...")
@@ -1480,8 +1481,8 @@ class PangeaDesktopApp(MDApp):
                         
                         # CLIENT-SIDE MANIFEST VERIFICATION
                         # Compute hash of downloaded data and verify against manifest
-                        computed_hash = hashlib.sha256(data).hexdigest()
-                        expected_hash = file_hash
+                        computed_hash = hashlib.sha256(data).hexdigest().lower()
+                        expected_hash = file_hash.lower()  # Normalize to lowercase for comparison
                         
                         output = f"✅ Download complete!\n\n"
                         output += f"Expected Hash: {expected_hash}\n"
