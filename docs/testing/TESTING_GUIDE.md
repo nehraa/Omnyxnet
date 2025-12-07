@@ -1,6 +1,21 @@
+# Comprehensive Testing Guide
+
+**Version:** 0.6.0-alpha  
+**Last Updated:** 2025-12-07  
+**Status:** ✅ Complete
+
+> 📚 **Quick Links:**
+> - **[TESTING_INDEX.md](TESTING_INDEX.md)** - Central testing hub with all documentation ⭐
+> - **[PHASE1_TEST_SUITE.md](PHASE1_TEST_SUITE.md)** - Phase 1 P2P & Streaming tests
+> - **[PHASE2_TEST_SUITE.md](PHASE2_TEST_SUITE.md)** - Phase 2 ML Framework tests ⭐ NEW
+> - **[COMPUTE_TEST_SUITE.md](COMPUTE_TEST_SUITE.md)** - Distributed Compute tests ⭐ NEW
+> - **[../TESTING_QUICK_START.md](../TESTING_QUICK_START.md)** - Quick commands reference
+
+---
+
 # Testing Documentation
 
-**Last Updated**: November 22, 2025
+**Last Updated**: 2025-12-07
 
 ## Test Structure
 
