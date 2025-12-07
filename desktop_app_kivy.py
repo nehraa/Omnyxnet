@@ -27,6 +27,9 @@ import logging
 import subprocess
 import socket
 import time
+import hashlib
+import os
+import traceback
 from typing import Optional, Any
 from datetime import datetime
 import re
@@ -35,6 +38,14 @@ import re
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT / "python"))
 sys.path.insert(0, str(PROJECT_ROOT / "python" / "src"))
+
+# Constants for timeouts and output limits
+DCDN_DEMO_TIMEOUT = 60  # seconds
+DCDN_TEST_TIMEOUT = 120  # seconds
+DCDN_DEMO_STDOUT_TRUNCATE_LEN = 2000  # characters
+DCDN_DEMO_STDERR_TRUNCATE_LEN = 1000  # characters
+DCDN_TEST_STDOUT_TRUNCATE_LEN = 1000  # characters
+DCDN_TEST_STDERR_TRUNCATE_LEN = 500  # characters
 
 # Configure logging
 logging.basicConfig(
@@ -889,10 +900,9 @@ class PangeaDesktopApp(MDApp):
                 # Test basic connectivity first
                 self.log_message(f"ℹ️  Testing network connectivity to {host}:{port}...")
                 try:
-                    test_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    test_sock.settimeout(5.0)
-                    result = test_sock.connect_ex((host, port))
-                    test_sock.close()
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as test_sock:
+                        test_sock.settimeout(5.0)
+                        result = test_sock.connect_ex((host, port))
                     
                     if result != 0:
                         self.log_message(f"❌ Network connectivity test FAILED:")
@@ -952,7 +962,6 @@ class PangeaDesktopApp(MDApp):
             except Exception as e:
                 self.log_message(f"❌ Peer connection failed: {str(e)}")
                 self.log_message(f"   Error type: {type(e).__name__}")
-                import traceback
                 self.log_message(f"   Stack trace: {traceback.format_exc()}")
         
         threading.Thread(target=peer_connect_thread, daemon=True).start()
@@ -1139,8 +1148,6 @@ class PangeaDesktopApp(MDApp):
         def submit_task_thread():
             try:
                 # Generate a unique job ID
-                import hashlib
-                import time
                 job_id = hashlib.md5(f"{task_type}_{time.time()}".encode()).hexdigest()[:16]
                 
                 # Create sample input data for the task
@@ -1169,8 +1176,6 @@ class PangeaDesktopApp(MDApp):
                     self.log_message(f"✅ Task {job_id} submitted")
                     
                     # Store job_id for status checking
-                    if not hasattr(self, 'last_job_id'):
-                        self.last_job_id = job_id
                     self.last_job_id = job_id
                 else:
                     error_output = f"❌ Task submission failed: {error_msg}"
@@ -1256,7 +1261,7 @@ class PangeaDesktopApp(MDApp):
                     output += f"Status: {status['status']}\n"
                     output += f"Progress: {status['progress']:.1%}\n"
                     output += f"Completed Chunks: {status['completedChunks']}/{status['totalChunks']}\n"
-                    output += f"Est. Time Remaining: {status['estimatedTimeRemaining']}s\n"
+                    output += f"Estimated Time Remaining: {status['estimatedTimeRemaining']}s\n"
                     
                     if status['errorMsg']:
                         output += f"\nError: {status['errorMsg']}\n"
@@ -1408,7 +1413,6 @@ class PangeaDesktopApp(MDApp):
                         output += f"Data Preview: {data[:50]}...\n"
                         
                         # Save to file
-                        import os
                         download_dir = os.path.expanduser("~/Downloads")
                         if not os.path.exists(download_dir):
                             download_dir = os.path.expanduser("~")
@@ -1804,24 +1808,24 @@ class PangeaDesktopApp(MDApp):
                     cwd=str(rust_dir),
                     capture_output=True,
                     text=True,
-                    timeout=60
+                    timeout=DCDN_DEMO_TIMEOUT
                 )
                 
                 if result.returncode == 0:
                     output += "✅ Demo completed successfully!\n\n"
                     output += "Output:\n"
-                    output += result.stdout[:2000]  # Limit output
-                    if len(result.stdout) > 2000:
+                    output += result.stdout[:DCDN_DEMO_STDOUT_TRUNCATE_LEN]
+                    if len(result.stdout) > DCDN_DEMO_STDOUT_TRUNCATE_LEN:
                         output += "\n... (output truncated)"
                 else:
                     output += "❌ Demo failed\n\n"
                     output += "Error:\n"
-                    output += result.stderr[:1000]
+                    output += result.stderr[:DCDN_DEMO_STDERR_TRUNCATE_LEN]
                 
                 Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
                 self.log_message("✅ DCDN demo complete")
             except subprocess.TimeoutExpired:
-                error_msg = "❌ Demo timeout - took longer than 60 seconds"
+                error_msg = f"❌ Demo timeout - took longer than {DCDN_DEMO_TIMEOUT} seconds"
                 self.log_message(error_msg)
                 Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
             except Exception as e:
@@ -1899,7 +1903,7 @@ class PangeaDesktopApp(MDApp):
                     cwd=str(rust_dir),
                     capture_output=True,
                     text=True,
-                    timeout=120
+                    timeout=DCDN_TEST_TIMEOUT
                 )
                 
                 if result.returncode == 0:
@@ -1912,14 +1916,14 @@ class PangeaDesktopApp(MDApp):
                 else:
                     output += "❌ Some tests failed\n\n"
                     output += "Output:\n"
-                    output += result.stdout[-1000:]  # Last 1000 chars
+                    output += result.stdout[-DCDN_TEST_STDOUT_TRUNCATE_LEN:]
                     output += "\n\nError:\n"
-                    output += result.stderr[-500:]   # Last 500 chars
+                    output += result.stderr[-DCDN_TEST_STDERR_TRUNCATE_LEN:]
                 
                 Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
                 self.log_message("✅ DCDN tests complete")
             except subprocess.TimeoutExpired:
-                error_msg = "❌ Tests timeout - took longer than 120 seconds"
+                error_msg = f"❌ Tests timeout - took longer than {DCDN_TEST_TIMEOUT} seconds"
                 self.log_message(error_msg)
                 Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
             except Exception as e:

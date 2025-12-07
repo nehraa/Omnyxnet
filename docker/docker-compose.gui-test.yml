@@ -20,8 +20,6 @@
 #   docker-compose -f docker/docker-compose.gui-test.yml logs node1 | grep "multiaddr"
 # =============================================================================
 
-version: "3.8"
-
 services:
   # Node 1 - Bootstrap node for GUI connection
   node1:
@@ -120,8 +118,6 @@ services:
     depends_on:
       node1:
         condition: service_healthy
-      node2:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "8080"]
       interval: 5s
@@ -160,10 +156,6 @@ services:
     depends_on:
       node1:
         condition: service_healthy
-      node2:
-        condition: service_healthy
-      node3:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "8080"]
       interval: 5s
@@ -201,12 +193,6 @@ services:
         ipv4_address: 172.30.0.14
     depends_on:
       node1:
-        condition: service_healthy
-      node2:
-        condition: service_healthy
-      node3:
-        condition: service_healthy
-      node4:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "nc", "-z", "localhost", "8080"]
