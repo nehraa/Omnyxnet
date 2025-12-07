@@ -552,7 +552,7 @@ class PangeaDesktopApp(MDApp):
                     Clock.schedule_once(lambda dt: self.connect_to_node(), 0.5)
                 else:
                     self.log_message("❌ Failed to start Go node. Please start it manually:")
-                    self.log_message("   cd go && go build -o bin/go-node . && ./bin/go-node -node-id=1 -capnp-addr=:8080 -libp2p=true -local")
+                    self.log_message("   cd go && go build -o bin/go-node . && ./bin/go-node -node-id=1 -capnp-addr=:8080 -libp2p=true -libp2p-port=0")
         
         threading.Thread(target=startup_thread, daemon=True).start()
     
@@ -578,6 +578,8 @@ class PangeaDesktopApp(MDApp):
                     return False
             
             # Start the node
+            # We use port 0 to let the OS choose a random port, avoiding conflicts.
+            # We remove -local so it can connect to other devices on the LAN.
             self.log_message(f"🚀 Starting Go node from {go_binary}...")
             self.go_process = subprocess.Popen(
                 [
@@ -585,7 +587,7 @@ class PangeaDesktopApp(MDApp):
                     "-node-id=1",
                     "-capnp-addr=:8080",
                     "-libp2p=true",
-                    "-local"
+                    "-libp2p-port=0"
                 ],
                 cwd=str(go_dir),
                 stdout=subprocess.PIPE,
@@ -810,10 +812,47 @@ class PangeaDesktopApp(MDApp):
         def peer_connect_thread():
             try:
                 self.log_message(f"📡 Peer connection initiated to: {multiaddr}")
-                # In a real implementation, this would call the Go node RPC method to connect to peer
-                # For now, this is a placeholder that logs the attempt
-                # TODO: Implement actual peer connection via go_client
-                self.log_message(f"ℹ️  Peer connection feature requires implementation via Cap'n Proto RPC")
+                
+                # Parse multiaddr to extract host/port/peerID if possible
+                # Format: /ip4/192.168.1.3/tcp/56964/p2p/12D3Koo...
+                import re
+                host = "0.0.0.0"
+                port = 0
+                peer_id_str = ""
+                
+                # Extract IP
+                ip_match = re.search(r'/ip4/([^/]+)', multiaddr)
+                if ip_match:
+                    host = ip_match.group(1)
+                
+                # Extract Port
+                port_match = re.search(r'/tcp/(\d+)', multiaddr)
+                if port_match:
+                    port = int(port_match.group(1))
+                
+                # Extract Peer ID
+                peer_match = re.search(r'/p2p/([^/]+)', multiaddr)
+                if peer_match:
+                    peer_id_str = peer_match.group(1)
+                
+                # If we have a client, try to connect via RPC
+                if self.go_client and self.go_client._connected:
+                    self.log_message(f"ℹ️  Sending connection request to Go node...")
+                    
+                    # We pass the full multiaddr as the 'host' argument.
+                    # The Go side has been updated to detect if host starts with "/" and treat it as a multiaddr.
+                    # We pass 0 for peerID (legacy) and 0 for port (included in multiaddr).
+                    try:
+                        success, quality = self.go_client.connect_to_peer(0, multiaddr, 0)
+                        if success:
+                            self.log_message(f"✅ Successfully connected to peer!")
+                            if quality:
+                                self.log_message(f"   Latency: {quality.get('latencyMs', 0):.2f}ms")
+                        else:
+                            self.log_message(f"❌ Failed to connect to peer.")
+                    except Exception as e:
+                        self.log_message(f"❌ Error connecting: {str(e)}")
+                
                 self.log_message(f"   Multiaddr: {multiaddr[:80]}...")
             except Exception as e:
                 self.log_message(f"❌ Peer connection failed: {str(e)}")
