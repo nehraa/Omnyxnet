@@ -43,6 +43,34 @@ func main() {
 	node := store.CreateNode(uint32(*nodeID))
 	log.Printf("✅ Created node %d with status: %v", node.ID, node.Status)
 
+	// Create configuration manager for persistence
+	configManager := NewConfigManager(uint32(*nodeID))
+	
+	// Try to load existing configuration
+	loadedConfig, err := configManager.LoadConfig()
+	if err != nil {
+		log.Printf("⚠️  Could not load config: %v, using defaults", err)
+	} else {
+		// Override flags with loaded config if they match
+		if loadedConfig.NodeID == uint32(*nodeID) {
+			log.Printf("📋 Loaded configuration for node %d", loadedConfig.NodeID)
+			// Could optionally override flags here with loaded values
+		}
+	}
+	
+	// Save initial configuration
+	initialConfig := &NodeConfig{
+		NodeID:     uint32(*nodeID),
+		CapnpAddr:  *capnpAddr,
+		LibP2PPort: *libp2pPort,
+		UseLibP2P:  *useLibp2p,
+		LocalMode:  *localMode,
+		CustomSettings: make(map[string]string),
+	}
+	if err := configManager.SaveConfig(initialConfig); err != nil {
+		log.Printf("⚠️  Could not save initial config: %v", err)
+	}
+
 	// Create shared memory manager for Go-Python data streaming
 	shmMgr := NewSharedMemoryManager()
 	defer shmMgr.CloseAll()
@@ -94,10 +122,10 @@ func main() {
 		// Create network adapter for libp2p
 		networkAdapter = NewLibP2PAdapter(libp2pNode, store)
 
-		// Start Cap'n Proto server for Python communication with shared compute manager
+		// Start Cap'n Proto server for Python communication with shared compute manager and config
 		go func() {
 			log.Printf("🔌 Starting Cap'n Proto server on %s", *capnpAddr)
-			if err := StartCapnpServerWithManager(store, networkAdapter, shmMgr, *capnpAddr, computeManager); err != nil {
+			if err := StartCapnpServerWithConfigManager(store, networkAdapter, shmMgr, *capnpAddr, computeManager, configManager); err != nil {
 				log.Fatalf("❌ Failed to start Cap'n Proto server: %v", err)
 			}
 		}()
@@ -147,6 +175,18 @@ func main() {
 		<-sigChan
 
 		log.Println("🛑 Shutting down...")
+		
+		// Save configuration on shutdown
+		if configManager != nil {
+			log.Printf("💾 Saving configuration...")
+			finalConfig := configManager.GetConfig()
+			if err := configManager.SaveConfig(finalConfig); err != nil {
+				log.Printf("⚠️  Could not save config on shutdown: %v", err)
+			} else {
+				log.Printf("✅ Configuration saved")
+			}
+		}
+		
 		libp2pNode.Stop()
 		log.Println("✅ Shutdown complete")
 
