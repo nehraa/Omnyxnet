@@ -27,6 +27,9 @@ import logging
 import subprocess
 import socket
 import time
+import hashlib
+import os
+import traceback
 from typing import Optional, Any
 from datetime import datetime
 import re
@@ -35,6 +38,14 @@ import re
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT / "python"))
 sys.path.insert(0, str(PROJECT_ROOT / "python" / "src"))
+
+# Constants for timeouts and output limits
+DCDN_DEMO_TIMEOUT = 60  # seconds
+DCDN_TEST_TIMEOUT = 120  # seconds
+DCDN_DEMO_STDOUT_TRUNCATE_LEN = 2000  # characters
+DCDN_DEMO_STDERR_TRUNCATE_LEN = 1000  # characters
+DCDN_TEST_STDOUT_TRUNCATE_LEN = 1000  # characters
+DCDN_TEST_STDERR_TRUNCATE_LEN = 500  # characters
 
 # Configure logging
 logging.basicConfig(
@@ -279,6 +290,10 @@ class MainScreen(MDScreen):
         tab5 = self.create_network_tab(app_ref)
         tabs.add_widget(tab5)
         
+        # Tab 6: DCDN
+        tab6 = self.create_dcdn_tab(app_ref)
+        tabs.add_widget(tab6)
+        
         layout.add_widget(tabs)
         
         # Log view
@@ -454,6 +469,40 @@ class MainScreen(MDScreen):
         # Output area
         self.comm_output = OutputArea()
         tab.add_widget(self.comm_output)
+        
+        return tab
+    
+    def create_dcdn_tab(self, app_ref):
+        """Create DCDN tab."""
+        tab = TabContent()
+        tab.title = "DCDN"
+        tab.orientation = 'vertical'
+        tab.padding = dp(10)
+        tab.spacing = dp(10)
+        
+        # DCDN Info
+        info_label = MDLabel(text="Distributed CDN System", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
+        tab.add_widget(info_label)
+        
+        # Buttons
+        button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
+        button_layout.add_widget(MDRaisedButton(
+            text="Run Demo",
+            on_release=lambda x: app_ref.run_dcdn_demo()
+        ))
+        button_layout.add_widget(MDRaisedButton(
+            text="System Info",
+            on_release=lambda x: app_ref.dcdn_info()
+        ))
+        button_layout.add_widget(MDRaisedButton(
+            text="Test DCDN",
+            on_release=lambda x: app_ref.test_dcdn()
+        ))
+        tab.add_widget(button_layout)
+        
+        # Output area
+        self.dcdn_output = OutputArea()
+        tab.add_widget(self.dcdn_output)
         
         return tab
     
@@ -835,9 +884,49 @@ class PangeaDesktopApp(MDApp):
                 if peer_match:
                     peer_id_str = peer_match.group(1)
                 
+                # Validate parsed components
+                if not host or host == "0.0.0.0":
+                    self.log_message(f"❌ Invalid multiaddr: Could not extract IP address")
+                    return
+                if port == 0:
+                    self.log_message(f"❌ Invalid multiaddr: Could not extract port number")
+                    return
+                if not peer_id_str:
+                    self.log_message(f"❌ Invalid multiaddr: Could not extract peer ID")
+                    return
+                
+                self.log_message(f"ℹ️  Parsed multiaddr: IP={host}, Port={port}, PeerID={peer_id_str[:8]}...")
+                
+                # Test basic connectivity first
+                self.log_message(f"ℹ️  Testing network connectivity to {host}:{port}...")
+                try:
+                    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as test_sock:
+                        test_sock.settimeout(5.0)
+                        result = test_sock.connect_ex((host, port))
+                    
+                    if result != 0:
+                        self.log_message(f"❌ Network connectivity test FAILED:")
+                        self.log_message(f"   Cannot reach {host}:{port}")
+                        self.log_message(f"   Error code: {result}")
+                        self.log_message(f"   Possible causes:")
+                        self.log_message(f"   - Port {port} is not open on remote host")
+                        self.log_message(f"   - Firewall blocking connection")
+                        self.log_message(f"   - Remote node not running")
+                        self.log_message(f"   - Wrong IP address")
+                        return
+                    else:
+                        self.log_message(f"✅ Network connectivity OK - Port {port} is reachable")
+                except socket.timeout:
+                    self.log_message(f"❌ Connection timeout - {host}:{port} is not responding")
+                    self.log_message(f"   Remote host may be offline or behind a firewall")
+                    return
+                except Exception as e:
+                    self.log_message(f"❌ Connectivity test error: {str(e)}")
+                    return
+                
                 # If we have a client, try to connect via RPC
                 if self.go_client and self.go_client._connected:
-                    self.log_message(f"ℹ️  Sending connection request to Go node...")
+                    self.log_message(f"ℹ️  Sending connection request to Go node via Cap'n Proto RPC...")
                     
                     # We pass the full multiaddr as the 'host' argument.
                     # The Go side has been updated to detect if host starts with "/" and treat it as a multiaddr.
@@ -847,15 +936,33 @@ class PangeaDesktopApp(MDApp):
                         if success:
                             self.log_message(f"✅ Successfully connected to peer!")
                             if quality:
-                                self.log_message(f"   Latency: {quality.get('latencyMs', 0):.2f}ms")
+                                self.log_message(f"   Connection Quality:")
+                                self.log_message(f"   - Latency: {quality.get('latencyMs', 0):.2f}ms")
+                                self.log_message(f"   - Jitter: {quality.get('jitterMs', 0):.2f}ms")
+                                self.log_message(f"   - Packet Loss: {quality.get('packetLoss', 0):.2%}")
                         else:
-                            self.log_message(f"❌ Failed to connect to peer.")
+                            self.log_message(f"❌ RPC call failed: Go node rejected connection")
+                            self.log_message(f"   Possible causes:")
+                            self.log_message(f"   - Peer ID mismatch")
+                            self.log_message(f"   - libp2p handshake failed")
+                            self.log_message(f"   - Incompatible protocol versions")
+                    except TimeoutError:
+                        self.log_message(f"❌ RPC timeout: Go node did not respond within 5 seconds")
+                        self.log_message(f"   Go node may be overloaded or not properly started")
+                    except RuntimeError as e:
+                        self.log_message(f"❌ RPC error: {str(e)}")
+                        self.log_message(f"   Check that Cap'n Proto RPC service is running on port 8080")
                     except Exception as e:
-                        self.log_message(f"❌ Error connecting: {str(e)}")
+                        self.log_message(f"❌ Unexpected error connecting: {str(e)}")
+                        self.log_message(f"   Error type: {type(e).__name__}")
+                else:
+                    self.log_message(f"❌ Not connected to local Go node - cannot establish peer connection")
                 
-                self.log_message(f"   Multiaddr: {multiaddr[:80]}...")
+                self.log_message(f"   Full multiaddr: {multiaddr}")
             except Exception as e:
                 self.log_message(f"❌ Peer connection failed: {str(e)}")
+                self.log_message(f"   Error type: {type(e).__name__}")
+                self.log_message(f"   Stack trace: {traceback.format_exc()}")
         
         threading.Thread(target=peer_connect_thread, daemon=True).start()
     
@@ -912,7 +1019,33 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message("📋 Listing all nodes...")
-        self.main_screen.node_output.add_text("Nodes will be listed here")
+        
+        def list_nodes_thread():
+            try:
+                nodes = self.go_client.get_all_nodes()
+                if nodes:
+                    output = f"Found {len(nodes)} node(s):\n\n"
+                    for node in nodes:
+                        output += f"Node {node['id']}:\n"
+                        output += f"  Status: {node['status']}\n"
+                        output += f"  Latency: {node['latencyMs']:.2f}ms\n"
+                        output += f"  Threat Score: {node['threatScore']:.3f}\n\n"
+                    Clock.schedule_once(lambda dt: self._update_node_output(output), 0)
+                    self.log_message(f"✅ Found {len(nodes)} node(s)")
+                else:
+                    Clock.schedule_once(lambda dt: self._update_node_output("No nodes found"), 0)
+                    self.log_message("⚠️  No nodes found")
+            except Exception as e:
+                error_msg = f"❌ Error listing nodes: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_node_output(error_msg), 0)
+        
+        threading.Thread(target=list_nodes_thread, daemon=True).start()
+    
+    def _update_node_output(self, text):
+        """Update node output area (must be called from main thread)."""
+        self.main_screen.node_output.clear()
+        self.main_screen.node_output.add_text(text)
     
     def get_node_info(self):
         """Get information about current node."""
@@ -921,7 +1054,41 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message("ℹ️  Getting node info...")
-        self.main_screen.node_output.add_text("Node information will be displayed here")
+        
+        def get_info_thread():
+            try:
+                # Get connected peers
+                peers = self.go_client.get_connected_peers()
+                
+                # Get network metrics
+                metrics = self.go_client.get_network_metrics()
+                
+                output = "=== Node Information ===\n\n"
+                output += f"Connected to: {self.node_host}:{self.node_port}\n"
+                output += f"Connected Peers: {len(peers)}\n"
+                if peers:
+                    output += f"Peer IDs: {', '.join(map(str, peers))}\n"
+                output += "\n"
+                
+                if metrics:
+                    output += "Network Metrics:\n"
+                    output += f"  Average RTT: {metrics['avgRttMs']:.2f}ms\n"
+                    output += f"  Packet Loss: {metrics['packetLoss']:.2%}\n"
+                    output += f"  Bandwidth: {metrics['bandwidthMbps']:.2f} Mbps\n"
+                    output += f"  Peer Count: {metrics['peerCount']}\n"
+                    output += f"  CPU Usage: {metrics['cpuUsage']:.1%}\n"
+                    output += f"  I/O Capacity: {metrics['ioCapacity']:.1%}\n"
+                else:
+                    output += "Network metrics not available\n"
+                
+                Clock.schedule_once(lambda dt: self._update_node_output(output), 0)
+                self.log_message("✅ Node info retrieved")
+            except Exception as e:
+                error_msg = f"❌ Error getting node info: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_node_output(error_msg), 0)
+        
+        threading.Thread(target=get_info_thread, daemon=True).start()
     
     def health_status(self):
         """Show health status of all nodes."""
@@ -930,7 +1097,40 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message("❤️  Checking health status...")
-        self.main_screen.node_output.add_text("Health status will be displayed here")
+        
+        def health_check_thread():
+            try:
+                nodes = self.go_client.get_all_nodes()
+                metrics = self.go_client.get_network_metrics()
+                
+                output = "=== Network Health Status ===\n\n"
+                
+                if nodes:
+                    healthy = sum(1 for n in nodes if n['status'] == 1)  # Assuming 1 = Active
+                    output += f"Active Nodes: {healthy}/{len(nodes)}\n\n"
+                    
+                    for node in nodes:
+                        status_icon = "✅" if node['status'] == 1 else "⚠️"
+                        output += f"{status_icon} Node {node['id']}: "
+                        output += f"Latency {node['latencyMs']:.1f}ms, "
+                        output += f"Threat {node['threatScore']:.3f}\n"
+                else:
+                    output += "No nodes to check\n"
+                
+                output += "\n"
+                if metrics:
+                    health_score = 100 - (metrics['packetLoss'] * 100) - min(metrics['cpuUsage'] * 50, 50)
+                    output += f"Overall Health Score: {health_score:.1f}/100\n"
+                    output += f"Network Status: {'Good' if health_score > 70 else 'Fair' if health_score > 40 else 'Poor'}\n"
+                
+                Clock.schedule_once(lambda dt: self._update_node_output(output), 0)
+                self.log_message("✅ Health status retrieved")
+            except Exception as e:
+                error_msg = f"❌ Error checking health: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_node_output(error_msg), 0)
+        
+        threading.Thread(target=health_check_thread, daemon=True).start()
     
     # ==========================================================================
     # Compute Methods
@@ -944,7 +1144,54 @@ class PangeaDesktopApp(MDApp):
         
         task_type = self.main_screen.task_type_input.text
         self.log_message(f"⚙️  Submitting {task_type} task...")
-        self.main_screen.compute_output.add_text(f"Task submitted: {task_type}")
+        
+        def submit_task_thread():
+            try:
+                # Generate a unique job ID
+                job_id = hashlib.md5(f"{task_type}_{time.time()}".encode()).hexdigest()[:16]
+                
+                # Create sample input data for the task
+                if "matrix" in task_type.lower():
+                    # For matrix multiplication, send matrix dimensions
+                    input_data = f"matrix_multiply:16x16".encode()
+                else:
+                    # Generic compute task
+                    input_data = f"{task_type}:sample_data".encode()
+                
+                success, error_msg = self.go_client.submit_compute_job(
+                    job_id=job_id,
+                    input_data=input_data,
+                    split_strategy="fixed",
+                    timeout_secs=300,
+                    priority=5
+                )
+                
+                if success:
+                    output = f"✅ Task submitted successfully!\n\n"
+                    output += f"Job ID: {job_id}\n"
+                    output += f"Type: {task_type}\n"
+                    output += f"Status: Submitted\n\n"
+                    output += f"Use 'Check Task Status' to monitor progress."
+                    Clock.schedule_once(lambda dt: self._update_compute_output(output), 0)
+                    self.log_message(f"✅ Task {job_id} submitted")
+                    
+                    # Store job_id for status checking
+                    self.last_job_id = job_id
+                else:
+                    error_output = f"❌ Task submission failed: {error_msg}"
+                    Clock.schedule_once(lambda dt: self._update_compute_output(error_output), 0)
+                    self.log_message(error_output)
+            except Exception as e:
+                error_msg = f"❌ Error submitting task: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_compute_output(error_msg), 0)
+        
+        threading.Thread(target=submit_task_thread, daemon=True).start()
+    
+    def _update_compute_output(self, text):
+        """Update compute output area (must be called from main thread)."""
+        self.main_screen.compute_output.clear()
+        self.main_screen.compute_output.add_text(text)
     
     def list_workers(self):
         """List available compute workers."""
@@ -953,7 +1200,43 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message("👷 Listing compute workers...")
-        self.main_screen.compute_output.add_text("Workers will be listed here")
+        
+        def list_workers_thread():
+            try:
+                # Get compute capacity of connected node
+                capacity = self.go_client.get_compute_capacity()
+                
+                # Get connected peers (potential workers)
+                peers = self.go_client.get_connected_peers()
+                
+                output = "=== Available Compute Workers ===\n\n"
+                
+                # Local node capacity
+                output += "Local Node:\n"
+                if capacity:
+                    output += f"  CPU Cores: {capacity['cpuCores']}\n"
+                    output += f"  RAM: {capacity['ramMb']} MB\n"
+                    output += f"  Current Load: {capacity['currentLoad']:.1%}\n"
+                    output += f"  Disk Space: {capacity['diskMb']} MB\n"
+                    output += f"  Bandwidth: {capacity['bandwidthMbps']:.2f} Mbps\n"
+                else:
+                    output += "  Capacity info not available\n"
+                
+                output += f"\nConnected Workers: {len(peers)}\n"
+                if peers:
+                    for peer_id in peers:
+                        output += f"  - Worker {peer_id}\n"
+                else:
+                    output += "  No remote workers connected\n"
+                
+                Clock.schedule_once(lambda dt: self._update_compute_output(output), 0)
+                self.log_message(f"✅ Found {len(peers) + 1} worker(s)")
+            except Exception as e:
+                error_msg = f"❌ Error listing workers: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_compute_output(error_msg), 0)
+        
+        threading.Thread(target=list_workers_thread, daemon=True).start()
     
     def check_task_status(self):
         """Check status of compute tasks."""
@@ -961,8 +1244,51 @@ class PangeaDesktopApp(MDApp):
             self.show_warning("Not Connected", "Please connect to a node first")
             return
         
+        if not hasattr(self, 'last_job_id'):
+            self.show_warning("No Task", "Please submit a task first")
+            return
+        
         self.log_message("📊 Checking task status...")
-        self.main_screen.compute_output.add_text("Task status will be displayed here")
+        
+        def check_status_thread():
+            try:
+                job_id = self.last_job_id
+                status = self.go_client.get_compute_job_status(job_id)
+                
+                if status:
+                    output = f"=== Task Status ===\n\n"
+                    output += f"Job ID: {status['jobId']}\n"
+                    output += f"Status: {status['status']}\n"
+                    output += f"Progress: {status['progress']:.1%}\n"
+                    output += f"Completed Chunks: {status['completedChunks']}/{status['totalChunks']}\n"
+                    output += f"Estimated Time Remaining: {status['estimatedTimeRemaining']}s\n"
+                    
+                    if status['errorMsg']:
+                        output += f"\nError: {status['errorMsg']}\n"
+                    
+                    # Try to get result if completed
+                    if status['status'] == 'completed':
+                        output += "\n🎉 Task completed! Fetching result...\n"
+                        result_data, error_msg, worker_node = self.go_client.get_compute_job_result(job_id)
+                        if result_data:
+                            output += f"Result Size: {len(result_data)} bytes\n"
+                            output += f"Worker Node: {worker_node}\n"
+                            output += f"Result Preview: {result_data[:100]}\n"
+                        elif error_msg:
+                            output += f"Error fetching result: {error_msg}\n"
+                    
+                    Clock.schedule_once(lambda dt: self._update_compute_output(output), 0)
+                    self.log_message(f"✅ Status: {status['status']}")
+                else:
+                    error_msg = "❌ Could not retrieve task status"
+                    Clock.schedule_once(lambda dt: self._update_compute_output(error_msg), 0)
+                    self.log_message(error_msg)
+            except Exception as e:
+                error_msg = f"❌ Error checking status: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_compute_output(error_msg), 0)
+        
+        threading.Thread(target=check_status_thread, daemon=True).start()
     
     # ==========================================================================
     # File Operations Methods (Receptors)
@@ -1033,7 +1359,7 @@ class PangeaDesktopApp(MDApp):
                 try:
                     result = self.go_client.upload(data, peers)
                     if result and 'fileHash' in result:
-                        Clock.schedule_once(lambda dt: self.on_upload_complete(result['fileHash']), 0)
+                        Clock.schedule_once(lambda dt: self.on_upload_complete(result['fileHash'], result), 0)
                     else:
                         self.log_message("❌ Upload failed: No result returned")
                 except Exception as e:
@@ -1044,7 +1370,7 @@ class PangeaDesktopApp(MDApp):
 
         threading.Thread(target=upload_thread, daemon=True).start()
 
-    def on_upload_complete(self, file_hash, simulated=False):
+    def on_upload_complete(self, file_hash, manifest=None, simulated=False):
         """Handle upload completion."""
         msg = f"✅ Upload complete! Hash: {file_hash}"
         if simulated:
@@ -1053,6 +1379,9 @@ class PangeaDesktopApp(MDApp):
         self.main_screen.file_output.add_text(msg)
         # Auto-fill download hash for convenience
         self.main_screen.download_hash_input.text = file_hash
+        # Store manifest for download
+        if manifest:
+            self.last_upload_manifest = manifest
     
     def download_file(self):
         """Download file from network."""
@@ -1066,7 +1395,54 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message(f"⬇️  Downloading file {file_hash[:16]}...")
-        self.main_screen.file_output.add_text(f"Downloading: {file_hash}")
+        
+        def download_thread():
+            try:
+                # Check if we have stored manifest from upload
+                if hasattr(self, 'last_upload_manifest') and self.last_upload_manifest.get('fileHash') == file_hash:
+                    manifest = self.last_upload_manifest
+                    shard_locations = manifest['shardLocations']
+                    
+                    result = self.go_client.download(shard_locations, file_hash)
+                    
+                    if result:
+                        data, bytes_downloaded = result
+                        output = f"✅ Download complete!\n\n"
+                        output += f"File Hash: {file_hash}\n"
+                        output += f"Size: {bytes_downloaded} bytes\n"
+                        output += f"Data Preview: {data[:50]}...\n"
+                        
+                        # Save to file
+                        download_dir = os.path.expanduser("~/Downloads")
+                        if not os.path.exists(download_dir):
+                            download_dir = os.path.expanduser("~")
+                        
+                        save_path = os.path.join(download_dir, f"downloaded_{file_hash[:8]}.dat")
+                        with open(save_path, 'wb') as f:
+                            f.write(data)
+                        output += f"\nSaved to: {save_path}\n"
+                        
+                        Clock.schedule_once(lambda dt: self._update_file_output(output), 0)
+                        self.log_message(f"✅ Downloaded {bytes_downloaded} bytes")
+                    else:
+                        error_msg = "❌ Download failed: No data received"
+                        Clock.schedule_once(lambda dt: self._update_file_output(error_msg), 0)
+                        self.log_message(error_msg)
+                else:
+                    error_msg = "❌ File manifest not found. Upload file first or provide shard locations."
+                    Clock.schedule_once(lambda dt: self._update_file_output(error_msg), 0)
+                    self.log_message(error_msg)
+            except Exception as e:
+                error_msg = f"❌ Download error: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_file_output(error_msg), 0)
+        
+        threading.Thread(target=download_thread, daemon=True).start()
+    
+    def _update_file_output(self, text):
+        """Update file output area (must be called from main thread)."""
+        self.main_screen.file_output.clear()
+        self.main_screen.file_output.add_text(text)
     
     def list_files(self):
         """List available files in network."""
@@ -1075,7 +1451,32 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message("📁 Listing available files...")
-        self.main_screen.file_output.add_text("Available files will be listed here")
+        
+        def list_files_thread():
+            try:
+                output = "=== Available Files ===\n\n"
+                
+                # List files from last upload manifest (for demo purposes)
+                if hasattr(self, 'last_upload_manifest'):
+                    manifest = self.last_upload_manifest
+                    output += "Recently Uploaded:\n"
+                    output += f"  Hash: {manifest['fileHash']}\n"
+                    output += f"  Name: {manifest.get('fileName', 'N/A')}\n"
+                    output += f"  Size: {manifest['fileSize']} bytes\n"
+                    output += f"  Shards: {manifest['shardCount']} (+ {manifest['parityCount']} parity)\n"
+                    output += f"  Locations: {len(manifest['shardLocations'])} node(s)\n"
+                else:
+                    output += "No files uploaded in this session.\n"
+                    output += "\nUpload a file to see it listed here.\n"
+                
+                Clock.schedule_once(lambda dt: self._update_file_output(output), 0)
+                self.log_message("✅ File list retrieved")
+            except Exception as e:
+                error_msg = f"❌ Error listing files: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_file_output(error_msg), 0)
+        
+        threading.Thread(target=list_files_thread, daemon=True).start()
     
     # ==========================================================================
     # Communications Methods
@@ -1088,7 +1489,56 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message("🔗 Testing P2P connection...")
-        self.main_screen.comm_output.add_text("P2P test results will be shown here")
+        
+        def test_connection_thread():
+            try:
+                peers = self.go_client.get_connected_peers()
+                
+                output = "=== P2P Connection Test ===\n\n"
+                
+                if not peers:
+                    output += "⚠️  No peers connected\n"
+                    output += "Connect to a peer first to test P2P communication\n"
+                else:
+                    output += f"Testing connection to {len(peers)} peer(s)...\n\n"
+                    
+                    for peer_id in peers:
+                        output += f"Peer {peer_id}:\n"
+                        
+                        # Get connection quality
+                        quality = self.go_client.get_connection_quality(peer_id)
+                        if quality:
+                            output += f"  ✅ Latency: {quality['latencyMs']:.2f}ms\n"
+                            output += f"  ✅ Jitter: {quality['jitterMs']:.2f}ms\n"
+                            output += f"  ✅ Packet Loss: {quality['packetLoss']:.2%}\n"
+                        else:
+                            output += f"  ⚠️  Could not get quality metrics\n"
+                        
+                        # Send test message
+                        try:
+                            test_data = b"PING_TEST_" + str(int(time.time())).encode()
+                            success = self.go_client.send_message(peer_id, test_data)
+                            if success:
+                                output += f"  ✅ Message sent successfully\n"
+                            else:
+                                output += f"  ❌ Message send failed\n"
+                        except Exception as e:
+                            output += f"  ❌ Error: {str(e)}\n"
+                        output += "\n"
+                
+                Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
+                self.log_message("✅ P2P test complete")
+            except Exception as e:
+                error_msg = f"❌ Error testing P2P: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
+        
+        threading.Thread(target=test_connection_thread, daemon=True).start()
+    
+    def _update_comm_output(self, text):
+        """Update communications output area (must be called from main thread)."""
+        self.main_screen.comm_output.clear()
+        self.main_screen.comm_output.add_text(text)
     
     def ping_all_nodes(self):
         """Ping all nodes in network."""
@@ -1097,7 +1547,38 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message("📡 Pinging all nodes...")
-        self.main_screen.comm_output.add_text("Ping results will be shown here")
+        
+        def ping_nodes_thread():
+            try:
+                nodes = self.go_client.get_all_nodes()
+                
+                output = "=== Ping All Nodes ===\n\n"
+                
+                if not nodes:
+                    output += "No nodes found\n"
+                else:
+                    output += f"Pinging {len(nodes)} node(s)...\n\n"
+                    
+                    for node in nodes:
+                        node_id = node['id']
+                        latency = node['latencyMs']
+                        status = node['status']
+                        
+                        if status == 1:  # Active
+                            output += f"✅ Node {node_id}: {latency:.2f}ms\n"
+                        elif status == 2:  # Purgatory
+                            output += f"⚠️  Node {node_id}: {latency:.2f}ms (unstable)\n"
+                        else:  # Dead
+                            output += f"❌ Node {node_id}: Unreachable\n"
+                
+                Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
+                self.log_message(f"✅ Pinged {len(nodes)} node(s)")
+            except Exception as e:
+                error_msg = f"❌ Error pinging nodes: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
+        
+        threading.Thread(target=ping_nodes_thread, daemon=True).start()
     
     def check_network_health(self):
         """Check overall network health."""
@@ -1106,7 +1587,55 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message("💚 Checking network health...")
-        self.main_screen.comm_output.add_text("Network health status will be shown here")
+        
+        def health_check_thread():
+            try:
+                metrics = self.go_client.get_network_metrics()
+                nodes = self.go_client.get_all_nodes()
+                peers = self.go_client.get_connected_peers()
+                
+                output = "=== Network Health Check ===\n\n"
+                
+                # Network metrics
+                if metrics:
+                    output += "Network Metrics:\n"
+                    output += f"  Average RTT: {metrics['avgRttMs']:.2f}ms\n"
+                    output += f"  Packet Loss: {metrics['packetLoss']:.2%}\n"
+                    output += f"  Bandwidth: {metrics['bandwidthMbps']:.2f} Mbps\n"
+                    output += f"  Peer Count: {metrics['peerCount']}\n"
+                    output += f"  CPU Usage: {metrics['cpuUsage']:.1%}\n"
+                    output += f"  I/O Capacity: {metrics['ioCapacity']:.1%}\n\n"
+                    
+                    # Calculate health score
+                    health_score = 100.0
+                    health_score -= min(metrics['packetLoss'] * 100, 50)  # Max 50 points deduction
+                    health_score -= min(metrics['avgRttMs'] / 10, 30)     # Max 30 points deduction
+                    health_score -= min(metrics['cpuUsage'] * 20, 20)     # Max 20 points deduction
+                    health_score = max(health_score, 0)
+                    
+                    output += f"Overall Health Score: {health_score:.1f}/100\n"
+                    if health_score >= 80:
+                        output += "Status: ✅ Excellent\n"
+                    elif health_score >= 60:
+                        output += "Status: ✅ Good\n"
+                    elif health_score >= 40:
+                        output += "Status: ⚠️  Fair\n"
+                    else:
+                        output += "Status: ❌ Poor\n"
+                else:
+                    output += "⚠️  Network metrics not available\n"
+                
+                output += f"\nActive Nodes: {len(nodes)}\n"
+                output += f"Connected Peers: {len(peers)}\n"
+                
+                Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
+                self.log_message("✅ Health check complete")
+            except Exception as e:
+                error_msg = f"❌ Error checking health: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
+        
+        threading.Thread(target=health_check_thread, daemon=True).start()
     
     # ==========================================================================
     # Network Info Methods
@@ -1119,7 +1648,52 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message("👥 Showing connected peers...")
-        self.main_screen.network_output.add_text("Peer information will be displayed here")
+        
+        def show_peers_thread():
+            try:
+                peers = self.go_client.get_connected_peers()
+                
+                output = "=== Connected Peers ===\n\n"
+                output += f"Total Peers: {len(peers)}\n\n"
+                
+                if not peers:
+                    output += "No peers connected.\n"
+                    output += "Use 'Connect to Peer' to add peers.\n"
+                else:
+                    for peer_id in peers:
+                        output += f"Peer {peer_id}:\n"
+                        
+                        # Get connection quality
+                        quality = self.go_client.get_connection_quality(peer_id)
+                        if quality:
+                            output += f"  Latency: {quality['latencyMs']:.2f}ms\n"
+                            output += f"  Jitter: {quality['jitterMs']:.2f}ms\n"
+                            output += f"  Packet Loss: {quality['packetLoss']:.2%}\n"
+                            
+                            # Determine quality rating
+                            if quality['latencyMs'] < 50 and quality['packetLoss'] < 0.01:
+                                output += f"  Quality: ✅ Excellent\n"
+                            elif quality['latencyMs'] < 100 and quality['packetLoss'] < 0.05:
+                                output += f"  Quality: ✅ Good\n"
+                            else:
+                                output += f"  Quality: ⚠️  Fair\n"
+                        else:
+                            output += f"  Quality: ⚠️  Unknown\n"
+                        output += "\n"
+                
+                Clock.schedule_once(lambda dt: self._update_network_output(output), 0)
+                self.log_message(f"✅ Showing {len(peers)} peer(s)")
+            except Exception as e:
+                error_msg = f"❌ Error showing peers: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_network_output(error_msg), 0)
+        
+        threading.Thread(target=show_peers_thread, daemon=True).start()
+    
+    def _update_network_output(self, text):
+        """Update network output area (must be called from main thread)."""
+        self.main_screen.network_output.clear()
+        self.main_screen.network_output.add_text(text)
     
     def show_topology(self):
         """Show network topology."""
@@ -1128,7 +1702,44 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message("🗺️  Showing network topology...")
-        self.main_screen.network_output.add_text("Network topology will be displayed here")
+        
+        def show_topology_thread():
+            try:
+                nodes = self.go_client.get_all_nodes()
+                peers = self.go_client.get_connected_peers()
+                
+                output = "=== Network Topology ===\n\n"
+                
+                # Local node
+                output += f"[Local Node] {self.node_host}:{self.node_port}\n"
+                output += f"  |\n"
+                
+                # Connected peers
+                if peers:
+                    output += f"  +-- Connected Peers ({len(peers)})\n"
+                    for i, peer_id in enumerate(peers):
+                        prefix = "      +--" if i < len(peers) - 1 else "      +--"
+                        output += f"{prefix} Peer {peer_id}\n"
+                else:
+                    output += f"  +-- (No direct peer connections)\n"
+                
+                output += "\n"
+                
+                # All known nodes
+                output += f"Known Nodes in Network: {len(nodes)}\n"
+                if nodes:
+                    for node in nodes:
+                        status_icon = "✅" if node['status'] == 1 else "⚠️" if node['status'] == 2 else "❌"
+                        output += f"  {status_icon} Node {node['id']} - {node['latencyMs']:.1f}ms\n"
+                
+                Clock.schedule_once(lambda dt: self._update_network_output(output), 0)
+                self.log_message("✅ Topology displayed")
+            except Exception as e:
+                error_msg = f"❌ Error showing topology: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_network_output(error_msg), 0)
+        
+        threading.Thread(target=show_topology_thread, daemon=True).start()
     
     def show_stats(self):
         """Show connection statistics."""
@@ -1137,7 +1748,190 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message("📊 Showing connection statistics...")
-        self.main_screen.network_output.add_text("Connection statistics will be displayed here")
+        
+        def show_stats_thread():
+            try:
+                metrics = self.go_client.get_network_metrics()
+                capacity = self.go_client.get_compute_capacity()
+                
+                output = "=== Connection Statistics ===\n\n"
+                
+                if metrics:
+                    output += "Network Performance:\n"
+                    output += f"  Average RTT: {metrics['avgRttMs']:.2f}ms\n"
+                    output += f"  Packet Loss: {metrics['packetLoss']:.2%}\n"
+                    output += f"  Bandwidth: {metrics['bandwidthMbps']:.2f} Mbps\n"
+                    output += f"  Active Peers: {metrics['peerCount']}\n"
+                    output += f"  CPU Usage: {metrics['cpuUsage']:.1%}\n"
+                    output += f"  I/O Capacity: {metrics['ioCapacity']:.1%}\n\n"
+                else:
+                    output += "Network metrics not available\n\n"
+                
+                if capacity:
+                    output += "Local Node Resources:\n"
+                    output += f"  CPU Cores: {capacity['cpuCores']}\n"
+                    output += f"  RAM: {capacity['ramMb']} MB\n"
+                    output += f"  Current Load: {capacity['currentLoad']:.1%}\n"
+                    output += f"  Disk Space: {capacity['diskMb']} MB\n"
+                    output += f"  Bandwidth: {capacity['bandwidthMbps']:.2f} Mbps\n"
+                else:
+                    output += "Resource info not available\n"
+                
+                Clock.schedule_once(lambda dt: self._update_network_output(output), 0)
+                self.log_message("✅ Statistics displayed")
+            except Exception as e:
+                error_msg = f"❌ Error showing stats: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_network_output(error_msg), 0)
+        
+        threading.Thread(target=show_stats_thread, daemon=True).start()
+    
+    # ==========================================================================
+    # DCDN Methods
+    # ==========================================================================
+    
+    def run_dcdn_demo(self):
+        """Run DCDN interactive demo."""
+        self.log_message("🌐 Running DCDN demo...")
+        
+        def dcdn_demo_thread():
+            try:
+                output = "=== DCDN Demo ===\n\n"
+                output += "Running Rust DCDN demo...\n\n"
+                
+                # Run the Rust DCDN demo
+                project_root = PROJECT_ROOT
+                rust_dir = project_root / "rust"
+                
+                result = subprocess.run(
+                    ["cargo", "run", "--example", "dcdn_demo"],
+                    cwd=str(rust_dir),
+                    capture_output=True,
+                    text=True,
+                    timeout=DCDN_DEMO_TIMEOUT
+                )
+                
+                if result.returncode == 0:
+                    output += "✅ Demo completed successfully!\n\n"
+                    output += "Output:\n"
+                    output += result.stdout[:DCDN_DEMO_STDOUT_TRUNCATE_LEN]
+                    if len(result.stdout) > DCDN_DEMO_STDOUT_TRUNCATE_LEN:
+                        output += "\n... (output truncated)"
+                else:
+                    output += "❌ Demo failed\n\n"
+                    output += "Error:\n"
+                    output += result.stderr[:DCDN_DEMO_STDERR_TRUNCATE_LEN]
+                
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                self.log_message("✅ DCDN demo complete")
+            except subprocess.TimeoutExpired:
+                error_msg = f"❌ Demo timeout - took longer than {DCDN_DEMO_TIMEOUT} seconds"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+            except Exception as e:
+                error_msg = f"❌ Error running demo: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+        
+        threading.Thread(target=dcdn_demo_thread, daemon=True).start()
+    
+    def _update_dcdn_output(self, text):
+        """Update DCDN output area (must be called from main thread)."""
+        self.main_screen.dcdn_output.clear()
+        self.main_screen.dcdn_output.add_text(text)
+    
+    def dcdn_info(self):
+        """Show DCDN system information."""
+        self.log_message("ℹ️  Getting DCDN info...")
+        
+        def dcdn_info_thread():
+            try:
+                output = "=== DCDN System Information ===\n\n"
+                
+                # Basic info
+                output += "Distributed Content Delivery Network\n\n"
+                output += "Components:\n"
+                output += "  - QUIC Transport: Low-latency packet delivery\n"
+                output += "  - Reed-Solomon FEC: Packet recovery (8 data + 2 parity)\n"
+                output += "  - P2P Mesh: Tit-for-tat bandwidth allocation\n"
+                output += "  - Ed25519 Verification: Content authenticity\n"
+                output += "  - Lock-free Ring Buffer: High-speed chunk storage\n\n"
+                
+                output += "Configuration:\n"
+                # Try to read config if exists
+                config_path = PROJECT_ROOT / "rust" / "config" / "dcdn.toml"
+                if config_path.exists():
+                    output += f"  Config file: {config_path}\n"
+                    output += "  (Config file present)\n"
+                else:
+                    output += "  Config file: Not found (using defaults)\n"
+                
+                output += "\nCapabilities:\n"
+                output += "  - Video streaming with low latency\n"
+                output += "  - Automatic packet recovery\n"
+                output += "  - Fair bandwidth distribution\n"
+                output += "  - Cryptographic verification\n"
+                output += "  - Cross-device content delivery\n\n"
+                
+                output += "Status: ✅ Implementation Complete\n"
+                output += "\nUse 'Run Demo' to see DCDN in action\n"
+                
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                self.log_message("✅ DCDN info retrieved")
+            except Exception as e:
+                error_msg = f"❌ Error getting info: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+        
+        threading.Thread(target=dcdn_info_thread, daemon=True).start()
+    
+    def test_dcdn(self):
+        """Run DCDN tests."""
+        self.log_message("🧪 Running DCDN tests...")
+        
+        def dcdn_test_thread():
+            try:
+                output = "=== DCDN Tests ===\n\n"
+                output += "Running Rust test suite...\n\n"
+                
+                # Run the Rust DCDN tests
+                project_root = PROJECT_ROOT
+                rust_dir = project_root / "rust"
+                
+                result = subprocess.run(
+                    ["cargo", "test", "--test", "test_dcdn"],
+                    cwd=str(rust_dir),
+                    capture_output=True,
+                    text=True,
+                    timeout=DCDN_TEST_TIMEOUT
+                )
+                
+                if result.returncode == 0:
+                    output += "✅ All tests passed!\n\n"
+                    # Extract test summary
+                    lines = result.stdout.split('\n')
+                    for line in lines:
+                        if 'test result:' in line or 'running' in line:
+                            output += line + "\n"
+                else:
+                    output += "❌ Some tests failed\n\n"
+                    output += "Output:\n"
+                    output += result.stdout[-DCDN_TEST_STDOUT_TRUNCATE_LEN:]
+                    output += "\n\nError:\n"
+                    output += result.stderr[-DCDN_TEST_STDERR_TRUNCATE_LEN:]
+                
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                self.log_message("✅ DCDN tests complete")
+            except subprocess.TimeoutExpired:
+                error_msg = f"❌ Tests timeout - took longer than {DCDN_TEST_TIMEOUT} seconds"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+            except Exception as e:
+                error_msg = f"❌ Error running tests: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+        
+        threading.Thread(target=dcdn_test_thread, daemon=True).start()
     
     # ==========================================================================
     # Utility Methods
