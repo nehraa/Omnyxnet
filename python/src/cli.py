@@ -4,7 +4,7 @@ Provides simple commands for common operations.
 """
 import click
 import logging
-import subprocess
+import subprocess  # Used by DCDN commands to call Rust implementation
 import sys
 import time
 from pathlib import Path
@@ -1694,8 +1694,17 @@ def demo():
     click.echo("Running interactive DCDN demo from Rust implementation...")
     click.echo("")
     
-    # Get project root
-    project_root = Path(__file__).parent.parent.parent
+    # Get project root by looking for marker file
+    current = Path(__file__).parent
+    while current != current.parent:
+        if (current / "Cargo.toml").exists() or (current / ".git").exists():
+            project_root = current
+            break
+        current = current.parent
+    else:
+        # Fallback to relative path if marker not found
+        project_root = Path(__file__).parent.parent.parent
+    
     rust_dir = project_root / "rust"
     
     if not rust_dir.exists():
@@ -1787,7 +1796,17 @@ def test():
     click.echo("=" * 60)
     click.echo("")
     
-    project_root = Path(__file__).parent.parent.parent
+    # Get project root by looking for marker file
+    current = Path(__file__).parent
+    while current != current.parent:
+        if (current / "Cargo.toml").exists() or (current / ".git").exists():
+            project_root = current
+            break
+        current = current.parent
+    else:
+        # Fallback to relative path if marker not found
+        project_root = Path(__file__).parent.parent.parent
+    
     rust_dir = project_root / "rust"
     
     if not rust_dir.exists():
