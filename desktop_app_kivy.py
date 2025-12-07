@@ -29,6 +29,7 @@ import socket
 import time
 from typing import Optional, Any
 from datetime import datetime
+import re
 
 # Add Python module to path
 PROJECT_ROOT = Path(__file__).parent
@@ -120,6 +121,23 @@ class ConnectionCard(MDCard):
             adaptive_height=True
         )
         self.add_widget(self.status_label)
+        
+        # Local multiaddr display + button
+        self.multiaddr_label = MDLabel(
+            text="Multiaddr: (unknown)",
+            font_style="Caption",
+            size_hint_y=None,
+            height=dp(24),
+            adaptive_height=True
+        )
+        self.add_widget(self.multiaddr_label)
+
+        self.show_multiaddr_btn = MDFlatButton(
+            text="Show Multiaddrs",
+            size_hint_x=0.5,
+            on_release=lambda x: self.app_ref.request_local_multiaddrs()
+        )
+        self.add_widget(self.show_multiaddr_btn)
         
         # Peer Connection Section
         peer_label = MDLabel(
@@ -574,11 +592,42 @@ class PangeaDesktopApp(MDApp):
                 stderr=subprocess.PIPE,
                 text=True
             )
+            # Start reader threads to extract multiaddr info from stdout/stderr
+            def reader(pipe):
+                try:
+                    for raw in iter(pipe.readline, ''):
+                        line = raw.strip()
+                        if not line:
+                            continue
+                        # Look for multiaddr patterns like /ip4/1.2.3.4/tcp/PORT/p2p/PEERID
+                        m = re.search(r"(/ip4/[0-9.]+/tcp/[0-9]+/p2p/[a-zA-Z0-9]+)", line)
+                        if m:
+                            addr = m.group(1)
+                            # Replace 0.0.0.0 or 127.0.0.1 with detected local IP if present
+                            if '/ip4/0.0.0.0' in addr or '/ip4/127.0.0.1' in addr:
+                                local_ip = self._detect_local_ip()
+                                addr = re.sub(r'/ip4/(0.0.0.0|127.0.0.1)', f'/ip4/{local_ip}', addr)
+                            # Save and update UI
+                            self.local_multiaddrs.add(addr)
+                            self.log_message(f"ℹ️  Local multiaddr discovered: {addr}")
+                            Clock.schedule_once(lambda dt: self._update_multiaddr_ui(), 0)
+                except Exception:
+                    pass
+
+            # Initialize storage and start threads
+            self.local_multiaddrs = set()
+            if self.go_process.stdout:
+                threading.Thread(target=reader, args=(self.go_process.stdout,), daemon=True).start()
+            if self.go_process.stderr:
+                threading.Thread(target=reader, args=(self.go_process.stderr,), daemon=True).start()
             
             # Wait for node to be ready
             for attempt in range(30):  # 30 seconds timeout
                 if self.is_port_open(self.node_host, self.node_port):
                     self.log_message(f"✅ Go node started successfully (PID: {self.go_process.pid})")
+                    # If any multiaddrs were discovered already, update UI immediately
+                    if hasattr(self, 'local_multiaddrs') and self.local_multiaddrs:
+                        Clock.schedule_once(lambda dt: self._update_multiaddr_ui(), 0)
                     return True
                 time.sleep(1)
             
@@ -616,6 +665,94 @@ class PangeaDesktopApp(MDApp):
                 Clock.schedule_once(lambda dt: self.on_connect_error(str(e)), 0)
         
         threading.Thread(target=connect_thread, daemon=True).start()
+
+    def _detect_local_ip(self) -> str:
+        """Detect the local outbound IP address robustly.
+
+        Tries a UDP connect to a public IP to determine the preferred outbound
+        interface. Falls back to gethostbyname or 127.0.0.1 if necessary.
+        """
+        sock = None
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # doesn't actually send packets
+            sock.connect(("8.8.8.8", 80))
+            ip = sock.getsockname()[0]
+            if ip and not ip.startswith("127."):
+                return ip
+        except Exception:
+            pass
+        finally:
+            try:
+                if sock:
+                    sock.close()
+            except Exception:
+                pass
+
+        # Fallback to hostname resolution
+        try:
+            ip = socket.gethostbyname(socket.gethostname())
+            if ip and not ip.startswith("127."):
+                return ip
+        except Exception:
+            pass
+
+        return "127.0.0.1"
+
+    def _update_multiaddr_ui(self):
+        """Update the ConnectionCard multiaddr label and log outputs."""
+        try:
+            if not hasattr(self, 'local_multiaddrs') or not self.local_multiaddrs:
+                return
+            # Join and display
+            addrs = sorted(list(self.local_multiaddrs))
+            display = ", ".join(addrs)
+            # Update UI label
+            if hasattr(self, 'main_screen') and hasattr(self.main_screen, 'connection_card'):
+                self.main_screen.connection_card.multiaddr_label.text = f"Multiaddr: {addrs[0]}"
+            # Also write to file output for convenience
+            if hasattr(self, 'main_screen') and hasattr(self.main_screen, 'file_output'):
+                self.main_screen.file_output.add_text(f"Local multiaddrs: {display}")
+        except Exception:
+            pass
+
+    def request_local_multiaddrs(self):
+        """Public request to populate/show local multiaddrs.
+
+        Strategy:
+        - If we started the Go node and captured stdout/stderr, use extracted addresses.
+        - Else try to parse the common live_test log at ~/.pangea/live_test/node.log
+        - Update UI accordingly.
+        """
+        # If we already have addresses from live stdout, show them
+        if hasattr(self, 'local_multiaddrs') and self.local_multiaddrs:
+            Clock.schedule_once(lambda dt: self._update_multiaddr_ui(), 0)
+            return
+
+        # Fallback: try to parse ~/.pangea/live_test/node.log (used by live_test.sh)
+        import os
+        log_path = os.path.expanduser('~/.pangea/live_test/node.log')
+        if os.path.exists(log_path):
+            try:
+                with open(log_path, 'r') as f:
+                    content = f.read()
+                m = re.search(r"(/ip4/[0-9.]+/tcp/[0-9]+/p2p/[a-zA-Z0-9]+)", content)
+                if m:
+                    addr = m.group(1)
+                    if '/ip4/0.0.0.0' in addr:
+                        try:
+                            local_ip = socket.gethostbyname(socket.gethostname())
+                        except Exception:
+                            local_ip = '127.0.0.1'
+                        addr = addr.replace('/ip4/0.0.0.0', f'/ip4/{local_ip}')
+                    self.local_multiaddrs = {addr}
+                    Clock.schedule_once(lambda dt: self._update_multiaddr_ui(), 0)
+                    return
+            except Exception:
+                pass
+
+        # Nothing found
+        self.log_message("ℹ️  No local multiaddr found. Start node or run ./scripts/live_test.sh to generate one.")
     
     def on_connect_success(self, host, port):
         """Handle successful connection."""
