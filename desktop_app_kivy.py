@@ -279,6 +279,10 @@ class MainScreen(MDScreen):
         tab5 = self.create_network_tab(app_ref)
         tabs.add_widget(tab5)
         
+        # Tab 6: DCDN
+        tab6 = self.create_dcdn_tab(app_ref)
+        tabs.add_widget(tab6)
+        
         layout.add_widget(tabs)
         
         # Log view
@@ -454,6 +458,40 @@ class MainScreen(MDScreen):
         # Output area
         self.comm_output = OutputArea()
         tab.add_widget(self.comm_output)
+        
+        return tab
+    
+    def create_dcdn_tab(self, app_ref):
+        """Create DCDN tab."""
+        tab = TabContent()
+        tab.title = "DCDN"
+        tab.orientation = 'vertical'
+        tab.padding = dp(10)
+        tab.spacing = dp(10)
+        
+        # DCDN Info
+        info_label = MDLabel(text="Distributed CDN System", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
+        tab.add_widget(info_label)
+        
+        # Buttons
+        button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
+        button_layout.add_widget(MDRaisedButton(
+            text="Run Demo",
+            on_release=lambda x: app_ref.run_dcdn_demo()
+        ))
+        button_layout.add_widget(MDRaisedButton(
+            text="System Info",
+            on_release=lambda x: app_ref.dcdn_info()
+        ))
+        button_layout.add_widget(MDRaisedButton(
+            text="Test DCDN",
+            on_release=lambda x: app_ref.test_dcdn()
+        ))
+        tab.add_widget(button_layout)
+        
+        # Output area
+        self.dcdn_output = OutputArea()
+        tab.add_widget(self.dcdn_output)
         
         return tab
     
@@ -1743,6 +1781,153 @@ class PangeaDesktopApp(MDApp):
                 Clock.schedule_once(lambda dt: self._update_network_output(error_msg), 0)
         
         threading.Thread(target=show_stats_thread, daemon=True).start()
+    
+    # ==========================================================================
+    # DCDN Methods
+    # ==========================================================================
+    
+    def run_dcdn_demo(self):
+        """Run DCDN interactive demo."""
+        self.log_message("🌐 Running DCDN demo...")
+        
+        def dcdn_demo_thread():
+            try:
+                output = "=== DCDN Demo ===\n\n"
+                output += "Running Rust DCDN demo...\n\n"
+                
+                # Run the Rust DCDN demo
+                project_root = PROJECT_ROOT
+                rust_dir = project_root / "rust"
+                
+                result = subprocess.run(
+                    ["cargo", "run", "--example", "dcdn_demo"],
+                    cwd=str(rust_dir),
+                    capture_output=True,
+                    text=True,
+                    timeout=60
+                )
+                
+                if result.returncode == 0:
+                    output += "✅ Demo completed successfully!\n\n"
+                    output += "Output:\n"
+                    output += result.stdout[:2000]  # Limit output
+                    if len(result.stdout) > 2000:
+                        output += "\n... (output truncated)"
+                else:
+                    output += "❌ Demo failed\n\n"
+                    output += "Error:\n"
+                    output += result.stderr[:1000]
+                
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                self.log_message("✅ DCDN demo complete")
+            except subprocess.TimeoutExpired:
+                error_msg = "❌ Demo timeout - took longer than 60 seconds"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+            except Exception as e:
+                error_msg = f"❌ Error running demo: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+        
+        threading.Thread(target=dcdn_demo_thread, daemon=True).start()
+    
+    def _update_dcdn_output(self, text):
+        """Update DCDN output area (must be called from main thread)."""
+        self.main_screen.dcdn_output.clear()
+        self.main_screen.dcdn_output.add_text(text)
+    
+    def dcdn_info(self):
+        """Show DCDN system information."""
+        self.log_message("ℹ️  Getting DCDN info...")
+        
+        def dcdn_info_thread():
+            try:
+                output = "=== DCDN System Information ===\n\n"
+                
+                # Basic info
+                output += "Distributed Content Delivery Network\n\n"
+                output += "Components:\n"
+                output += "  - QUIC Transport: Low-latency packet delivery\n"
+                output += "  - Reed-Solomon FEC: Packet recovery (8 data + 2 parity)\n"
+                output += "  - P2P Mesh: Tit-for-tat bandwidth allocation\n"
+                output += "  - Ed25519 Verification: Content authenticity\n"
+                output += "  - Lock-free Ring Buffer: High-speed chunk storage\n\n"
+                
+                output += "Configuration:\n"
+                # Try to read config if exists
+                config_path = PROJECT_ROOT / "rust" / "config" / "dcdn.toml"
+                if config_path.exists():
+                    output += f"  Config file: {config_path}\n"
+                    output += "  (Config file present)\n"
+                else:
+                    output += "  Config file: Not found (using defaults)\n"
+                
+                output += "\nCapabilities:\n"
+                output += "  - Video streaming with low latency\n"
+                output += "  - Automatic packet recovery\n"
+                output += "  - Fair bandwidth distribution\n"
+                output += "  - Cryptographic verification\n"
+                output += "  - Cross-device content delivery\n\n"
+                
+                output += "Status: ✅ Implementation Complete\n"
+                output += "\nUse 'Run Demo' to see DCDN in action\n"
+                
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                self.log_message("✅ DCDN info retrieved")
+            except Exception as e:
+                error_msg = f"❌ Error getting info: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+        
+        threading.Thread(target=dcdn_info_thread, daemon=True).start()
+    
+    def test_dcdn(self):
+        """Run DCDN tests."""
+        self.log_message("🧪 Running DCDN tests...")
+        
+        def dcdn_test_thread():
+            try:
+                output = "=== DCDN Tests ===\n\n"
+                output += "Running Rust test suite...\n\n"
+                
+                # Run the Rust DCDN tests
+                project_root = PROJECT_ROOT
+                rust_dir = project_root / "rust"
+                
+                result = subprocess.run(
+                    ["cargo", "test", "--test", "test_dcdn"],
+                    cwd=str(rust_dir),
+                    capture_output=True,
+                    text=True,
+                    timeout=120
+                )
+                
+                if result.returncode == 0:
+                    output += "✅ All tests passed!\n\n"
+                    # Extract test summary
+                    lines = result.stdout.split('\n')
+                    for line in lines:
+                        if 'test result:' in line or 'running' in line:
+                            output += line + "\n"
+                else:
+                    output += "❌ Some tests failed\n\n"
+                    output += "Output:\n"
+                    output += result.stdout[-1000:]  # Last 1000 chars
+                    output += "\n\nError:\n"
+                    output += result.stderr[-500:]   # Last 500 chars
+                
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                self.log_message("✅ DCDN tests complete")
+            except subprocess.TimeoutExpired:
+                error_msg = "❌ Tests timeout - took longer than 120 seconds"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+            except Exception as e:
+                error_msg = f"❌ Error running tests: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+        
+        threading.Thread(target=dcdn_test_thread, daemon=True).start()
     
     # ==========================================================================
     # Utility Methods
