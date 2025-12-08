@@ -87,6 +87,11 @@ LOCALSTACK_ENDPOINT_URL=http://localhost:4566
 AWS_ACCESS_KEY_ID=test
 AWS_SECRET_ACCESS_KEY=test
 AWS_REGION=eu-west-2
+
+# CI/Code Quality Tools
+TRAVIS_TOKEN=<your-token>
+CODECOV_TOKEN=<your-token>
+CODESCENE_PAT_TOKEN=<your-token>
 ```
 
 ### Prometheus Configuration
@@ -139,6 +144,21 @@ New Relic APM is initialized in both Go and Python services. Application name de
 ### Sentry
 
 Sentry error tracking captures exceptions and sends them to the configured DSN. PII (Personally Identifiable Information) is included based on the `SENTRY_SEND_DEFAULT_PII` setting.
+
+### CI/Code Quality Tools
+
+The following tools are configured via environment variables and available to all services:
+
+#### Travis CI
+Travis CI token is available for continuous integration workflows. The `TRAVIS_TOKEN` can be used to trigger builds, access build status, or integrate with Travis CI API.
+
+#### Codecov
+Codecov token enables code coverage reporting. The `CODECOV_TOKEN` is used to upload coverage reports from test runs to Codecov for analysis and tracking.
+
+#### CodeScene
+CodeScene PAT (Personal Access Token) provides access to code quality analysis. The `CODESCENE_PAT_TOKEN` enables integration with CodeScene's behavioral code analysis platform for technical debt and hotspot detection.
+
+**Note**: These tokens are primarily used during CI/CD pipelines. Ensure they are properly secured and rotated regularly.
 
 ## Metrics Reference
 

@@ -32,6 +32,10 @@ services:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=${AWS_REGION}
+      # CI/Code Quality Tools
+      - TRAVIS_TOKEN=${TRAVIS_TOKEN}
+      - CODECOV_TOKEN=${CODECOV_TOKEN}
+      - CODESCENE_PAT_TOKEN=${CODESCENE_PAT_TOKEN}
     env_file:
       - ../tools/.env
     networks:
@@ -64,6 +68,10 @@ services:
       - WORKERS=4
       - CHUNK_SIZE=32
       - RUST_LOG=info
+      # CI/Code Quality Tools
+      - TRAVIS_TOKEN=${TRAVIS_TOKEN}
+      - CODECOV_TOKEN=${CODECOV_TOKEN}
+      - CODESCENE_PAT_TOKEN=${CODESCENE_PAT_TOKEN}
     env_file:
       - ../tools/.env
     networks:
@@ -118,6 +126,10 @@ services:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_REGION=${AWS_REGION}
+      # CI/Code Quality Tools
+      - TRAVIS_TOKEN=${TRAVIS_TOKEN}
+      - CODECOV_TOKEN=${CODECOV_TOKEN}
+      - CODESCENE_PAT_TOKEN=${CODESCENE_PAT_TOKEN}
     env_file:
       - ../tools/.env
     networks:
