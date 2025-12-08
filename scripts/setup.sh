@@ -1121,21 +1121,6 @@ main() {
                 esac
                 ;;
             20)
-                log_info "User selected: Run Live P2P Test"
-                echo ""
-                echo -e "${BLUE}========================================${NC}"
-                echo -e "${BLUE}   Live P2P Test (Chat/Voice/Video)${NC}"
-                echo -e "${BLUE}========================================${NC}"
-                echo ""
-                echo "This launches the interactive live_test.sh script."
-                echo "You can test Chat, Voice, and Video streaming."
-                echo ""
-                read -p "Press Enter to start live test..."
-                ./scripts/live_test.sh
-                echo ""
-                read -p "Press Enter to continue..."
-                ;;
-            20)
                 log_info "User selected: DCDN Demo"
                 echo ""
                 echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
