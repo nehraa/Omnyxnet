@@ -241,6 +241,84 @@ python3 main.py connect                    # Test Go node connection
 python3 main.py list-nodes                 # Show all network nodes
 python3 main.py predict                    # Start AI threat prediction
 python3 main.py health-status              # Show peer health data
+```
+
+## 🖥️ Desktop Applications
+
+Pangea Net provides graphical desktop applications for easy access to all features without command-line interaction.
+
+### Desktop App (Kivy/Tkinter)
+
+```bash
+# Launch Kivy version (recommended for modern UI)
+python3 desktop_app_kivy.py
+
+# OR launch Tkinter version (lightweight, usually pre-installed)
+python3 desktop_app.py
+```
+
+**Features:**
+- **Node Management**: Connect to Go nodes, view status, manage connections
+- **Compute Tasks**: Submit and monitor distributed compute jobs
+- **File Operations**: Upload/download files with hash verification
+- **Communications**: Chat, video, and voice calls with Tor support
+- **DCDN Streaming**: Distributed video streaming with packet recovery
+- **Network Info**: View peers, topology, and connection statistics
+
+### Communications Testing
+
+The desktop app includes comprehensive communications testing:
+
+**Chat Messaging:**
+- Text-based P2P communication
+- Display sender IP address
+- Tor routing option
+
+**Video Calls:**
+- Live webcam streaming
+- Adaptive quality and frame rate
+- IP address verification
+
+**Voice Calls:**
+- Real-time audio communication
+- 48kHz Opus-compatible audio
+- Low-latency streaming
+
+**DCDN Video Streaming:**
+- Stream test videos or live camera
+- QUIC transport for low latency
+- Reed-Solomon FEC for packet recovery
+- P2P bandwidth allocation
+- Ed25519 content verification
+
+**Tor Integration:**
+- Route traffic through Tor proxy
+- Display exit node IP for verification
+- Test Tor connectivity
+
+See [COMMUNICATIONS_TESTING.md](docs/COMMUNICATIONS_TESTING.md) for detailed testing guide.
+
+### Generate Test Video
+
+Create a test video for DCDN streaming demonstrations:
+
+```bash
+# Generate 10-second test video
+python3 tools/generate_test_video.py test_video.mp4 10
+
+# Custom duration and resolution
+python3 tools/generate_test_video.py my_video.mp4 30 --fps 30 --width 1280 --height 720
+
+# Quick test script (generates video + runs demo)
+./tools/test_dcdn_stream.sh --generate-video --run-demo
+```
+
+The test video includes:
+- Colored frames cycling through different colors
+- Frame counter and timestamp overlays
+- Moving circle animation
+- Suitable resolution for streaming tests
+
 ### Test Details
 
 #### `test_all.sh` - Complete System Test
