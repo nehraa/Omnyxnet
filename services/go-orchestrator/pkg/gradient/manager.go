@@ -1,6 +1,7 @@
 package gradient
 
 import (
+"fmt"
 "log"
 "sync"
 "time"
@@ -48,21 +49,31 @@ defer m.mu.Unlock()
 
 if len(m.gradients) == 0 {
 log.Println("⚠️  No gradients available for aggregation")
-return nil, nil
+return nil, fmt.Errorf("no gradients available for aggregation")
 }
 
 // Average gradients from all workers
 var sumGradients []float64
+var expectedLength int
 count := 0
 
 for _, update := range m.gradients {
 if count == 0 {
-sumGradients = make([]float64, len(update.Data))
+expectedLength = len(update.Data)
+sumGradients = make([]float64, expectedLength)
+} else if len(update.Data) != expectedLength {
+log.Printf("⚠️  Gradient length mismatch: expected %d, got %d from worker %d", 
+expectedLength, len(update.Data), update.WorkerID)
+continue
 }
 for i, v := range update.Data {
 sumGradients[i] += v
 }
 count++
+}
+
+if count == 0 {
+return nil, fmt.Errorf("no valid gradients to aggregate")
 }
 
 // Average

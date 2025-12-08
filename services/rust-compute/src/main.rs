@@ -106,15 +106,27 @@ async fn handle_connection(mut socket: tokio::net::TcpStream) -> Result<()> {
 
 /// Start the Prometheus metrics HTTP server
 async fn start_metrics_server(metrics: Arc<Metrics>) {
+    let metrics_clone = Arc::clone(&metrics);
     let app = Router::new()
-        .route("/metrics", get(move || async move {
-            metrics.encode().unwrap_or_else(|_| String::from("Error encoding metrics"))
+        .route("/metrics", get(move || {
+            let metrics = Arc::clone(&metrics_clone);
+            async move {
+                metrics.encode().unwrap_or_else(|_| String::from("Error encoding metrics"))
+            }
         }))
         .route("/health", get(|| async { "OK" }));
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 9091));
     info!("📊 Metrics server listening on http://{}/metrics", addr);
 
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    match tokio::net::TcpListener::bind(addr).await {
+        Ok(listener) => {
+            if let Err(e) = axum::serve(listener, app).await {
+                log::error!("Metrics server error: {}", e);
+            }
+        }
+        Err(e) => {
+            log::error!("Failed to bind metrics server to {}: {}", addr, e);
+        }
+    }
 }
