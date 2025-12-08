@@ -43,18 +43,31 @@ def set_proxy(host, port, proxy_host, proxy_port, proxy_type, username, password
         click.echo(f"❌ Failed to connect to Go node at {host}:{port}", err=True)
         sys.exit(1)
     
-    # Call setProxyConfig RPC
-    click.echo(f"📡 Configuring proxy: {proxy_type}://{proxy_host}:{proxy_port}")
-    click.echo(f"🔐 Tor enabled: {use_tor}")
-    
-    # In a full implementation, this would call the actual RPC
-    click.echo("✅ Proxy configuration updated")
-    click.echo(f"   Type: {proxy_type}")
-    click.echo(f"   Host: {proxy_host}:{proxy_port}")
-    if username:
-        click.echo(f"   Username: {username}")
-    
-    client.disconnect()
+    try:
+        # Call setProxyConfig RPC
+        click.echo(f"📡 Configuring proxy: {proxy_type}://{proxy_host}:{proxy_port}")
+        click.echo(f"🔐 Tor enabled: {use_tor}")
+        
+        success, error_msg = client.set_proxy_config(
+            enabled=use_tor,
+            proxy_host=proxy_host,
+            proxy_port=proxy_port,
+            proxy_type=proxy_type,
+            username=username,
+            password=password
+        )
+        
+        if success:
+            click.echo("✅ Proxy configuration updated")
+            click.echo(f"   Type: {proxy_type}")
+            click.echo(f"   Host: {proxy_host}:{proxy_port}")
+            if username:
+                click.echo(f"   Username: {username}")
+        else:
+            click.echo(f"❌ Failed to set proxy config: {error_msg}", err=True)
+            sys.exit(1)
+    finally:
+        client.disconnect()
 
 
 @security.command('proxy-get')

@@ -972,5 +972,301 @@ class GoNodeClient:
         except Exception as e:
             logger.error(f"Error getting compute capacity: {e}")
             return None
+    
+    # ========================================================================
+    # Mandate 3: Security, Ephemeral Chat, and ML RPC Methods
+    # ========================================================================
+    
+    def set_proxy_config(self, enabled: bool, proxy_host: str, proxy_port: int, 
+                        proxy_type: str = "socks5", username: str = "", 
+                        password: str = "") -> Tuple[bool, str]:
+        """Configure SOCKS5/Tor proxy for communications.
+        
+        Args:
+            enabled: Enable proxy
+            proxy_host: Proxy host address
+            proxy_port: Proxy port
+            proxy_type: Type of proxy (socks5, socks4, http)
+            username: Optional proxy username
+            password: Optional proxy password
+            
+        Returns:
+            Tuple of (success, error_message)
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_set_proxy():
+            request = self.service.setProxyConfig_request()
+            config = request.config
+            config.enabled = enabled
+            config.proxyType = proxy_type
+            config.proxyHost = proxy_host
+            config.proxyPort = proxy_port
+            config.username = username
+            config.passwordPresent = (password != "")
+            
+            result = await request.send()
+            return result.success, result.errorMsg if hasattr(result, 'errorMsg') else ""
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_set_proxy(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error setting proxy config: {e}")
+            return False, str(e)
+    
+    def get_proxy_config(self) -> Optional[Dict]:
+        """Get current proxy configuration.
+        
+        Returns:
+            Dict with proxy config or None if error
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_get_proxy():
+            result = await self.service.getProxyConfig()
+            config = result.config
+            return {
+                'enabled': config.enabled,
+                'proxyType': config.proxyType,
+                'proxyHost': config.proxyHost,
+                'proxyPort': config.proxyPort,
+                'username': config.username,
+                'passwordPresent': config.passwordPresent
+            }
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_get_proxy(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error getting proxy config: {e}")
+            return None
+    
+    def set_encryption_config(self, encryption_type: str, key_exchange: str = "rsa",
+                             symmetric_algo: str = "aes256", 
+                             enable_signatures: bool = True) -> Tuple[bool, str]:
+        """Configure encryption for communications.
+        
+        Args:
+            encryption_type: Type of encryption (asymmetric, symmetric, none)
+            key_exchange: Key exchange algorithm (rsa, ecc, dh)
+            symmetric_algo: Symmetric algorithm (aes256, chacha20)
+            enable_signatures: Enable digital signatures
+            
+        Returns:
+            Tuple of (success, error_message)
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_set_encryption():
+            request = self.service.setEncryptionConfig_request()
+            config = request.config
+            config.encryptionType = encryption_type
+            config.keyExchangeAlgorithm = key_exchange
+            config.symmetricAlgorithm = symmetric_algo
+            config.enableSignatures = enable_signatures
+            
+            result = await request.send()
+            return result.success, result.errorMsg if hasattr(result, 'errorMsg') else ""
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_set_encryption(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error setting encryption config: {e}")
+            return False, str(e)
+    
+    def start_chat_session(self, peer_addr: str, encryption_type: str = "asymmetric") -> Tuple[bool, Optional[str], str]:
+        """Start an ephemeral chat session with a peer.
+        
+        Args:
+            peer_addr: Peer address (e.g., "worker1:8080")
+            encryption_type: Type of encryption (asymmetric, symmetric, none)
+            
+        Returns:
+            Tuple of (success, session_id, error_message)
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_start_chat():
+            request = self.service.startChatSession_request()
+            request.peerAddr = peer_addr
+            
+            enc_config = request.encryptionConfig
+            enc_config.encryptionType = encryption_type
+            enc_config.keyExchangeAlgorithm = "rsa"
+            enc_config.symmetricAlgorithm = "aes256"
+            enc_config.enableSignatures = True
+            
+            result = await request.send()
+            session_id = result.session.sessionId if result.success else None
+            error_msg = result.errorMsg if hasattr(result, 'errorMsg') else ""
+            return result.success, session_id, error_msg
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_start_chat(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error starting chat session: {e}")
+            return False, None, str(e)
+    
+    def send_ephemeral_message(self, session_id: str, from_peer: str, 
+                               to_peer: str, message: bytes) -> Tuple[bool, str]:
+        """Send an encrypted ephemeral message.
+        
+        Args:
+            session_id: Chat session ID
+            from_peer: Sender peer address
+            to_peer: Recipient peer address
+            message: Message content (will be encrypted)
+            
+        Returns:
+            Tuple of (success, error_message)
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_send_message():
+            request = self.service.sendEphemeralMessage_request()
+            msg = request.message
+            msg.fromPeer = from_peer
+            msg.toPeer = to_peer
+            msg.message = message
+            msg.timestamp = int(time.time())
+            msg.messageId = f"msg-{int(time.time())}"
+            msg.encryptionType = "asymmetric"
+            
+            result = await request.send()
+            error_msg = result.errorMsg if hasattr(result, 'errorMsg') else ""
+            return result.success, error_msg
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_send_message(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error sending ephemeral message: {e}")
+            return False, str(e)
+    
+    def receive_chat_messages(self, session_id: str) -> List[Dict]:
+        """Receive messages from a chat session.
+        
+        Args:
+            session_id: Chat session ID
+            
+        Returns:
+            List of message dictionaries
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_receive_messages():
+            request = self.service.receiveChatMessages_request()
+            request.sessionId = session_id
+            
+            result = await request.send()
+            messages = []
+            for msg in result.messages:
+                messages.append({
+                    'from': msg.fromPeer,
+                    'to': msg.toPeer,
+                    'message': bytes(msg.message),
+                    'timestamp': msg.timestamp,
+                    'messageId': msg.messageId,
+                    'encryptionType': msg.encryptionType
+                })
+            return messages
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_receive_messages(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error receiving chat messages: {e}")
+            return []
+    
+    def start_ml_training(self, task_id: str, dataset_id: str, model_arch: str,
+                         worker_nodes: List[str], aggregator_node: str,
+                         epochs: int = 10, batch_size: int = 32) -> Tuple[bool, str]:
+        """Start distributed ML training task.
+        
+        Args:
+            task_id: Unique task identifier
+            dataset_id: Dataset identifier
+            model_arch: Model architecture name
+            worker_nodes: List of worker node addresses
+            aggregator_node: Aggregator node address
+            epochs: Number of training epochs
+            batch_size: Batch size
+            
+        Returns:
+            Tuple of (success, error_message)
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_start_training():
+            request = self.service.startMLTraining_request()
+            task = request.task
+            task.taskId = task_id
+            task.datasetId = dataset_id
+            task.modelArchitecture = model_arch
+            task.aggregatorNode = aggregator_node
+            task.epochs = epochs
+            task.batchSize = batch_size
+            
+            # Set worker nodes
+            workers = task.init('workerNodes', len(worker_nodes))
+            for i, worker in enumerate(worker_nodes):
+                workers[i] = worker
+            
+            result = await request.send()
+            error_msg = result.errorMsg if hasattr(result, 'errorMsg') else ""
+            return result.success, error_msg
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_start_training(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error starting ML training: {e}")
+            return False, str(e)
+    
+    def get_ml_training_status(self, task_id: str) -> Optional[Dict]:
+        """Get ML training task status.
+        
+        Args:
+            task_id: Task identifier
+            
+        Returns:
+            Dict with training status or None if error
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_get_status():
+            request = self.service.getMLTrainingStatus_request()
+            request.taskId = task_id
+            
+            result = await request.send()
+            status = result.status
+            return {
+                'taskId': status.taskId,
+                'currentEpoch': status.currentEpoch,
+                'totalEpochs': status.totalEpochs,
+                'activeWorkers': status.activeWorkers,
+                'completedWorkers': status.completedWorkers,
+                'currentLoss': status.currentLoss,
+                'currentAccuracy': status.currentAccuracy,
+                'estimatedTimeRemaining': status.estimatedTimeRemaining
+            }
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_get_status(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error getting ML training status: {e}")
+            return None
 
 
