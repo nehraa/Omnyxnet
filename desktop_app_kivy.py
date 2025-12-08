@@ -1414,45 +1414,45 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message(f"⚙️  Submitting {task_type} task (size: {matrix_size}x{matrix_size})...")
+        self.main_screen.compute_output.clear()
         
         def submit_task_thread():
             try:
-                # Generate a unique job ID
-                job_id = hashlib.md5(f"{task_type}_{time.time()}".encode()).hexdigest()[:16]
-                
-                # Create sample input data for the task
+                # Use the Python CLI to properly format and submit the matrix multiply task
                 if "matrix" in task_type.lower():
-                    # For matrix multiplication, send matrix dimensions
-                    input_data = f"matrix_multiply:{matrix_size}x{matrix_size}".encode()
-                else:
-                    # Generic compute task
-                    input_data = f"{task_type}:sample_data".encode()
-                
-                success, error_msg = self.go_client.submit_compute_job(
-                    job_id=job_id,
-                    input_data=input_data,
-                    split_strategy="fixed",
-                    timeout_secs=300,
-                    priority=5
-                )
-                
-                if success:
-                    output = f"✅ Task submitted successfully!\n\n"
-                    output += f"Job ID: {job_id}\n"
-                    output += f"Type: {task_type}\n"
-                    if "matrix" in task_type.lower():
-                        output += f"Matrix Size: {matrix_size}x{matrix_size}\n"
-                    output += f"Status: Submitted\n\n"
-                    output += f"Use 'Check Task Status' to monitor progress."
-                    Clock.schedule_once(lambda dt: self._update_compute_output(output), 0)
-                    self.log_message(f"✅ Task {job_id} submitted ({matrix_size}x{matrix_size})")
+                    result = subprocess.run(
+                        [
+                            "python3", "main.py", "compute", "matrix-multiply",
+                            "--size", str(matrix_size),
+                            "--generate",
+                            "--verify",
+                            "--connect"
+                        ],
+                        cwd=str(PROJECT_ROOT / "python"),
+                        capture_output=True,
+                        text=True,
+                        timeout=300
+                    )
                     
-                    # Store job_id for status checking
-                    self.last_job_id = job_id
+                    output = ""
+                    if result.returncode == 0:
+                        output = "✅ Matrix multiplication completed successfully!\n\n"
+                        output += result.stdout
+                        Clock.schedule_once(lambda dt: self._update_compute_output(output), 0)
+                        self.log_message(f"✅ Matrix multiply ({matrix_size}x{matrix_size}) completed")
+                    else:
+                        output = f"❌ Matrix multiplication failed!\n\n"
+                        output += f"Error: {result.stderr}\n"
+                        output += result.stdout
+                        Clock.schedule_once(lambda dt: self._update_compute_output(output), 0)
+                        self.log_message(f"❌ Matrix multiply failed: {result.stderr[:100]}")
                 else:
-                    error_output = f"❌ Task submission failed: {error_msg}"
-                    Clock.schedule_once(lambda dt: self._update_compute_output(error_output), 0)
-                    self.log_message(error_output)
+                    # Generic task - show not implemented
+                    output = f"⚠️  Task type '{task_type}' not implemented yet.\n\n"
+                    output += "Currently supported:\n"
+                    output += "  - Matrix Multiply\n"
+                    Clock.schedule_once(lambda dt: self._update_compute_output(output), 0)
+                    self.log_message(f"⚠️  Task type not implemented: {task_type}")
             except Exception as e:
                 error_msg = f"❌ Error submitting task: {str(e)}"
                 self.log_message(error_msg)
