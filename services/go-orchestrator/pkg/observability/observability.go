@@ -219,11 +219,12 @@ sentry.CaptureMessage(message)
 }
 
 // StartDatadogSpan starts a new Datadog span
-func (m *Manager) StartDatadogSpan(ctx context.Context, operationName string) (ddtrace.Span, context.Context) {
+func (m *Manager) StartDatadogSpan(ctx context.Context, operationName string) context.Context {
 if m.datadogActive {
-return ddtrace.StartSpanFromContext(ctx, operationName)
+_, newCtx := ddtrace.StartSpanFromContext(ctx, operationName)
+return newCtx
 }
-return nil, ctx
+return ctx
 }
 
 // Shutdown gracefully shuts down all observability tools

@@ -1,12 +1,16 @@
 mod data_processing;
+mod metrics;
 
 use anyhow::Result;
+use axum::{routing::get, Router};
 use clap::Parser;
 use log::info;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use tokio::net::TcpListener;
 
 use data_processing::Preprocessor;
+use metrics::Metrics;
 
 #[derive(Parser, Debug)]
 #[command(name = "Pangea Rust Compute Core")]
@@ -54,6 +58,16 @@ async fn main() -> Result<()> {
     info!("   Workers: {}", args.workers);
     info!("   Chunk size: {}", args.chunk_size);
 
+    // Initialize metrics
+    let metrics = Metrics::new();
+    info!("📊 Metrics initialized");
+
+    // Start metrics HTTP server
+    let metrics_clone = Arc::clone(&metrics);
+    tokio::spawn(async move {
+        start_metrics_server(metrics_clone).await;
+    });
+
     // Create preprocessor
     let preprocessor = Preprocessor::new(args.workers, args.chunk_size);
     info!("✅ Data preprocessor initialized");
@@ -67,6 +81,8 @@ async fn main() -> Result<()> {
     loop {
         let (socket, peer_addr) = listener.accept().await?;
         info!("✅ New connection from {}", peer_addr);
+        
+        metrics.requests_total.inc();
         
         // In production, handle the connection with Cap'n Proto RPC
         tokio::spawn(async move {
@@ -86,4 +102,19 @@ async fn handle_connection(mut socket: tokio::net::TcpStream) -> Result<()> {
     info!("📨 Received {} bytes", n);
     
     Ok(())
+}
+
+/// Start the Prometheus metrics HTTP server
+async fn start_metrics_server(metrics: Arc<Metrics>) {
+    let app = Router::new()
+        .route("/metrics", get(move || async move {
+            metrics.encode().unwrap_or_else(|_| String::from("Error encoding metrics"))
+        }))
+        .route("/health", get(|| async { "OK" }));
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], 9091));
+    info!("📊 Metrics server listening on http://{}/metrics", addr);
+
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }

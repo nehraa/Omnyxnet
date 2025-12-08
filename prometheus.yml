@@ -23,7 +23,7 @@ scrape_configs:
   - job_name: 'rust-compute'
     static_configs:
       - targets: 
-        - 'rust-compute:9090'
+        - 'rust-compute:9091'
     metrics_path: '/metrics'
     scrape_interval: 15s
 

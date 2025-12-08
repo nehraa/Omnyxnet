@@ -1,102 +1,101 @@
 package gradient
-package gradient
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-}	log.Println("🔄 Gradient manager reset for next round")	m.gradients = make(map[uint32]*GradientUpdate)	defer m.mu.Unlock()	m.mu.Lock()func (m *Manager) Reset() {// Reset clears all stored gradients for the next round}	}		"time_since_last_agg":  time.Since(m.lastAggregation).Seconds(),		"active_workers":       len(m.gradients),		"last_aggregation":     m.lastAggregation,		"aggregation_round":    m.aggregationRound,	return map[string]interface{}{	defer m.mu.RUnlock()	m.mu.RLock()func (m *Manager) GetAggregationStats() map[string]interface{} {// GetAggregationStats returns statistics about gradient aggregation}	return sumGradients, nil	log.Printf("✅ Aggregated gradients from %d workers (Round: %d)", count, m.aggregationRound)	m.lastAggregation = time.Now()	m.aggregationRound++	}		sumGradients[i] /= float64(count)	for i := range sumGradients {	// Average	}		count++		}			sumGradients[i] += v		for i, v := range update.Data {		}			sumGradients = make([]float64, len(update.Data))		if count == 0 {	for _, update := range m.gradients {	count := 0	var sumGradients []float64	// Average gradients from all workers	}		return nil, nil		log.Println("⚠️  No gradients available for aggregation")	if len(m.gradients) == 0 {	defer m.mu.Unlock()	m.mu.Lock()func (m *Manager) AggregateGradients() ([]float64, error) {// AggregateGradients performs gradient aggregation across all submitted gradients}	return nil	log.Printf("📊 Gradient received from worker %d (Loss: %.6f)", update.WorkerID, update.Loss)	m.gradients[update.WorkerID] = update	defer m.mu.Unlock()	m.mu.Lock()func (m *Manager) SubmitGradient(update *GradientUpdate) error {// SubmitGradient receives a gradient update from a worker}	}		lastAggregation: time.Now(),		gradients:       make(map[uint32]*GradientUpdate),	return &Manager{func NewManager() *Manager {// NewManager creates a new gradient manager}	lastAggregation  time.Time	aggregationRound uint64	gradients        map[uint32]*GradientUpdate	mu               sync.RWMutextype Manager struct {// Manager handles gradient aggregation and synchronization across workers}	Data      []float64	Timestamp time.Time	Loss      float64	WorkerID  uint32type GradientUpdate struct {// GradientUpdate represents a gradient computation result from a worker)	"time"	"sync"	"log"import (
+import (
+"log"
+"sync"
+"time"
+)
+
+// GradientUpdate represents a gradient computation result from a worker
+type GradientUpdate struct {
+WorkerID  uint32
+Loss      float64
+Timestamp time.Time
+Data      []float64
+}
+
+// Manager handles gradient aggregation and synchronization across workers
+type Manager struct {
+mu               sync.RWMutex
+gradients        map[uint32]*GradientUpdate
+aggregationRound uint64
+lastAggregation  time.Time
+}
+
+// NewManager creates a new gradient manager
+func NewManager() *Manager {
+return &Manager{
+gradients:       make(map[uint32]*GradientUpdate),
+lastAggregation: time.Now(),
+}
+}
+
+// SubmitGradient receives a gradient update from a worker
+func (m *Manager) SubmitGradient(update *GradientUpdate) error {
+m.mu.Lock()
+defer m.mu.Unlock()
+
+m.gradients[update.WorkerID] = update
+log.Printf("📊 Gradient received from worker %d (Loss: %.6f)", update.WorkerID, update.Loss)
+
+return nil
+}
+
+// AggregateGradients performs gradient aggregation across all submitted gradients
+func (m *Manager) AggregateGradients() ([]float64, error) {
+m.mu.Lock()
+defer m.mu.Unlock()
+
+if len(m.gradients) == 0 {
+log.Println("⚠️  No gradients available for aggregation")
+return nil, nil
+}
+
+// Average gradients from all workers
+var sumGradients []float64
+count := 0
+
+for _, update := range m.gradients {
+if count == 0 {
+sumGradients = make([]float64, len(update.Data))
+}
+for i, v := range update.Data {
+sumGradients[i] += v
+}
+count++
+}
+
+// Average
+for i := range sumGradients {
+sumGradients[i] /= float64(count)
+}
+
+m.aggregationRound++
+m.lastAggregation = time.Now()
+
+log.Printf("✅ Aggregated gradients from %d workers (Round: %d)", count, m.aggregationRound)
+
+return sumGradients, nil
+}
+
+// GetAggregationStats returns statistics about gradient aggregation
+func (m *Manager) GetAggregationStats() map[string]interface{} {
+m.mu.RLock()
+defer m.mu.RUnlock()
+
+return map[string]interface{}{
+"aggregation_round":    m.aggregationRound,
+"last_aggregation":     m.lastAggregation,
+"active_workers":       len(m.gradients),
+"time_since_last_agg":  time.Since(m.lastAggregation).Seconds(),
+}
+}
+
+// Reset clears all stored gradients for the next round
+func (m *Manager) Reset() {
+m.mu.Lock()
+defer m.mu.Unlock()
+
+m.gradients = make(map[uint32]*GradientUpdate)
+log.Println("🔄 Gradient manager reset for next round")
+}

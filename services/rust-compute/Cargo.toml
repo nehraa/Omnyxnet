@@ -45,5 +45,10 @@ zstd = "0.13"
 # Utilities
 clap = { version = "4.4", features = ["derive"] }
 
+# Metrics and Observability
+prometheus = "0.13"
+axum = { version = "0.7", features = ["tokio"] }
+tower = "0.4"
+
 [dev-dependencies]
 criterion = "0.5"
