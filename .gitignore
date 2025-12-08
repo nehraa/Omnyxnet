@@ -109,3 +109,6 @@ Website/server/__pycache__/
 .env
 Website/server/.env
 
+#keys
+*ces_key
+.ces_key
