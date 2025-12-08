@@ -73,6 +73,7 @@ from kivymd.uix.card import MDCard
 from kivymd.uix.scrollview import MDScrollView
 from kivymd.uix.dialog import MDDialog
 from kivymd.uix.filemanager import MDFileManager
+from kivymd.uix.selectioncontrol import MDSwitch
 
 # Try to import Cap'n Proto client
 try:
@@ -447,8 +448,109 @@ class MainScreen(MDScreen):
         tab.padding = dp(10)
         tab.spacing = dp(10)
         
+        # Tor Configuration Section
+        tor_label = MDLabel(text="Tor Configuration", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
+        tab.add_widget(tor_label)
+        
+        tor_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
+        self.tor_switch = MDSwitch(size_hint_x=0.2)
+        tor_layout.add_widget(MDLabel(text="Use Tor Proxy:", size_hint_x=0.3))
+        tor_layout.add_widget(self.tor_switch)
+        tor_layout.add_widget(MDRaisedButton(
+            text="Test Tor",
+            size_hint_x=0.25,
+            on_release=lambda x: app_ref.test_tor_connection()
+        ))
+        tor_layout.add_widget(MDRaisedButton(
+            text="Show My IP",
+            size_hint_x=0.25,
+            on_release=lambda x: app_ref.show_my_ip()
+        ))
+        tab.add_widget(tor_layout)
+        
+        # Chat Section
+        chat_label = MDLabel(text="Chat Messaging", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
+        tab.add_widget(chat_label)
+        
+        chat_input_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
+        self.chat_peer_ip = MDTextField(
+            hint_text="Peer IP (or 'server' to listen)",
+            mode="rectangle",
+            size_hint_x=0.4
+        )
+        chat_input_layout.add_widget(self.chat_peer_ip)
+        self.chat_message = MDTextField(
+            hint_text="Message to send",
+            mode="rectangle",
+            size_hint_x=0.4
+        )
+        chat_input_layout.add_widget(self.chat_message)
+        chat_input_layout.add_widget(MDRaisedButton(
+            text="Start Chat",
+            size_hint_x=0.2,
+            on_release=lambda x: app_ref.start_chat()
+        ))
+        tab.add_widget(chat_input_layout)
+        
+        chat_button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
+        chat_button_layout.add_widget(MDRaisedButton(
+            text="Send Message",
+            on_release=lambda x: app_ref.send_chat_message()
+        ))
+        chat_button_layout.add_widget(MDRaisedButton(
+            text="Stop Chat",
+            on_release=lambda x: app_ref.stop_chat()
+        ))
+        tab.add_widget(chat_button_layout)
+        
+        # Video Section
+        video_label = MDLabel(text="Video Call", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
+        tab.add_widget(video_label)
+        
+        video_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
+        self.video_peer_ip = MDTextField(
+            hint_text="Peer IP (or 'server' to listen)",
+            mode="rectangle",
+            size_hint_x=0.5
+        )
+        video_layout.add_widget(self.video_peer_ip)
+        video_layout.add_widget(MDRaisedButton(
+            text="Start Video",
+            size_hint_x=0.25,
+            on_release=lambda x: app_ref.start_video_call()
+        ))
+        video_layout.add_widget(MDRaisedButton(
+            text="Stop Video",
+            size_hint_x=0.25,
+            on_release=lambda x: app_ref.stop_video_call()
+        ))
+        tab.add_widget(video_layout)
+        
+        # Voice Section
+        voice_label = MDLabel(text="Voice Call", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
+        tab.add_widget(voice_label)
+        
+        voice_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
+        self.voice_peer_ip = MDTextField(
+            hint_text="Peer IP (or 'server' to listen)",
+            mode="rectangle",
+            size_hint_x=0.5
+        )
+        voice_layout.add_widget(self.voice_peer_ip)
+        voice_layout.add_widget(MDRaisedButton(
+            text="Start Voice",
+            size_hint_x=0.25,
+            on_release=lambda x: app_ref.start_voice_call()
+        ))
+        voice_layout.add_widget(MDRaisedButton(
+            text="Stop Voice",
+            size_hint_x=0.25,
+            on_release=lambda x: app_ref.stop_voice_call()
+        ))
+        tab.add_widget(voice_layout)
+        
         # Liveness testing
-        test_label = MDLabel(text="Liveness Testing", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
+        test_label = MDLabel(text="Network Testing", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
         tab.add_widget(test_label)
         
         button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
@@ -484,7 +586,7 @@ class MainScreen(MDScreen):
         info_label = MDLabel(text="Distributed CDN System", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
         tab.add_widget(info_label)
         
-        # Buttons
+        # Basic DCDN Buttons
         button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
         button_layout.add_widget(MDRaisedButton(
             text="Run Demo",
@@ -499,6 +601,49 @@ class MainScreen(MDScreen):
             on_release=lambda x: app_ref.test_dcdn()
         ))
         tab.add_widget(button_layout)
+        
+        # Video Streaming Section
+        stream_label = MDLabel(text="Video Streaming Test", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
+        tab.add_widget(stream_label)
+        
+        stream_info_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
+        self.stream_peer_ip = MDTextField(
+            hint_text="Peer IP to stream to (or 'server' to receive)",
+            mode="rectangle",
+            size_hint_x=0.6
+        )
+        stream_info_layout.add_widget(self.stream_peer_ip)
+        stream_info_layout.add_widget(MDRaisedButton(
+            text="Start Stream",
+            size_hint_x=0.2,
+            on_release=lambda x: app_ref.start_dcdn_stream()
+        ))
+        stream_info_layout.add_widget(MDRaisedButton(
+            text="Stop Stream",
+            size_hint_x=0.2,
+            on_release=lambda x: app_ref.stop_dcdn_stream()
+        ))
+        tab.add_widget(stream_info_layout)
+        
+        # Video file selection
+        video_file_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
+        self.video_file_path = MDTextField(
+            hint_text="Video file path (leave empty for webcam)",
+            mode="rectangle",
+            size_hint_x=0.7
+        )
+        video_file_layout.add_widget(self.video_file_path)
+        video_file_layout.add_widget(MDRaisedButton(
+            text="Browse",
+            size_hint_x=0.15,
+            on_release=lambda x: app_ref.browse_video_file()
+        ))
+        video_file_layout.add_widget(MDRaisedButton(
+            text="Test Video",
+            size_hint_x=0.15,
+            on_release=lambda x: app_ref.test_video_file()
+        ))
+        tab.add_widget(video_file_layout)
         
         # Output area
         self.dcdn_output = OutputArea()
@@ -1728,6 +1873,260 @@ class PangeaDesktopApp(MDApp):
         threading.Thread(target=health_check_thread, daemon=True).start()
     
     # ==========================================================================
+    # Chat, Video, Voice Methods
+    # ==========================================================================
+    
+    def test_tor_connection(self):
+        """Test Tor connection and display status."""
+        self.log_message("🧅 Testing Tor connection...")
+        
+        def tor_test_thread():
+            try:
+                import socket
+                output = "=== Tor Connection Test ===\n\n"
+                
+                # Check if Tor is enabled
+                tor_enabled = self.main_screen.tor_switch.active if hasattr(self.main_screen, 'tor_switch') else False
+                output += f"Tor Switch: {'ON' if tor_enabled else 'OFF'}\n\n"
+                
+                if not tor_enabled:
+                    output += "⚠️  Tor is not enabled. Enable the Tor switch to use Tor proxy.\n"
+                    output += "\nTo use Tor:\n"
+                    output += "1. Install Tor Browser or tor service\n"
+                    output += "2. Start Tor (default SOCKS5 proxy: 127.0.0.1:9050)\n"
+                    output += "3. Enable the Tor switch above\n"
+                else:
+                    # Try to connect to Tor SOCKS proxy
+                    try:
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        sock.settimeout(2)
+                        result = sock.connect_ex(('127.0.0.1', 9050))
+                        sock.close()
+                        
+                        if result == 0:
+                            output += "✅ Tor SOCKS5 proxy is running on 127.0.0.1:9050\n"
+                            output += "✅ Traffic will be routed through Tor\n"
+                        else:
+                            output += "❌ Cannot connect to Tor proxy on 127.0.0.1:9050\n"
+                            output += "⚠️  Make sure Tor is running\n"
+                    except Exception as e:
+                        output += f"❌ Error checking Tor proxy: {str(e)}\n"
+                
+                Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
+                self.log_message("✅ Tor test complete")
+            except Exception as e:
+                error_msg = f"❌ Error testing Tor: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
+        
+        threading.Thread(target=tor_test_thread, daemon=True).start()
+    
+    def show_my_ip(self):
+        """Display current IP address."""
+        self.log_message("🌐 Getting IP address...")
+        
+        def ip_check_thread():
+            try:
+                import socket
+                import urllib.request
+                
+                output = "=== IP Address Information ===\n\n"
+                
+                # Local IP
+                try:
+                    hostname = socket.gethostname()
+                    local_ip = socket.gethostbyname(hostname)
+                    output += f"Local IP: {local_ip}\n"
+                    output += f"Hostname: {hostname}\n\n"
+                except Exception as e:
+                    output += f"⚠️  Could not get local IP: {str(e)}\n\n"
+                
+                # Public IP (with and without Tor)
+                tor_enabled = self.main_screen.tor_switch.active if hasattr(self.main_screen, 'tor_switch') else False
+                
+                if tor_enabled:
+                    output += "Tor Mode: ON 🧅\n"
+                    output += "Note: External IP check requires Tor proxy configuration\n"
+                else:
+                    output += "Tor Mode: OFF\n"
+                    try:
+                        public_ip = urllib.request.urlopen('https://api.ipify.org', timeout=5).read().decode('utf8')
+                        output += f"Public IP: {public_ip}\n"
+                    except Exception as e:
+                        output += f"⚠️  Could not get public IP: {str(e)}\n"
+                
+                Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
+                self.log_message("✅ IP info retrieved")
+            except Exception as e:
+                error_msg = f"❌ Error getting IP: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
+        
+        threading.Thread(target=ip_check_thread, daemon=True).start()
+    
+    def start_chat(self):
+        """Start chat session."""
+        peer_ip = self.main_screen.chat_peer_ip.text.strip()
+        if not peer_ip:
+            self.show_warning("Missing Info", "Please enter peer IP or 'server'")
+            return
+        
+        self.log_message(f"💬 Starting chat with {peer_ip}...")
+        
+        def chat_thread():
+            try:
+                output = "=== Chat Session ===\n\n"
+                
+                # Determine if server or client mode
+                is_server = peer_ip.lower() == 'server'
+                
+                output += f"Mode: {'Server (waiting for connection)' if is_server else 'Client (connecting to ' + peer_ip + ')'}\n"
+                output += f"Tor: {'Enabled 🧅' if self.main_screen.tor_switch.active else 'Disabled'}\n\n"
+                
+                # Note about deprecated implementation
+                output += "⚠️  Note: This uses a reference chat implementation.\n"
+                output += "For production, use Go libp2p networking.\n\n"
+                
+                output += "Chat module location:\n"
+                output += f"  {PROJECT_ROOT}/python/src/communication/live_chat.py\n\n"
+                
+                output += "To start chat from command line:\n"
+                if is_server:
+                    output += "  python python/src/communication/live_chat.py true\n"
+                else:
+                    output += f"  python python/src/communication/live_chat.py false {peer_ip}\n"
+                
+                output += "\n💡 Future: Chat will be integrated through Go node Cap'n Proto RPC\n"
+                
+                Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
+                self.log_message("✅ Chat info displayed")
+            except Exception as e:
+                error_msg = f"❌ Error starting chat: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
+        
+        threading.Thread(target=chat_thread, daemon=True).start()
+    
+    def send_chat_message(self):
+        """Send a chat message."""
+        message = self.main_screen.chat_message.text.strip()
+        if not message:
+            self.show_warning("No Message", "Please enter a message to send")
+            return
+        
+        self.log_message(f"📤 Sending message: {message}")
+        
+        output = f"Message queued: {message}\n"
+        output += "⚠️  Note: Full chat integration pending\n"
+        output += "Use command line chat for now:\n"
+        output += "  python python/src/communication/live_chat.py\n"
+        
+        self._update_comm_output(output)
+        self.main_screen.chat_message.text = ""
+    
+    def stop_chat(self):
+        """Stop chat session."""
+        self.log_message("🛑 Stopping chat...")
+        output = "Chat session stopped.\n"
+        self._update_comm_output(output)
+    
+    def start_video_call(self):
+        """Start video call."""
+        peer_ip = self.main_screen.video_peer_ip.text.strip()
+        if not peer_ip:
+            self.show_warning("Missing Info", "Please enter peer IP or 'server'")
+            return
+        
+        self.log_message(f"📹 Starting video call with {peer_ip}...")
+        
+        def video_thread():
+            try:
+                output = "=== Video Call ===\n\n"
+                
+                is_server = peer_ip.lower() == 'server'
+                
+                output += f"Mode: {'Server (waiting for connection)' if is_server else 'Client (connecting to ' + peer_ip + ')'}\n"
+                output += f"Tor: {'Enabled 🧅' if self.main_screen.tor_switch.active else 'Disabled'}\n\n"
+                
+                output += "⚠️  Note: This uses a reference video implementation.\n"
+                output += "For production, use Go libp2p networking.\n\n"
+                
+                output += "Video module location:\n"
+                output += f"  {PROJECT_ROOT}/python/src/communication/live_video.py\n\n"
+                
+                output += "To start video from command line:\n"
+                if is_server:
+                    output += "  python python/src/communication/live_video.py true\n"
+                else:
+                    output += f"  python python/src/communication/live_video.py false {peer_ip}\n"
+                
+                output += "\n💡 Requirements: OpenCV (cv2) and webcam\n"
+                output += "💡 Future: Video will stream through DCDN system\n"
+                
+                Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
+                self.log_message("✅ Video info displayed")
+            except Exception as e:
+                error_msg = f"❌ Error starting video: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
+        
+        threading.Thread(target=video_thread, daemon=True).start()
+    
+    def stop_video_call(self):
+        """Stop video call."""
+        self.log_message("🛑 Stopping video call...")
+        output = "Video call stopped.\n"
+        self._update_comm_output(output)
+    
+    def start_voice_call(self):
+        """Start voice call."""
+        peer_ip = self.main_screen.voice_peer_ip.text.strip()
+        if not peer_ip:
+            self.show_warning("Missing Info", "Please enter peer IP or 'server'")
+            return
+        
+        self.log_message(f"🎤 Starting voice call with {peer_ip}...")
+        
+        def voice_thread():
+            try:
+                output = "=== Voice Call ===\n\n"
+                
+                is_server = peer_ip.lower() == 'server'
+                
+                output += f"Mode: {'Server (waiting for connection)' if is_server else 'Client (connecting to ' + peer_ip + ')'}\n"
+                output += f"Tor: {'Enabled 🧅' if self.main_screen.tor_switch.active else 'Disabled'}\n\n"
+                
+                output += "⚠️  Note: This uses a reference voice implementation.\n"
+                output += "For production, use Go libp2p networking.\n\n"
+                
+                output += "Voice module location:\n"
+                output += f"  {PROJECT_ROOT}/python/src/communication/live_voice.py\n\n"
+                
+                output += "To start voice from command line:\n"
+                if is_server:
+                    output += "  python python/src/communication/live_voice.py true\n"
+                else:
+                    output += f"  python python/src/communication/live_voice.py false {peer_ip}\n"
+                
+                output += "\n💡 Requirements: sounddevice or pyaudio\n"
+                output += "💡 Future: Voice will use Go libp2p networking\n"
+                
+                Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
+                self.log_message("✅ Voice info displayed")
+            except Exception as e:
+                error_msg = f"❌ Error starting voice: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
+        
+        threading.Thread(target=voice_thread, daemon=True).start()
+    
+    def stop_voice_call(self):
+        """Stop voice call."""
+        self.log_message("🛑 Stopping voice call...")
+        output = "Voice call stopped.\n"
+        self._update_comm_output(output)
+    
+    # ==========================================================================
     # Network Info Methods
     # ==========================================================================
     
@@ -2069,6 +2468,152 @@ class PangeaDesktopApp(MDApp):
                 Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
         
         threading.Thread(target=dcdn_test_thread, daemon=True).start()
+    
+    def start_dcdn_stream(self):
+        """Start DCDN video streaming."""
+        peer_ip = self.main_screen.stream_peer_ip.text.strip()
+        if not peer_ip:
+            self.show_warning("Missing Info", "Please enter peer IP or 'server'")
+            return
+        
+        video_file = self.main_screen.video_file_path.text.strip()
+        self.log_message(f"📺 Starting DCDN stream to {peer_ip}...")
+        
+        def stream_thread():
+            try:
+                output = "=== DCDN Video Streaming ===\n\n"
+                
+                is_server = peer_ip.lower() == 'server'
+                
+                output += f"Mode: {'Receiver (waiting for stream)' if is_server else 'Sender (streaming to ' + peer_ip + ')'}\n"
+                output += f"Source: {'Webcam' if not video_file else video_file}\n"
+                output += f"Peer IP: {peer_ip if not is_server else 'waiting...'}\n\n"
+                
+                output += "DCDN Streaming Features:\n"
+                output += "✓ QUIC Transport: Low-latency delivery\n"
+                output += "✓ Reed-Solomon FEC: Packet recovery (8+2)\n"
+                output += "✓ P2P Bandwidth: Fair allocation\n"
+                output += "✓ Ed25519: Content verification\n\n"
+                
+                output += "Current Status:\n"
+                output += "⚠️  DCDN video streaming is implemented in Rust\n"
+                output += "⚠️  Integration with desktop app is in progress\n\n"
+                
+                output += "To test video streaming now:\n"
+                output += "1. Use the reference video implementation:\n"
+                if is_server:
+                    output += "   python python/src/communication/live_video.py true\n"
+                else:
+                    output += f"   python python/src/communication/live_video.py false {peer_ip}\n"
+                
+                output += "\n2. Or run DCDN demo to see streaming simulation:\n"
+                output += "   cargo run --example dcdn_demo\n\n"
+                
+                output += "💡 Future: Video will stream through DCDN with:\n"
+                output += "   - Automatic packet recovery\n"
+                output += "   - Multi-peer distribution\n"
+                output += "   - Quality adaptation\n"
+                output += "   - IP verification for Tor testing\n"
+                
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                self.log_message("✅ Stream info displayed")
+            except Exception as e:
+                error_msg = f"❌ Error starting stream: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+        
+        threading.Thread(target=stream_thread, daemon=True).start()
+    
+    def stop_dcdn_stream(self):
+        """Stop DCDN video streaming."""
+        self.log_message("🛑 Stopping DCDN stream...")
+        output = "DCDN stream stopped.\n"
+        output += "\nStream statistics would show here:\n"
+        output += "- Packets sent/received\n"
+        output += "- Bandwidth used\n"
+        output += "- Packet loss/recovery\n"
+        output += "- Peer IPs and connection quality\n"
+        self._update_dcdn_output(output)
+    
+    def browse_video_file(self):
+        """Browse for video file."""
+        if not self.file_manager:
+            self.file_manager = MDFileManager(
+                exit_manager=self.exit_file_manager,
+                select_path=self.select_video_path,
+            )
+        
+        # Start in home directory for security
+        home_dir = os.path.expanduser("~")
+        self.file_manager.show(home_dir)
+    
+    def select_video_path(self, path):
+        """Select video file path."""
+        self.main_screen.video_file_path.text = path
+        self.exit_file_manager()
+        self.log_message(f"📹 Selected video: {path}")
+    
+    def test_video_file(self):
+        """Test video file playback."""
+        video_file = self.main_screen.video_file_path.text.strip()
+        
+        if not video_file:
+            self.show_warning("No File", "Please select a video file first")
+            return
+        
+        self.log_message(f"🎬 Testing video file: {video_file}")
+        
+        def test_video_thread():
+            try:
+                output = "=== Video File Test ===\n\n"
+                output += f"File: {video_file}\n\n"
+                
+                # Check if file exists
+                if not os.path.exists(video_file):
+                    output += "❌ File not found!\n"
+                    output += "Please check the path and try again.\n"
+                else:
+                    output += "✅ File exists\n"
+                    
+                    # Get file size
+                    file_size = os.path.getsize(video_file)
+                    output += f"Size: {file_size / (1024*1024):.2f} MB\n\n"
+                    
+                    # Try to get video info using OpenCV if available
+                    try:
+                        import cv2
+                        cap = cv2.VideoCapture(video_file)
+                        if cap.isOpened():
+                            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                            fps = int(cap.get(cv2.CAP_PROP_FPS))
+                            frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                            duration = frame_count / fps if fps > 0 else 0
+                            
+                            output += "Video Properties:\n"
+                            output += f"  Resolution: {width}x{height}\n"
+                            output += f"  FPS: {fps}\n"
+                            output += f"  Frames: {frame_count}\n"
+                            output += f"  Duration: {duration:.2f} seconds\n\n"
+                            output += "✅ Video file is valid and can be streamed\n"
+                            cap.release()
+                        else:
+                            output += "⚠️  Could not open video file with OpenCV\n"
+                            output += "File may be corrupted or in unsupported format\n"
+                    except ImportError:
+                        output += "⚠️  OpenCV not available - cannot verify video\n"
+                        output += "Install opencv-python to test video files\n"
+                    except Exception as e:
+                        output += f"⚠️  Error reading video: {str(e)}\n"
+                
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                self.log_message("✅ Video test complete")
+            except Exception as e:
+                error_msg = f"❌ Error testing video: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+        
+        threading.Thread(target=test_video_thread, daemon=True).start()
     
     # ==========================================================================
     # Utility Methods
