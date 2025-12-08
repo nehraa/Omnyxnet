@@ -227,14 +227,23 @@ class LogView(ScrollView):
         self.log_label.text += f"[{timestamp}] {message}\n"
 
 
-class TabContent(MDBoxLayout, MDTabsBase):
-    """Helper tab class that mixes MDTabsBase with a BoxLayout.
+class TabContent(ScrollView, MDTabsBase):
+    """Helper tab class that mixes MDTabsBase with a ScrollView.
 
     MDTabs requires the tab content to inherit from MDTabsBase and an
-    EventDispatcher-based layout. This class provides a simple reusable
-    container for tab pages.
+    EventDispatcher-based layout. This class provides a scrollable
+    container for tab pages to handle smaller displays.
     """
-    pass
+    
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.do_scroll_x = False
+        self.do_scroll_y = True
+        
+        # Create inner layout that will be scrollable
+        self.inner_layout = MDBoxLayout(orientation='vertical', padding=dp(10), spacing=dp(10), size_hint_y=None)
+        self.inner_layout.bind(minimum_height=self.inner_layout.setter('height'))
+        self.add_widget(self.inner_layout)
 
 
 class OutputArea(ScrollView):
@@ -328,9 +337,6 @@ class MainScreen(MDScreen):
         """Create node management tab."""
         tab = TabContent()
         tab.title = "Node Management"
-        tab.orientation = 'vertical'
-        tab.padding = dp(10)
-        tab.spacing = dp(10)
         
         # Buttons
         button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
@@ -346,11 +352,13 @@ class MainScreen(MDScreen):
             text="Health Status",
             on_release=lambda x: app_ref.health_status()
         ))
-        tab.add_widget(button_layout)
+        tab.inner_layout.add_widget(button_layout)
         
         # Output area
         self.node_output = OutputArea()
-        tab.add_widget(self.node_output)
+        self.node_output.size_hint_y = None
+        self.node_output.height = dp(300)
+        tab.inner_layout.add_widget(self.node_output)
         
         return tab
     
@@ -358,9 +366,6 @@ class MainScreen(MDScreen):
         """Create compute tasks tab."""
         tab = TabContent()
         tab.title = "Compute Tasks"
-        tab.orientation = 'vertical'
-        tab.padding = dp(10)
-        tab.spacing = dp(10)
         
         # Task type selector
         task_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
@@ -372,7 +377,7 @@ class MainScreen(MDScreen):
             mode="rectangle"
         )
         task_layout.add_widget(self.task_type_input)
-        tab.add_widget(task_layout)
+        tab.inner_layout.add_widget(task_layout)
         
         # Matrix size input
         size_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
@@ -385,7 +390,7 @@ class MainScreen(MDScreen):
             input_filter='int'
         )
         size_layout.add_widget(self.matrix_size_input)
-        tab.add_widget(size_layout)
+        tab.inner_layout.add_widget(size_layout)
         
         # Action buttons
         button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
@@ -401,11 +406,13 @@ class MainScreen(MDScreen):
             text="Task Status",
             on_release=lambda x: app_ref.check_task_status()
         ))
-        tab.add_widget(button_layout)
+        tab.inner_layout.add_widget(button_layout)
         
         # Output area
         self.compute_output = OutputArea()
-        tab.add_widget(self.compute_output)
+        self.compute_output.size_hint_y = None
+        self.compute_output.height = dp(300)
+        tab.inner_layout.add_widget(self.compute_output)
         
         return tab
     
@@ -413,13 +420,10 @@ class MainScreen(MDScreen):
         """Create file operations tab (Receptors)."""
         tab = TabContent()
         tab.title = "File Operations"
-        tab.orientation = 'vertical'
-        tab.padding = dp(20)
-        tab.spacing = dp(10)
         
         # Upload section
         upload_label = MDLabel(text="Upload File", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
-        tab.add_widget(upload_label)
+        tab.inner_layout.add_widget(upload_label)
         
         upload_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.upload_path_input = MDTextField(
@@ -439,11 +443,11 @@ class MainScreen(MDScreen):
             size_hint_x=0.2,
             on_release=lambda x: app_ref.upload_file()
         ))
-        tab.add_widget(upload_layout)
+        tab.inner_layout.add_widget(upload_layout)
         
         # Download section
         download_label = MDLabel(text="Download File", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
-        tab.add_widget(download_label)
+        tab.inner_layout.add_widget(download_label)
         
         download_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         download_layout.add_widget(MDLabel(text="File Hash:", size_hint_x=0.2, size_hint_y=None, height=dp(40), pos_hint={'center_y': 0.5}))
@@ -458,10 +462,10 @@ class MainScreen(MDScreen):
             size_hint_x=0.2,
             on_release=lambda x: app_ref.download_file()
         ))
-        tab.add_widget(download_layout)
+        tab.inner_layout.add_widget(download_layout)
         
         # List files button
-        tab.add_widget(MDRaisedButton(
+        tab.inner_layout.add_widget(MDRaisedButton(
             text="List Available Files",
             size_hint_y=None,
             height=dp(50),
@@ -470,7 +474,9 @@ class MainScreen(MDScreen):
         
         # Output area
         self.file_output = OutputArea()
-        tab.add_widget(self.file_output)
+        self.file_output.size_hint_y = None
+        self.file_output.height = dp(300)
+        tab.inner_layout.add_widget(self.file_output)
         
         return tab
     
@@ -478,13 +484,10 @@ class MainScreen(MDScreen):
         """Create communications tab."""
         tab = TabContent()
         tab.title = "Communications"
-        tab.orientation = 'vertical'
-        tab.padding = dp(10)
-        tab.spacing = dp(10)
         
         # Tor Configuration Section
         tor_label = MDLabel(text="Tor Configuration", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
-        tab.add_widget(tor_label)
+        tab.inner_layout.add_widget(tor_label)
         
         tor_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
         self.tor_switch = MDSwitch(size_hint_x=0.2)
@@ -500,11 +503,11 @@ class MainScreen(MDScreen):
             size_hint_x=0.25,
             on_release=lambda x: app_ref.show_my_ip()
         ))
-        tab.add_widget(tor_layout)
+        tab.inner_layout.add_widget(tor_layout)
         
         # Chat Section
         chat_label = MDLabel(text="Chat Messaging", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
-        tab.add_widget(chat_label)
+        tab.inner_layout.add_widget(chat_label)
         
         chat_input_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.chat_peer_ip = MDTextField(
@@ -524,7 +527,7 @@ class MainScreen(MDScreen):
             size_hint_x=0.2,
             on_release=lambda x: app_ref.start_chat()
         ))
-        tab.add_widget(chat_input_layout)
+        tab.inner_layout.add_widget(chat_input_layout)
         
         chat_button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
         chat_button_layout.add_widget(MDRaisedButton(
@@ -535,11 +538,11 @@ class MainScreen(MDScreen):
             text="Stop Chat",
             on_release=lambda x: app_ref.stop_chat()
         ))
-        tab.add_widget(chat_button_layout)
+        tab.inner_layout.add_widget(chat_button_layout)
         
         # Video Section
         video_label = MDLabel(text="Video Call", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
-        tab.add_widget(video_label)
+        tab.inner_layout.add_widget(video_label)
         
         video_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.video_peer_ip = MDTextField(
@@ -558,11 +561,11 @@ class MainScreen(MDScreen):
             size_hint_x=0.25,
             on_release=lambda x: app_ref.stop_video_call()
         ))
-        tab.add_widget(video_layout)
+        tab.inner_layout.add_widget(video_layout)
         
         # Voice Section
         voice_label = MDLabel(text="Voice Call", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
-        tab.add_widget(voice_label)
+        tab.inner_layout.add_widget(voice_label)
         
         voice_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.voice_peer_ip = MDTextField(
@@ -581,11 +584,11 @@ class MainScreen(MDScreen):
             size_hint_x=0.25,
             on_release=lambda x: app_ref.stop_voice_call()
         ))
-        tab.add_widget(voice_layout)
+        tab.inner_layout.add_widget(voice_layout)
         
         # Liveness testing
         test_label = MDLabel(text="Network Testing", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
-        tab.add_widget(test_label)
+        tab.inner_layout.add_widget(test_label)
         
         button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
         button_layout.add_widget(MDRaisedButton(
@@ -600,11 +603,13 @@ class MainScreen(MDScreen):
             text="Check Network Health",
             on_release=lambda x: app_ref.check_network_health()
         ))
-        tab.add_widget(button_layout)
+        tab.inner_layout.add_widget(button_layout)
         
         # Output area
         self.comm_output = OutputArea()
-        tab.add_widget(self.comm_output)
+        self.comm_output.size_hint_y = None
+        self.comm_output.height = dp(300)
+        tab.inner_layout.add_widget(self.comm_output)
         
         return tab
     
@@ -612,13 +617,10 @@ class MainScreen(MDScreen):
         """Create DCDN tab."""
         tab = TabContent()
         tab.title = "DCDN"
-        tab.orientation = 'vertical'
-        tab.padding = dp(10)
-        tab.spacing = dp(10)
         
         # DCDN Info
         info_label = MDLabel(text="Distributed CDN System", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
-        tab.add_widget(info_label)
+        tab.inner_layout.add_widget(info_label)
         
         # Basic DCDN Buttons
         button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
@@ -634,11 +636,11 @@ class MainScreen(MDScreen):
             text="Test DCDN",
             on_release=lambda x: app_ref.test_dcdn()
         ))
-        tab.add_widget(button_layout)
+        tab.inner_layout.add_widget(button_layout)
         
         # Video Streaming Section
         stream_label = MDLabel(text="Video Streaming Test", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
-        tab.add_widget(stream_label)
+        tab.inner_layout.add_widget(stream_label)
         
         stream_info_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.stream_peer_ip = MDTextField(
@@ -657,7 +659,7 @@ class MainScreen(MDScreen):
             size_hint_x=0.2,
             on_release=lambda x: app_ref.stop_dcdn_stream()
         ))
-        tab.add_widget(stream_info_layout)
+        tab.inner_layout.add_widget(stream_info_layout)
         
         # Video file selection
         video_file_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
@@ -677,11 +679,13 @@ class MainScreen(MDScreen):
             size_hint_x=0.15,
             on_release=lambda x: app_ref.test_video_file()
         ))
-        tab.add_widget(video_file_layout)
+        tab.inner_layout.add_widget(video_file_layout)
         
         # Output area
         self.dcdn_output = OutputArea()
-        tab.add_widget(self.dcdn_output)
+        self.dcdn_output.size_hint_y = None
+        self.dcdn_output.height = dp(300)
+        tab.inner_layout.add_widget(self.dcdn_output)
         
         return tab
     
@@ -689,13 +693,10 @@ class MainScreen(MDScreen):
         """Create network information tab with mDNS discovery."""
         tab = TabContent()
         tab.title = "Network Info"
-        tab.orientation = 'vertical'
-        tab.padding = dp(10)
-        tab.spacing = dp(10)
         
         # mDNS Discovery Section
         mdns_label = MDLabel(text="mDNS Local Discovery", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
-        tab.add_widget(mdns_label)
+        tab.inner_layout.add_widget(mdns_label)
         
         mdns_button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
         mdns_button_layout.add_widget(MDRaisedButton(
@@ -706,11 +707,11 @@ class MainScreen(MDScreen):
             text="Refresh Discovery",
             on_release=lambda x: app_ref.refresh_mdns()
         ))
-        tab.add_widget(mdns_button_layout)
+        tab.inner_layout.add_widget(mdns_button_layout)
         
         # General Network Buttons
         network_label = MDLabel(text="Network Information", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
-        tab.add_widget(network_label)
+        tab.inner_layout.add_widget(network_label)
         
         button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
         button_layout.add_widget(MDRaisedButton(
@@ -725,11 +726,13 @@ class MainScreen(MDScreen):
             text="Connection Stats",
             on_release=lambda x: app_ref.show_stats()
         ))
-        tab.add_widget(button_layout)
+        tab.inner_layout.add_widget(button_layout)
         
         # Output area
         self.network_output = OutputArea()
-        tab.add_widget(self.network_output)
+        self.network_output.size_hint_y = None
+        self.network_output.height = dp(300)
+        tab.inner_layout.add_widget(self.network_output)
         
         return tab
 
