@@ -186,9 +186,16 @@ def main():
     if not success:
         sys.exit(1)
     
+    # Get relative path from project root
+    project_root = Path(__file__).parent.parent
+    video_script = project_root / "python" / "src" / "communication" / "live_video.py"
+    
     print("\nYou can now use this video for DCDN streaming tests:")
     print(f"  Desktop App: Browse to {output_path} in the DCDN tab")
-    print(f"  Command Line: python python/src/communication/live_video.py [server|peer_ip]")
+    if video_script.exists():
+        print(f"  Command Line: python {video_script} [server|peer_ip]")
+    else:
+        print(f"  Command Line: Check python/src/communication/live_video.py for video streaming")
 
 
 if __name__ == "__main__":

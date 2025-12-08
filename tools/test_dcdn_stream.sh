@@ -53,6 +53,7 @@ Usage: $0 [OPTIONS]
 Options:
     --generate-video    Generate a new test video
     --run-demo         Run the DCDN Rust demo
+    --run-tests        Run the DCDN test suite
     --help             Show this help message
 
 Examples:
@@ -64,11 +65,15 @@ Examples:
     
     # Just run demo
     $0 --run-demo
+    
+    # Run tests
+    $0 --run-tests
 
 This script helps test DCDN streaming by:
 1. Generating a test video (if requested)
 2. Running the DCDN demo (if requested)
-3. Providing instructions for manual streaming tests
+3. Running the DCDN test suite (if requested)
+4. Providing instructions for manual streaming tests
 
 EOF
 }

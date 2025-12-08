@@ -61,19 +61,26 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.metrics import dp
 
 # KivyMD imports
-from kivymd.app import MDApp
-from kivymd.uix.screen import MDScreen
-from kivymd.uix.button import MDRaisedButton, MDFlatButton
-from kivymd.uix.textfield import MDTextField
-from kivymd.uix.label import MDLabel
-from kivymd.uix.tab import MDTabs, MDTabsBase
-from kivymd.uix.toolbar import MDTopAppBar
-from kivymd.uix.boxlayout import MDBoxLayout
-from kivymd.uix.card import MDCard
-from kivymd.uix.scrollview import MDScrollView
-from kivymd.uix.dialog import MDDialog
-from kivymd.uix.filemanager import MDFileManager
-from kivymd.uix.selectioncontrol import MDSwitch
+try:
+    from kivymd.app import MDApp
+    from kivymd.uix.screen import MDScreen
+    from kivymd.uix.button import MDRaisedButton, MDFlatButton
+    from kivymd.uix.textfield import MDTextField
+    from kivymd.uix.label import MDLabel
+    from kivymd.uix.tab import MDTabs, MDTabsBase
+    from kivymd.uix.toolbar import MDTopAppBar
+    from kivymd.uix.boxlayout import MDBoxLayout
+    from kivymd.uix.card import MDCard
+    from kivymd.uix.scrollview import MDScrollView
+    from kivymd.uix.dialog import MDDialog
+    from kivymd.uix.filemanager import MDFileManager
+    from kivymd.uix.selectioncontrol import MDSwitch
+    KIVYMD_AVAILABLE = True
+except ImportError as e:
+    logger.error(f"KivyMD not available: {e}")
+    logger.error("Install with: pip install kivymd")
+    KIVYMD_AVAILABLE = False
+    sys.exit(1)
 
 # Try to import Cap'n Proto client
 try:
@@ -1876,6 +1883,12 @@ class PangeaDesktopApp(MDApp):
     # Chat, Video, Voice Methods
     # ==========================================================================
     
+    def is_tor_enabled(self):
+        """Check if Tor is enabled in the UI."""
+        return (hasattr(self.main_screen, 'tor_switch') and 
+                hasattr(self.main_screen.tor_switch, 'active') and
+                self.main_screen.tor_switch.active)
+    
     def test_tor_connection(self):
         """Test Tor connection and display status."""
         self.log_message("🧅 Testing Tor connection...")
@@ -1886,7 +1899,7 @@ class PangeaDesktopApp(MDApp):
                 output = "=== Tor Connection Test ===\n\n"
                 
                 # Check if Tor is enabled
-                tor_enabled = self.main_screen.tor_switch.active if hasattr(self.main_screen, 'tor_switch') else False
+                tor_enabled = self.is_tor_enabled()
                 output += f"Tor Switch: {'ON' if tor_enabled else 'OFF'}\n\n"
                 
                 if not tor_enabled:
@@ -1942,7 +1955,7 @@ class PangeaDesktopApp(MDApp):
                     output += f"⚠️  Could not get local IP: {str(e)}\n\n"
                 
                 # Public IP (with and without Tor)
-                tor_enabled = self.main_screen.tor_switch.active if hasattr(self.main_screen, 'tor_switch') else False
+                tor_enabled = self.is_tor_enabled()
                 
                 if tor_enabled:
                     output += "Tor Mode: ON 🧅\n"
@@ -1981,7 +1994,7 @@ class PangeaDesktopApp(MDApp):
                 is_server = peer_ip.lower() == 'server'
                 
                 output += f"Mode: {'Server (waiting for connection)' if is_server else 'Client (connecting to ' + peer_ip + ')'}\n"
-                output += f"Tor: {'Enabled 🧅' if self.main_screen.tor_switch.active else 'Disabled'}\n\n"
+                output += f"Tor: {'Enabled 🧅' if self.is_tor_enabled() else 'Disabled'}\n\n"
                 
                 # Note about deprecated implementation
                 output += "⚠️  Note: This uses a reference chat implementation.\n"
@@ -2046,7 +2059,7 @@ class PangeaDesktopApp(MDApp):
                 is_server = peer_ip.lower() == 'server'
                 
                 output += f"Mode: {'Server (waiting for connection)' if is_server else 'Client (connecting to ' + peer_ip + ')'}\n"
-                output += f"Tor: {'Enabled 🧅' if self.main_screen.tor_switch.active else 'Disabled'}\n\n"
+                output += f"Tor: {'Enabled 🧅' if self.is_tor_enabled() else 'Disabled'}\n\n"
                 
                 output += "⚠️  Note: This uses a reference video implementation.\n"
                 output += "For production, use Go libp2p networking.\n\n"
@@ -2094,7 +2107,7 @@ class PangeaDesktopApp(MDApp):
                 is_server = peer_ip.lower() == 'server'
                 
                 output += f"Mode: {'Server (waiting for connection)' if is_server else 'Client (connecting to ' + peer_ip + ')'}\n"
-                output += f"Tor: {'Enabled 🧅' if self.main_screen.tor_switch.active else 'Disabled'}\n\n"
+                output += f"Tor: {'Enabled 🧅' if self.is_tor_enabled() else 'Disabled'}\n\n"
                 
                 output += "⚠️  Note: This uses a reference voice implementation.\n"
                 output += "For production, use Go libp2p networking.\n\n"
