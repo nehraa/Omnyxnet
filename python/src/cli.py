@@ -1831,6 +1831,16 @@ def test():
         sys.exit(1)
 
 
+# ============================================================================
+# Mandate 3 Commands Integration
+# ============================================================================
+try:
+    from src.cli_mandate3 import register_mandate3_commands
+    register_mandate3_commands(cli)
+except ImportError as e:
+    logger.warning(f"Mandate 3 commands not available: {e}")
+
+
 if __name__ == '__main__':
     cli()
 

@@ -30,6 +30,8 @@ type nodeServiceServer struct {
 	computeManager   *compute.Manager
 	cesPipeline      *CESPipeline // Shared CES pipeline for consistent encryption
 	configManager    *ConfigManager
+	securityManager  *SecurityManager  // Mandate 3: Security & encryption
+	mlCoordinator    *MLCoordinator    // Mandate 3: ML coordination
 }
 
 // NewNodeServiceServer creates a new NodeService server
@@ -56,13 +58,15 @@ func NewNodeServiceServerWithConfig(store *NodeStore, network NetworkAdapter, sh
 	}
 
 	return &nodeServiceServer{
-		store:          store,
-		network:        network,
-		shmMgr:         shmMgr,
-		streamStats:    &StreamingStats{},
-		computeManager: manager,
-		cesPipeline:    cesPipeline,
-		configManager:  configMgr,
+		store:           store,
+		network:         network,
+		shmMgr:          shmMgr,
+		streamStats:     &StreamingStats{},
+		computeManager:  manager,
+		cesPipeline:     cesPipeline,
+		configManager:   configMgr,
+		securityManager: NewSecurityManager(),  // Mandate 3
+		mlCoordinator:   NewMLCoordinator(),    // Mandate 3
 	}
 }
 
@@ -1540,9 +1544,10 @@ func (s *nodeServiceServer) SaveConfig(ctx context.Context, call NodeService_sav
 	}
 
 	// Build NodeConfig from Cap'n Proto structure
+	capnpAddr, _ := configData.CapnpAddr()
 	cfg := &NodeConfig{
 		NodeID:         configData.NodeId(),
-		CapnpAddr:      configData.CapnpAddr(),
+		CapnpAddr:      capnpAddr,
 		LibP2PPort:     int(configData.Libp2pPort()),
 		UseLibP2P:      configData.UseLibp2p(),
 		LocalMode:      configData.LocalMode(),
