@@ -292,8 +292,8 @@ interface NodeService {
     # Send ephemeral chat message
     sendEphemeralMessage @39 (message :EphemeralChatMessage) -> (success :Bool, errorMsg :Text);
     
-    # Receive ephemeral chat messages (streaming)
-    receiveChatMessages @40 () -> (messages :List(EphemeralChatMessage));
+    # Receive ephemeral chat messages for specific session (with authorization)
+    receiveChatMessages @40 (sessionId :Text) -> (messages :List(EphemeralChatMessage));
     
     # Close chat session
     closeChatSession @41 (sessionId :Text) -> (success :Bool);
@@ -387,8 +387,8 @@ struct ProxyConfig {
     proxyType @1 :Text;  # "socks5", "socks4", "http"
     proxyHost @2 :Text;
     proxyPort @3 :UInt16;
-    username @4 :Text;    # Optional authentication
-    password @5 :Text;    # Optional authentication
+    username @4 :Text;    # Optional authentication (do not expose if sensitive)
+    passwordPresent @5 :Bool;  # True if password is set, actual value not exposed via getProxyConfig
 }
 
 # Encryption configuration

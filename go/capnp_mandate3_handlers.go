@@ -77,13 +77,14 @@ func (s *nodeServiceServer) GetProxyConfig(ctx context.Context, call NodeService
 	// Get current proxy configuration
 	proxyConfig := s.securityManager.GetProxyConfig()
 
-	// Populate response
+	// Populate response (do NOT expose password for security)
 	config.SetEnabled(proxyConfig.Enabled)
 	config.SetProxyType(proxyConfig.ProxyType)
 	config.SetProxyHost(proxyConfig.ProxyHost)
 	config.SetProxyPort(proxyConfig.ProxyPort)
 	config.SetUsername(proxyConfig.Username)
-	config.SetPassword(proxyConfig.Password)
+	// Only indicate if password is present, don't expose actual value
+	config.SetPasswordPresent(proxyConfig.Password != "")
 
 	return nil
 }
@@ -394,28 +395,36 @@ func (s *nodeServiceServer) SendEphemeralMessage(ctx context.Context, call NodeS
 }
 
 // ReceiveChatMessages implements the receiveChatMessages RPC method
+// Now requires sessionId for authorization - only returns messages for that specific session
 func (s *nodeServiceServer) ReceiveChatMessages(ctx context.Context, call NodeService_receiveChatMessages) error {
 	results, err := call.AllocResults()
 	if err != nil {
 		return err
 	}
 
-	// Collect all messages from all active sessions
-	allMessages := make([]*EphemeralChatMessageData, 0)
-	for _, session := range s.securityManager.chatSessions {
-		messages, err := s.securityManager.GetChatMessages(session.SessionID)
-		if err == nil {
-			allMessages = append(allMessages, messages...)
-		}
-	}
-
-	// Build message list
-	messagesList, err := results.NewMessages(int32(len(allMessages)))
+	// Get sessionId from args for authorization
+	args := call.Args()
+	sessionID, err := args.SessionId()
 	if err != nil {
 		return err
 	}
 
-	for i, msg := range allMessages {
+	// Get messages only for the specified session (authorization)
+	messages, err := s.securityManager.GetChatMessages(sessionID)
+	if err != nil {
+		// Return empty list if session not found
+		results.NewMessages(0)
+		log.Printf("⚠️  [CHAT] Session not found: %s", sessionID)
+		return nil
+	}
+
+	// Build message list
+	messagesList, err := results.NewMessages(int32(len(messages)))
+	if err != nil {
+		return err
+	}
+
+	for i, msg := range messages {
 		msgItem := messagesList.At(i)
 		msgItem.SetFromPeer(msg.FromPeer)
 		msgItem.SetToPeer(msg.ToPeer)
@@ -426,7 +435,7 @@ func (s *nodeServiceServer) ReceiveChatMessages(ctx context.Context, call NodeSe
 		msgItem.SetSignature(msg.Signature)
 	}
 
-	log.Printf("📥 [CHAT] Retrieved %d messages", len(allMessages))
+	log.Printf("📥 [CHAT] Retrieved %d messages for session %s", len(messages), sessionID)
 	return nil
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -251,7 +252,7 @@ func (sm *SecurityManager) SignMessage(keyID string, message []byte) ([]byte, er
 	}
 	
 	hashed := sha256.Sum256(message)
-	signature, err := rsa.SignPKCS1v15(rand.Reader, keyPair.PrivateKey, 0, hashed[:])
+	signature, err := rsa.SignPKCS1v15(rand.Reader, keyPair.PrivateKey, crypto.SHA256, hashed[:])
 	if err != nil {
 		return nil, fmt.Errorf("signing failed: %w", err)
 	}
@@ -270,7 +271,7 @@ func (sm *SecurityManager) VerifySignature(keyID string, message, signature []by
 	}
 	
 	hashed := sha256.Sum256(message)
-	err := rsa.VerifyPKCS1v15(keyPair.PublicKey, 0, hashed[:], signature)
+	err := rsa.VerifyPKCS1v15(keyPair.PublicKey, crypto.SHA256, hashed[:], signature)
 	if err != nil {
 		return fmt.Errorf("signature verification failed: %w", err)
 	}

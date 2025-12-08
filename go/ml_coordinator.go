@@ -255,7 +255,9 @@ func (mlc *MLCoordinator) aggregateGradients(taskID string) error {
 	// Create model update
 	modelUpdate := &ModelUpdateData{
 		ModelVersion:      task.CurrentEpoch + 1,
-		Parameters:        []byte{}, // In full impl, this would contain averaged model parameters
+		// Foundation: Tensor operations not yet implemented
+		// In production, Parameters would contain serialized PyTorch/TensorFlow tensors
+		Parameters:        []byte{}, // Placeholder for model parameter tensors
 		AggregationMethod: "fedavg",
 		NumWorkers:        uint32(len(gradients)),
 		GlobalLoss:        globalLoss,
