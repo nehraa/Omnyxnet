@@ -106,7 +106,6 @@ Website/backend/data/
 Website/server/data/
 Website/server/__pycache__/
 # Ignore environment files (secrets)
-.env
 Website/server/.env
 
 #keys
