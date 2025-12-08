@@ -289,6 +289,22 @@ class MainScreen(MDScreen):
         toolbar.height = dp(56)
         layout.add_widget(toolbar)
         
+        # Notification bar (initially hidden)
+        self.notification_bar = MDCard(
+            size_hint_y=None,
+            height=0,  # Hidden by default
+            md_bg_color=(0.2, 0.6, 1, 0.9),
+            padding=dp(10)
+        )
+        self.notification_label = MDLabel(
+            text="",
+            halign="center",
+            theme_text_color="Custom",
+            text_color=(1, 1, 1, 1)
+        )
+        self.notification_bar.add_widget(self.notification_label)
+        layout.add_widget(self.notification_bar)
+        
         # Scrollable connection card container
         conn_scroll = ScrollView(size_hint_y=None, height=dp(280))
         self.connection_card = ConnectionCard(app_ref)
@@ -700,12 +716,16 @@ class MainScreen(MDScreen):
         
         mdns_button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
         mdns_button_layout.add_widget(MDRaisedButton(
-            text="Discover Local Peers",
+            text="🔍 Discover Local Peers",
             on_release=lambda x: app_ref.discover_mdns_peers()
         ))
         mdns_button_layout.add_widget(MDRaisedButton(
-            text="Refresh Discovery",
+            text="🔄 Refresh",
             on_release=lambda x: app_ref.refresh_mdns()
+        ))
+        mdns_button_layout.add_widget(MDRaisedButton(
+            text="🔗 Quick Connect",
+            on_release=lambda x: app_ref.quick_connect_peer()
         ))
         tab.inner_layout.add_widget(mdns_button_layout)
         
@@ -782,6 +802,30 @@ class PangeaDesktopApp(MDApp):
         logger.info(message)
         if hasattr(self, 'main_screen'):
             self.main_screen.log_view.add_log(message)
+    
+    def show_notification(self, message: str, duration: int = 5, color=None):
+        """Show a notification message at the top of the screen."""
+        if not hasattr(self, 'main_screen'):
+            return
+        
+        # Set message and color
+        self.main_screen.notification_label.text = message
+        if color:
+            self.main_screen.notification_bar.md_bg_color = color
+        else:
+            self.main_screen.notification_bar.md_bg_color = (0.2, 0.6, 1, 0.9)  # Default blue
+        
+        # Show notification
+        self.main_screen.notification_bar.height = dp(50)
+        
+        # Auto-hide after duration
+        if duration > 0:
+            Clock.schedule_once(lambda dt: self.hide_notification(), duration)
+    
+    def hide_notification(self):
+        """Hide the notification bar."""
+        if hasattr(self, 'main_screen'):
+            self.main_screen.notification_bar.height = 0
     
     def is_port_open(self, host: str, port: int, timeout: float = 1.0) -> bool:
         """Check if a port is open (Go node is listening)."""
@@ -2137,6 +2181,9 @@ class PangeaDesktopApp(MDApp):
                         
                         # Store peer address for sending messages
                         self.chat_peer_addr = peer_addr
+                        
+                        # Show notification
+                        Clock.schedule_once(lambda dt, pa=peer_addr: self.show_notification(f"💬 Chat connected: {pa}", 5, (0.2, 0.8, 0.2, 0.9)), 0)
                     else:
                         output += "⚠️  Could not connect to peer\n"
                         output += "But still listening for incoming chat...\n"
@@ -2259,6 +2306,9 @@ class PangeaDesktopApp(MDApp):
                         output += "\n💡 Video is now streaming both ways!\n"
                         output += "  • Your video → Peer\n"
                         output += "  • Peer video → You (check window)\n"
+                        
+                        # Show notification
+                        Clock.schedule_once(lambda dt, pa=peer_addr: self.show_notification(f"📹 Video call connected: {pa}", 5, (0.2, 0.8, 0.2, 0.9)), 0)
                     else:
                         output += "⚠️  Could not connect to peer\n"
                         output += "But still listening for incoming connection...\n"
@@ -2347,6 +2397,9 @@ class PangeaDesktopApp(MDApp):
                         
                         output += "\n💡 Voice call is now active!\n"
                         output += "  • Your mic → Peer\n"
+                        
+                        # Show notification
+                        Clock.schedule_once(lambda dt, pa=peer_addr: self.show_notification(f"🎤 Voice call connected: {pa}", 5, (0.2, 0.8, 0.2, 0.9)), 0)
                         output += "  • Peer audio → Your speakers\n"
                     else:
                         output += "⚠️  Could not connect to peer\n"
@@ -2635,6 +2688,57 @@ class PangeaDesktopApp(MDApp):
         
         # Just rediscover
         self.discover_mdns_peers()
+    
+    def quick_connect_peer(self):
+        """Quick connect to a peer with simplified UI."""
+        if not self.connected:
+            self.show_warning("Not Connected", "Please connect to a node first")
+            return
+        
+        # Show a simple dialog to enter peer IP
+        from kivymd.uix.dialog import MDDialog
+        from kivymd.uix.textfield import MDTextField
+        from kivymd.uix.button import MDFlatButton, MDRaisedButton
+        
+        peer_input = MDTextField(
+            hint_text="Enter peer IP address",
+            mode="rectangle"
+        )
+        
+        def connect_action(*args):
+            peer_ip = peer_input.text.strip()
+            if peer_ip:
+                self.log_message(f"🔗 Connecting to {peer_ip}...")
+                self.show_notification(f"🔗 Connecting to {peer_ip}...", 3)
+                
+                # Fill in the chat peer IP field and auto-connect
+                if hasattr(self.main_screen, 'chat_peer_ip'):
+                    self.main_screen.chat_peer_ip.text = peer_ip
+                    self.main_screen.video_peer_ip.text = peer_ip
+                    self.main_screen.voice_peer_ip.text = peer_ip
+                
+                self.log_message("💡 Peer IP set! Go to Communications tab to start chat/video/voice")
+                self.show_notification("💡 Peer IP set! Use Communications tab", 5, (0.2, 0.8, 0.2, 0.9))
+            
+            if hasattr(self, 'quick_connect_dialog'):
+                self.quick_connect_dialog.dismiss()
+        
+        self.quick_connect_dialog = MDDialog(
+            title="Quick Connect to Peer",
+            type="custom",
+            content_cls=peer_input,
+            buttons=[
+                MDFlatButton(
+                    text="CANCEL",
+                    on_release=lambda x: self.quick_connect_dialog.dismiss()
+                ),
+                MDRaisedButton(
+                    text="CONNECT",
+                    on_release=connect_action
+                )
+            ]
+        )
+        self.quick_connect_dialog.open()
     
     # ==========================================================================
     # DCDN Methods
