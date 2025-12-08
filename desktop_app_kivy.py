@@ -360,6 +360,19 @@ class MainScreen(MDScreen):
         task_layout.add_widget(self.task_type_input)
         tab.add_widget(task_layout)
         
+        # Matrix size input
+        size_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
+        size_layout.add_widget(MDLabel(text="Matrix Size:", size_hint_x=0.3, size_hint_y=None, height=dp(40), pos_hint={'center_y': 0.5}))
+        self.matrix_size_input = MDTextField(
+            text="64",
+            hint_text="Matrix dimension (e.g., 64 for 64x64)",
+            size_hint_x=0.7,
+            mode="rectangle",
+            input_filter='int'
+        )
+        size_layout.add_widget(self.matrix_size_input)
+        tab.add_widget(size_layout)
+        
         # Action buttons
         button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
         button_layout.add_widget(MDRaisedButton(
@@ -1352,7 +1365,24 @@ class PangeaDesktopApp(MDApp):
             return
         
         task_type = self.main_screen.task_type_input.text
-        self.log_message(f"⚙️  Submitting {task_type} task...")
+        
+        # Get matrix size from input
+        matrix_size = 16  # default
+        try:
+            size_text = self.main_screen.matrix_size_input.text
+            if size_text:
+                matrix_size = int(size_text)
+                if matrix_size < 2:
+                    self.show_warning("Invalid Size", "Matrix size must be at least 2")
+                    return
+                if matrix_size > 512:
+                    self.show_warning("Size Too Large", "Matrix size must be 512 or less to avoid overflow")
+                    return
+        except ValueError:
+            self.show_warning("Invalid Input", "Matrix size must be a valid integer")
+            return
+        
+        self.log_message(f"⚙️  Submitting {task_type} task (size: {matrix_size}x{matrix_size})...")
         
         def submit_task_thread():
             try:
@@ -1362,7 +1392,7 @@ class PangeaDesktopApp(MDApp):
                 # Create sample input data for the task
                 if "matrix" in task_type.lower():
                     # For matrix multiplication, send matrix dimensions
-                    input_data = f"matrix_multiply:16x16".encode()
+                    input_data = f"matrix_multiply:{matrix_size}x{matrix_size}".encode()
                 else:
                     # Generic compute task
                     input_data = f"{task_type}:sample_data".encode()
@@ -1379,10 +1409,12 @@ class PangeaDesktopApp(MDApp):
                     output = f"✅ Task submitted successfully!\n\n"
                     output += f"Job ID: {job_id}\n"
                     output += f"Type: {task_type}\n"
+                    if "matrix" in task_type.lower():
+                        output += f"Matrix Size: {matrix_size}x{matrix_size}\n"
                     output += f"Status: Submitted\n\n"
                     output += f"Use 'Check Task Status' to monitor progress."
                     Clock.schedule_once(lambda dt: self._update_compute_output(output), 0)
-                    self.log_message(f"✅ Task {job_id} submitted")
+                    self.log_message(f"✅ Task {job_id} submitted ({matrix_size}x{matrix_size})")
                     
                     # Store job_id for status checking
                     self.last_job_id = job_id
