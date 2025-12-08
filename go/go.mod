@@ -5,6 +5,7 @@ go 1.24.6
 require (
 	capnproto.org/go/capnp/v3 v3.1.0-alpha.2
 	github.com/flynn/noise v1.1.0
+	github.com/google/uuid v1.6.0
 	github.com/libp2p/go-libp2p v0.45.0
 	github.com/libp2p/go-libp2p-kad-dht v0.35.1
 	github.com/multiformats/go-multiaddr v0.16.1
@@ -22,7 +23,6 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect

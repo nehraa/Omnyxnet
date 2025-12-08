@@ -14,6 +14,30 @@ services:
       - NODE_ID=1
       - RPC_ADDR=0.0.0.0:8080
       - LOG_LEVEL=info
+      # Datadog
+      - DD_API_KEY=${DD_API_KEY}
+      - DD_SITE=${DD_SITE}
+      - DD_ENV=production
+      - DD_SERVICE=go-orchestrator
+      - DD_VERSION=0.6.0-alpha
+      # New Relic
+      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
+      - NEW_RELIC_APP_NAME=go-orchestrator
+      # Sentry
+      - SENTRY_DSN=${SENTRY_DSN}
+      - SENTRY_ENVIRONMENT=production
+      - SENTRY_SEND_DEFAULT_PII=${SENTRY_SEND_DEFAULT_PII}
+      # LocalStack / AWS
+      - LOCALSTACK_ENDPOINT_URL=${LOCALSTACK_ENDPOINT_URL}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      # CI/Code Quality Tools
+      - TRAVIS_TOKEN=${TRAVIS_TOKEN}
+      - CODECOV_TOKEN=${CODECOV_TOKEN}
+      - CODESCENE_PAT_TOKEN=${CODESCENE_PAT_TOKEN}
+    env_file:
+      - ../tools/.env
     networks:
       - pangea-network
     restart: unless-stopped
@@ -23,7 +47,9 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
-    depends_on: []
+    depends_on:
+      - localstack
+      - prometheus
 
   # Rust Compute Core - Data Preprocessing and Serialization
   rust-compute:
@@ -34,6 +60,7 @@ services:
     hostname: rust-compute
     ports:
       - "9090:9090"  # RPC port for compute operations
+      - "9091:9091"  # Metrics port
     environment:
       - NODE_ID=2
       - LISTEN=0.0.0.0:9090
@@ -41,6 +68,12 @@ services:
       - WORKERS=4
       - CHUNK_SIZE=32
       - RUST_LOG=info
+      # CI/Code Quality Tools
+      - TRAVIS_TOKEN=${TRAVIS_TOKEN}
+      - CODECOV_TOKEN=${CODECOV_TOKEN}
+      - CODESCENE_PAT_TOKEN=${CODESCENE_PAT_TOKEN}
+    env_file:
+      - ../tools/.env
     networks:
       - pangea-network
     restart: unless-stopped
@@ -53,6 +86,8 @@ services:
     depends_on:
       go-orchestrator:
         condition: service_healthy
+      prometheus:
+        condition: service_started
 
   # Python AI Service - Zero-Copy Training and Gradient Computation
   python-worker-1:
@@ -61,6 +96,8 @@ services:
       dockerfile: Dockerfile
     container_name: python-worker-1
     hostname: python-worker-1
+    ports:
+      - "8081:8081"  # Metrics port
     environment:
       - WORKER_ID=1
       - ORCHESTRATOR_HOST=go-orchestrator
@@ -70,6 +107,31 @@ services:
       - BATCH_SIZE=32
       - EPOCHS=5
       - PYTHONUNBUFFERED=1
+      - METRICS_PORT=8081
+      # Datadog
+      - DD_API_KEY=${DD_API_KEY}
+      - DD_SITE=${DD_SITE}
+      - DD_ENV=production
+      - DD_SERVICE=python-ai-client
+      - DD_VERSION=0.6.0-alpha
+      # New Relic
+      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
+      - NEW_RELIC_APP_NAME=python-ai-client
+      # Sentry
+      - SENTRY_DSN=${SENTRY_DSN}
+      - SENTRY_ENVIRONMENT=production
+      - SENTRY_SEND_DEFAULT_PII=${SENTRY_SEND_DEFAULT_PII}
+      # LocalStack / AWS
+      - LOCALSTACK_ENDPOINT_URL=${LOCALSTACK_ENDPOINT_URL}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      # CI/Code Quality Tools
+      - TRAVIS_TOKEN=${TRAVIS_TOKEN}
+      - CODECOV_TOKEN=${CODECOV_TOKEN}
+      - CODESCENE_PAT_TOKEN=${CODESCENE_PAT_TOKEN}
+    env_file:
+      - ../tools/.env
     networks:
       - pangea-network
     restart: unless-stopped
@@ -84,6 +146,73 @@ services:
         condition: service_healthy
       rust-compute:
         condition: service_healthy
+      localstack:
+        condition: service_started
+      prometheus:
+        condition: service_started
+
+  # Prometheus - Metrics Collection and Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    hostname: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - pangea-network
+    restart: unless-stopped
+
+  # Grafana - Metrics Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    hostname: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - pangea-network
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+
+  # LocalStack - Local AWS Cloud Stack
+  localstack:
+    image: localstack/localstack:2.0
+    container_name: localstack
+    hostname: localstack
+    ports:
+      - "4566:4566"
+      - "4571:4571"
+    environment:
+      - SERVICES=s3,sqs,lambda,dynamodb
+      - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN}
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      - localstack-data:/tmp/localstack
+      # Mounting Docker socket is required for LocalStack Lambda functionality.
+      # WARNING: This grants the container full access to the Docker daemon and should NEVER be used in production.
+      # If Lambda is not needed, remove this mount. Using read-only mount to limit write access.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - pangea-network
+    restart: unless-stopped
 
 networks:
   pangea-network:
@@ -95,4 +224,13 @@ networks:
 volumes:
   # Optional: shared volumes for data between services
   shared-data:
+    driver: local
+  # Prometheus data persistence
+  prometheus-data:
+    driver: local
+  # Grafana data persistence
+  grafana-data:
+    driver: local
+  # LocalStack data persistence
+  localstack-data:
     driver: local
