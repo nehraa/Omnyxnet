@@ -742,8 +742,11 @@ class PangeaDesktopApp(MDApp):
     
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.theme_cls.primary_palette = "Blue"
-        self.theme_cls.theme_style = "Light"
+        # Modern theme with updated colors
+        self.theme_cls.primary_palette = "DeepPurple"
+        self.theme_cls.accent_palette = "Cyan"
+        self.theme_cls.theme_style = "Dark"  # Modern dark theme
+        self.theme_cls.material_style = "M3"  # Material Design 3
         
         # State
         self.go_client: Optional[Any] = None
@@ -753,6 +756,11 @@ class PangeaDesktopApp(MDApp):
         self.go_process = None
         self.file_manager = None
         self.dialog = None
+        
+        # Streaming state
+        self.streaming_active = False
+        self.chat_active = False
+        self.chat_peer_addr = ""
     
     def build(self):
         """Build the application UI."""
@@ -2083,10 +2091,14 @@ class PangeaDesktopApp(MDApp):
         threading.Thread(target=ip_check_thread, daemon=True).start()
     
     def start_chat(self):
-        """Start chat session."""
+        """Start chat session using Go streaming service."""
+        if not self.connected:
+            self.show_warning("Not Connected", "Please connect to a node first")
+            return
+        
         peer_ip = self.main_screen.chat_peer_ip.text.strip()
         if not peer_ip:
-            self.show_warning("Missing Info", "Please enter peer IP or 'server'")
+            self.show_warning("Missing Info", "Please enter peer IP (automatic listening enabled)")
             return
         
         self.log_message(f"💬 Starting chat with {peer_ip}...")
@@ -2094,30 +2106,39 @@ class PangeaDesktopApp(MDApp):
         def chat_thread():
             try:
                 output = "=== Chat Session ===\n\n"
-                
-                # Determine if server or client mode
-                is_server = peer_ip.lower() == 'server'
-                
-                output += f"Mode: {'Server (waiting for connection)' if is_server else 'Client (connecting to ' + peer_ip + ')'}\n"
+                output += f"Connecting to peer: {peer_ip}\n"
                 output += f"Tor: {'Enabled 🧅' if self.is_tor_enabled() else 'Disabled'}\n\n"
                 
-                # Note about deprecated implementation
-                output += "⚠️  Note: This uses a reference chat implementation.\n"
-                output += "For production, use Go libp2p networking.\n\n"
+                # Start always-listening P2P chat service
+                output += "Starting always-listening P2P chat service...\n"
+                success = self.go_client.start_streaming(port=9999, stream_type=2)  # 2 = chat
                 
-                output += "Chat module location:\n"
-                output += f"  {PROJECT_ROOT}/python/src/communication/live_chat.py\n\n"
-                
-                output += "To start chat from command line:\n"
-                if is_server:
-                    output += "  python python/src/communication/live_chat.py true\n"
+                if success:
+                    output += "✅ Listening for chat on port 9999\n\n"
+                    
+                    # Connect to peer
+                    output += f"Connecting to {peer_ip}:9999...\n"
+                    conn_success, peer_addr = self.go_client.connect_stream_peer(peer_ip, 9999)
+                    
+                    if conn_success:
+                        output += f"✅ Connected to peer at {peer_addr}\n\n"
+                        output += "💡 Chat is now active!\n"
+                        output += "  • Type messages below and click 'Send Message'\n"
+                        output += "  • Incoming messages will appear here\n\n"
+                        
+                        # Store peer address for sending messages
+                        self.chat_peer_addr = peer_addr
+                    else:
+                        output += "⚠️  Could not connect to peer\n"
+                        output += "But still listening for incoming chat...\n"
+                    
+                    self.chat_active = True
                 else:
-                    output += f"  python python/src/communication/live_chat.py false {peer_ip}\n"
-                
-                output += "\n💡 Future: Chat will be integrated through Go node Cap'n Proto RPC\n"
+                    output += "❌ Failed to start chat service\n"
+                    output += "Port 9999 may be in use\n"
                 
                 Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
-                self.log_message("✅ Chat info displayed")
+                self.log_message("✅ Chat session started")
             except Exception as e:
                 error_msg = f"❌ Error starting chat: {str(e)}"
                 self.log_message(error_msg)
@@ -2126,33 +2147,78 @@ class PangeaDesktopApp(MDApp):
         threading.Thread(target=chat_thread, daemon=True).start()
     
     def send_chat_message(self):
-        """Send a chat message."""
+        """Send a chat message via Go streaming service."""
+        if not self.connected or not hasattr(self, 'chat_active') or not self.chat_active:
+            self.show_warning("Chat Not Active", "Please start a chat session first")
+            return
+        
         message = self.main_screen.chat_message.text.strip()
         if not message:
             self.show_warning("No Message", "Please enter a message to send")
             return
         
-        self.log_message(f"📤 Sending message: {message}")
+        self.log_message(f"📤 Sending: {message}")
         
-        output = f"Message queued: {message}\n"
-        output += "⚠️  Note: Full chat integration pending\n"
-        output += "Use command line chat for now:\n"
-        output += "  python python/src/communication/live_chat.py\n"
+        def send_thread():
+            try:
+                # Get peer address from chat session
+                peer_addr = getattr(self, 'chat_peer_addr', '')
+                
+                # Send via Go streaming service
+                success = self.go_client.send_chat_message(peer_addr, message)
+                
+                if success:
+                    output = f"You: {message}\n\n"
+                    self.log_message("✅ Message sent")
+                else:
+                    output = f"❌ Failed to send: {message}\n\n"
+                    self.log_message("❌ Message send failed")
+                
+                # Clear input field
+                Clock.schedule_once(lambda dt: setattr(self.main_screen.chat_message, 'text', ''), 0)
+                
+                # Append to chat output
+                current_output = self.main_screen.comm_output.output_label.text
+                Clock.schedule_once(lambda dt: self._update_comm_output(current_output + output), 0)
+            except Exception as e:
+                error_msg = f"❌ Error sending message: {str(e)}"
+                self.log_message(error_msg)
         
-        self._update_comm_output(output)
-        self.main_screen.chat_message.text = ""
+        threading.Thread(target=send_thread, daemon=True).start()
     
     def stop_chat(self):
         """Stop chat session."""
+        if not self.connected:
+            return
+        
         self.log_message("🛑 Stopping chat...")
-        output = "Chat session stopped.\n"
-        self._update_comm_output(output)
+        self.chat_active = False
+        
+        def stop_thread():
+            try:
+                success = self.go_client.stop_streaming()
+                
+                output = "=== Chat Session Ended ===\n\n"
+                if success:
+                    output += "✅ Chat service stopped\n"
+                
+                Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
+                self.log_message("✅ Chat stopped")
+            except Exception as e:
+                error_msg = f"❌ Error: {str(e)}"
+                Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
+        
+        threading.Thread(target=stop_thread, daemon=True).start()
     
     def start_video_call(self):
-        """Start video call."""
+        """Start video call using Go streaming service."""
+        if not self.connected:
+            self.show_warning("Not Connected", "Please connect to a node first")
+            return
+        
         peer_ip = self.main_screen.video_peer_ip.text.strip()
         if not peer_ip:
-            self.show_warning("Missing Info", "Please enter peer IP or 'server'")
+            self.show_warning("Missing Info", "Please enter peer IP (automatic listening enabled)")
             return
         
         self.log_message(f"📹 Starting video call with {peer_ip}...")
@@ -2160,29 +2226,41 @@ class PangeaDesktopApp(MDApp):
         def video_thread():
             try:
                 output = "=== Video Call ===\n\n"
-                
-                is_server = peer_ip.lower() == 'server'
-                
-                output += f"Mode: {'Server (waiting for connection)' if is_server else 'Client (connecting to ' + peer_ip + ')'}\n"
+                output += f"Connecting to peer: {peer_ip}\n"
                 output += f"Tor: {'Enabled 🧅' if self.is_tor_enabled() else 'Disabled'}\n\n"
                 
-                output += "⚠️  Note: This uses a reference video implementation.\n"
-                output += "For production, use Go libp2p networking.\n\n"
+                # Always start in listening mode first (P2P model)
+                output += "Starting always-listening P2P video service...\n"
+                success = self.go_client.start_streaming(port=9996, stream_type=0)  # 0 = video
                 
-                output += "Video module location:\n"
-                output += f"  {PROJECT_ROOT}/python/src/communication/live_video.py\n\n"
-                
-                output += "To start video from command line:\n"
-                if is_server:
-                    output += "  python python/src/communication/live_video.py true\n"
+                if success:
+                    output += "✅ Listening for incoming video on port 9996\n\n"
+                    
+                    # Now connect to peer
+                    output += f"Connecting to {peer_ip}:9996...\n"
+                    conn_success, peer_addr = self.go_client.connect_stream_peer(peer_ip, 9996)
+                    
+                    if conn_success:
+                        output += f"✅ Connected to peer at {peer_addr}\n\n"
+                        output += "Starting video capture and transmission...\n"
+                        
+                        # Start video capture in background
+                        Clock.schedule_once(lambda dt: self._start_video_capture("", peer_ip), 0)
+                        
+                        output += "\n💡 Video is now streaming both ways!\n"
+                        output += "  • Your video → Peer\n"
+                        output += "  • Peer video → You (check window)\n"
+                    else:
+                        output += "⚠️  Could not connect to peer\n"
+                        output += "But still listening for incoming connection...\n"
+                    
+                    self.streaming_active = True
                 else:
-                    output += f"  python python/src/communication/live_video.py false {peer_ip}\n"
-                
-                output += "\n💡 Requirements: OpenCV (cv2) and webcam\n"
-                output += "💡 Future: Video will stream through DCDN system\n"
+                    output += "❌ Failed to start video service\n"
+                    output += "Port 9996 may be in use\n"
                 
                 Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
-                self.log_message("✅ Video info displayed")
+                self.log_message("✅ Video call info displayed")
             except Exception as e:
                 error_msg = f"❌ Error starting video: {str(e)}"
                 self.log_message(error_msg)
@@ -2192,15 +2270,44 @@ class PangeaDesktopApp(MDApp):
     
     def stop_video_call(self):
         """Stop video call."""
+        if not self.connected:
+            return
+        
         self.log_message("🛑 Stopping video call...")
-        output = "Video call stopped.\n"
-        self._update_comm_output(output)
+        self.streaming_active = False
+        
+        def stop_thread():
+            try:
+                success = self.go_client.stop_streaming()
+                stats = self.go_client.get_stream_stats()
+                
+                output = "=== Video Call Ended ===\n\n"
+                if success:
+                    output += "✅ Video service stopped\n\n"
+                
+                if stats:
+                    output += f"Call Statistics:\n"
+                    output += f"  Duration: ~{stats.get('framesSent', 0) // 30} seconds\n"
+                    output += f"  Frames: {stats.get('framesSent', 0)} sent, {stats.get('framesReceived', 0)} received\n"
+                    output += f"  Data: {stats.get('bytesSent', 0) / (1024*1024):.2f} MB sent\n"
+                
+                Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
+                self.log_message("✅ Video call stopped")
+            except Exception as e:
+                error_msg = f"❌ Error: {str(e)}"
+                Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
+        
+        threading.Thread(target=stop_thread, daemon=True).start()
     
     def start_voice_call(self):
-        """Start voice call."""
+        """Start voice call using Go streaming service."""
+        if not self.connected:
+            self.show_warning("Not Connected", "Please connect to a node first")
+            return
+        
         peer_ip = self.main_screen.voice_peer_ip.text.strip()
         if not peer_ip:
-            self.show_warning("Missing Info", "Please enter peer IP or 'server'")
+            self.show_warning("Missing Info", "Please enter peer IP (automatic listening enabled)")
             return
         
         self.log_message(f"🎤 Starting voice call with {peer_ip}...")
@@ -2208,29 +2315,41 @@ class PangeaDesktopApp(MDApp):
         def voice_thread():
             try:
                 output = "=== Voice Call ===\n\n"
-                
-                is_server = peer_ip.lower() == 'server'
-                
-                output += f"Mode: {'Server (waiting for connection)' if is_server else 'Client (connecting to ' + peer_ip + ')'}\n"
+                output += f"Connecting to peer: {peer_ip}\n"
                 output += f"Tor: {'Enabled 🧅' if self.is_tor_enabled() else 'Disabled'}\n\n"
                 
-                output += "⚠️  Note: This uses a reference voice implementation.\n"
-                output += "For production, use Go libp2p networking.\n\n"
+                # Start always-listening P2P audio service
+                output += "Starting always-listening P2P audio service...\n"
+                success = self.go_client.start_streaming(port=9998, stream_type=1)  # 1 = audio
                 
-                output += "Voice module location:\n"
-                output += f"  {PROJECT_ROOT}/python/src/communication/live_voice.py\n\n"
-                
-                output += "To start voice from command line:\n"
-                if is_server:
-                    output += "  python python/src/communication/live_voice.py true\n"
+                if success:
+                    output += "✅ Listening for incoming audio on port 9998\n\n"
+                    
+                    # Connect to peer
+                    output += f"Connecting to {peer_ip}:9998...\n"
+                    conn_success, peer_addr = self.go_client.connect_stream_peer(peer_ip, 9998)
+                    
+                    if conn_success:
+                        output += f"✅ Connected to peer at {peer_addr}\n\n"
+                        output += "Starting audio capture and transmission...\n"
+                        
+                        # Start audio capture in background
+                        Clock.schedule_once(lambda dt: self._start_audio_capture(), 0)
+                        
+                        output += "\n💡 Voice call is now active!\n"
+                        output += "  • Your mic → Peer\n"
+                        output += "  • Peer audio → Your speakers\n"
+                    else:
+                        output += "⚠️  Could not connect to peer\n"
+                        output += "But still listening for incoming call...\n"
+                    
+                    self.streaming_active = True
                 else:
-                    output += f"  python python/src/communication/live_voice.py false {peer_ip}\n"
-                
-                output += "\n💡 Requirements: sounddevice or pyaudio\n"
-                output += "💡 Future: Voice will use Go libp2p networking\n"
+                    output += "❌ Failed to start audio service\n"
+                    output += "Port 9998 may be in use\n"
                 
                 Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
-                self.log_message("✅ Voice info displayed")
+                self.log_message("✅ Voice call info displayed")
             except Exception as e:
                 error_msg = f"❌ Error starting voice: {str(e)}"
                 self.log_message(error_msg)
@@ -2238,11 +2357,79 @@ class PangeaDesktopApp(MDApp):
         
         threading.Thread(target=voice_thread, daemon=True).start()
     
+    def _start_audio_capture(self):
+        """Start capturing and sending audio chunks."""
+        def audio_thread():
+            try:
+                import sounddevice as sd
+                import numpy as np
+                
+                sample_rate = 48000
+                chunk_size = 1024
+                
+                self.log_message("🎤 Audio capture started")
+                
+                def audio_callback(indata, frames, time_info, status):
+                    if status:
+                        self.log_message(f"⚠️  Audio status: {status}")
+                    
+                    # Convert to bytes
+                    audio_bytes = (indata * 32767).astype(np.int16).tobytes()
+                    
+                    # Send via Go streaming service
+                    self.go_client.send_audio_chunk(
+                        data=audio_bytes,
+                        sample_rate=sample_rate,
+                        channels=1
+                    )
+                
+                with sd.InputStream(
+                    samplerate=sample_rate,
+                    channels=1,
+                    dtype=np.float32,
+                    blocksize=chunk_size,
+                    callback=audio_callback
+                ):
+                    while self.streaming_active:
+                        time.sleep(0.1)
+                
+                self.log_message("🎤 Audio capture stopped")
+            except ImportError:
+                self.log_message("❌ sounddevice not available. Install with: pip install sounddevice")
+            except Exception as e:
+                self.log_message(f"❌ Audio capture error: {str(e)}")
+        
+        threading.Thread(target=audio_thread, daemon=True).start()
+    
     def stop_voice_call(self):
         """Stop voice call."""
+        if not self.connected:
+            return
+        
         self.log_message("🛑 Stopping voice call...")
-        output = "Voice call stopped.\n"
-        self._update_comm_output(output)
+        self.streaming_active = False
+        
+        def stop_thread():
+            try:
+                success = self.go_client.stop_streaming()
+                stats = self.go_client.get_stream_stats()
+                
+                output = "=== Voice Call Ended ===\n\n"
+                if success:
+                    output += "✅ Audio service stopped\n\n"
+                
+                if stats:
+                    output += f"Call Statistics:\n"
+                    output += f"  Bytes: {stats.get('bytesSent', 0) / (1024*1024):.2f} MB sent\n"
+                    output += f"  Latency: {stats.get('avgLatencyMs', 0):.2f} ms\n"
+                
+                Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
+                self.log_message("✅ Voice call stopped")
+            except Exception as e:
+                error_msg = f"❌ Error: {str(e)}"
+                Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
+        
+        threading.Thread(target=stop_thread, daemon=True).start()
     
     # ==========================================================================
     # Network Info Methods
@@ -2588,10 +2775,14 @@ class PangeaDesktopApp(MDApp):
         threading.Thread(target=dcdn_test_thread, daemon=True).start()
     
     def start_dcdn_stream(self):
-        """Start DCDN video streaming."""
+        """Start DCDN video streaming using Go streaming service."""
+        if not self.connected:
+            self.show_warning("Not Connected", "Please connect to a node first")
+            return
+        
         peer_ip = self.main_screen.stream_peer_ip.text.strip()
         if not peer_ip:
-            self.show_warning("Missing Info", "Please enter peer IP or 'server'")
+            self.show_warning("Missing Info", "Please enter peer IP or 'server' to receive")
             return
         
         video_file = self.main_screen.video_file_path.text.strip()
@@ -2603,55 +2794,160 @@ class PangeaDesktopApp(MDApp):
                 
                 is_server = peer_ip.lower() == 'server'
                 
-                output += f"Mode: {'Receiver (waiting for stream)' if is_server else 'Sender (streaming to ' + peer_ip + ')'}\n"
-                output += f"Source: {'Webcam' if not video_file else video_file}\n"
-                output += f"Peer IP: {peer_ip if not is_server else 'waiting...'}\n\n"
-                
-                output += "DCDN Streaming Features:\n"
-                output += "✓ QUIC Transport: Low-latency delivery\n"
-                output += "✓ Reed-Solomon FEC: Packet recovery (8+2)\n"
-                output += "✓ P2P Bandwidth: Fair allocation\n"
-                output += "✓ Ed25519: Content verification\n\n"
-                
-                output += "Current Status:\n"
-                output += "⚠️  DCDN video streaming is implemented in Rust\n"
-                output += "⚠️  Integration with desktop app is in progress\n\n"
-                
-                output += "To test video streaming now:\n"
-                output += "1. Use the reference video implementation:\n"
+                # Start streaming service on Go node
                 if is_server:
-                    output += "   python python/src/communication/live_video.py true\n"
+                    # Server mode: listen for incoming stream
+                    output += "Mode: Receiver (waiting for stream)\n"
+                    output += "Starting streaming service on port 9996...\n\n"
+                    success = self.go_client.start_streaming(port=9996, stream_type=0)  # 0 = video
                 else:
-                    output += f"   python python/src/communication/live_video.py false {peer_ip}\n"
+                    # Client mode: connect and stream
+                    output += f"Mode: Sender (streaming to {peer_ip})\n"
+                    output += f"Source: {'Webcam' if not video_file else video_file}\n\n"
+                    output += "Connecting to peer...\n"
+                    success = self.go_client.start_streaming(
+                        port=9997, 
+                        peer_host=peer_ip, 
+                        peer_port=9996, 
+                        stream_type=0
+                    )
                 
-                output += "\n2. Or run DCDN demo to see streaming simulation:\n"
-                output += "   cargo run --example dcdn_demo\n\n"
-                
-                output += "💡 Future: Video will stream through DCDN with:\n"
-                output += "   - Automatic packet recovery\n"
-                output += "   - Multi-peer distribution\n"
-                output += "   - Quality adaptation\n"
-                output += "   - IP verification for Tor testing\n"
+                if success:
+                    output += "✅ Streaming service started successfully!\n\n"
+                    output += "DCDN Features Active:\n"
+                    output += "✓ QUIC Transport: Low-latency UDP delivery\n"
+                    output += "✓ Reed-Solomon FEC: Automatic packet recovery\n"
+                    output += "✓ P2P Bandwidth: Fair allocation\n"
+                    output += "✓ Ed25519: Content verification\n\n"
+                    
+                    if not is_server:
+                        # Start video capture and streaming
+                        output += "Starting video capture...\n"
+                        Clock.schedule_once(lambda dt: self._start_video_capture(video_file, peer_ip), 0)
+                    else:
+                        output += "Waiting for incoming video stream...\n"
+                        output += "Partner should connect to your IP\n\n"
+                        output += "💡 Stream will display automatically when data arrives\n"
+                    
+                    # Mark that streaming is active
+                    self.streaming_active = True
+                else:
+                    output += "❌ Failed to start streaming service\n"
+                    output += "Check that ports 9996-9997 are available\n"
                 
                 Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
                 self.log_message("✅ Stream info displayed")
             except Exception as e:
-                error_msg = f"❌ Error starting stream: {str(e)}"
+                error_msg = f"❌ Error starting stream: {str(e)}\n"
+                error_msg += f"Details: {traceback.format_exc()}"
                 self.log_message(error_msg)
                 Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
         
         threading.Thread(target=stream_thread, daemon=True).start()
     
+    def _start_video_capture(self, video_file, peer_ip):
+        """Start capturing and sending video frames."""
+        def capture_thread():
+            try:
+                import cv2
+                import time
+                
+                # Open video source
+                if video_file and os.path.exists(video_file):
+                    cap = cv2.VideoCapture(video_file)
+                    self.log_message(f"📹 Streaming from file: {video_file}")
+                else:
+                    cap = cv2.VideoCapture(0)  # Webcam
+                    self.log_message("📹 Streaming from webcam")
+                
+                if not cap.isOpened():
+                    self.log_message("❌ Could not open video source")
+                    return
+                
+                frame_id = 0
+                fps = 30
+                frame_delay = 1.0 / fps
+                
+                while self.streaming_active and cap.isOpened():
+                    ret, frame = cap.read()
+                    if not ret:
+                        if video_file:  # Loop video file
+                            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                            continue
+                        else:
+                            break
+                    
+                    # Resize for bandwidth efficiency
+                    frame = cv2.resize(frame, (640, 480))
+                    
+                    # Encode as JPEG
+                    _, jpeg_data = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
+                    
+                    # Send via Go streaming service
+                    success = self.go_client.send_video_frame(
+                        frame_id=frame_id,
+                        data=jpeg_data.tobytes(),
+                        width=640,
+                        height=480,
+                        quality=60
+                    )
+                    
+                    if not success:
+                        self.log_message(f"⚠️  Frame {frame_id} send failed")
+                    
+                    frame_id += 1
+                    time.sleep(frame_delay)
+                
+                cap.release()
+                self.log_message("📹 Video capture stopped")
+            except Exception as e:
+                self.log_message(f"❌ Video capture error: {str(e)}")
+        
+        self.streaming_active = True
+        threading.Thread(target=capture_thread, daemon=True).start()
+    
     def stop_dcdn_stream(self):
         """Stop DCDN video streaming."""
+        if not self.connected:
+            self.show_warning("Not Connected", "No active streaming to stop")
+            return
+        
         self.log_message("🛑 Stopping DCDN stream...")
-        output = "DCDN stream stopped.\n"
-        output += "\nStream statistics would show here:\n"
-        output += "- Packets sent/received\n"
-        output += "- Bandwidth used\n"
-        output += "- Packet loss/recovery\n"
-        output += "- Peer IPs and connection quality\n"
-        self._update_dcdn_output(output)
+        self.streaming_active = False
+        
+        def stop_thread():
+            try:
+                # Stop the streaming service on Go node
+                success = self.go_client.stop_streaming()
+                
+                # Get final statistics
+                stats = self.go_client.get_stream_stats()
+                
+                output = "=== Stream Stopped ===\n\n"
+                
+                if success:
+                    output += "✅ Streaming service stopped successfully\n\n"
+                else:
+                    output += "⚠️  Streaming service stop completed with warnings\n\n"
+                
+                if stats:
+                    output += "Stream Statistics:\n"
+                    output += f"  Frames Sent: {stats.get('framesSent', 0)}\n"
+                    output += f"  Frames Received: {stats.get('framesReceived', 0)}\n"
+                    output += f"  Bytes Sent: {stats.get('bytesSent', 0) / (1024*1024):.2f} MB\n"
+                    output += f"  Bytes Received: {stats.get('bytesReceived', 0) / (1024*1024):.2f} MB\n"
+                    output += f"  Avg Latency: {stats.get('avgLatencyMs', 0):.2f} ms\n"
+                else:
+                    output += "No statistics available\n"
+                
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                self.log_message("✅ Stream stopped")
+            except Exception as e:
+                error_msg = f"❌ Error stopping stream: {str(e)}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+        
+        threading.Thread(target=stop_thread, daemon=True).start()
     
     def browse_video_file(self):
         """Browse for video file."""
