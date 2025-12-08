@@ -882,14 +882,23 @@ class PangeaDesktopApp(MDApp):
                 cwd=str(go_dir),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True,
+                text=False,  # Use binary mode to avoid UTF-8 decode errors
                 env=env
             )
             # Start reader threads to extract multiaddr info from stdout/stderr
             def reader(pipe, pipe_name):
                 try:
-                    for raw in iter(pipe.readline, ''):
-                        line = raw.strip()
+                    for raw_bytes in iter(lambda: pipe.readline(), b''):
+                        if not raw_bytes:
+                            continue
+                        
+                        # Decode with error handling for non-UTF-8 content
+                        try:
+                            line = raw_bytes.decode('utf-8', errors='replace').strip()
+                        except Exception:
+                            # If decode fails entirely, skip this line
+                            continue
+                        
                         if not line:
                             continue
                         
