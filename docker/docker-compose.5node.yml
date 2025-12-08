@@ -1,0 +1,204 @@
+# =============================================================================
+# Docker Compose - 5-Node Production-Ready Test Environment
+# =============================================================================
+# Sets up a 5-node mesh network for comprehensive E2E testing
+#
+# Usage:
+#   docker-compose -f docker-compose.5node.yml up -d
+#   docker-compose -f docker-compose.5node.yml logs -f
+#   docker-compose -f docker-compose.5node.yml down
+#
+# Test Coverage:
+#   - Network/Discovery (mDNS + DHT)
+#   - Error handling (invalid inputs)
+#   - File operations (upload/download with manifest verification)
+#   - Compute tasks (submit and track)
+#   - Communication (messaging)
+#   - Configuration (persistence)
+#   - DCDN operations
+# =============================================================================
+
+version: "3.8"
+
+services:
+  # Node 1 - Bootstrap node
+  node1:
+    build:
+      context: ../go
+      dockerfile: Dockerfile
+    container_name: wgt-node1
+    hostname: node1
+    command: >
+      ./go-node 
+      -node-id=1 
+      -capnp-addr=:8080 
+      -libp2p=true 
+      -libp2p-port=9081
+      -mdns=true
+      -local
+    ports:
+      - "8080:8080"
+      - "9081:9081"
+    networks:
+      wgt-mesh:
+        ipv4_address: 172.30.0.10
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      - NODE_ID=1
+      - NODE_ROLE=bootstrap
+    volumes:
+      - node1-config:/root/.pangea
+
+  # Node 2 - Worker node
+  node2:
+    build:
+      context: ../go
+      dockerfile: Dockerfile
+    container_name: wgt-node2
+    hostname: node2
+    command: >
+      ./go-node 
+      -node-id=2 
+      -capnp-addr=:8080 
+      -libp2p=true 
+      -libp2p-port=9081
+      -mdns=true
+      -local
+    ports:
+      - "8081:8080"
+      - "9082:9081"
+    networks:
+      wgt-mesh:
+        ipv4_address: 172.30.0.11
+    depends_on:
+      - node1
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      - NODE_ID=2
+      - NODE_ROLE=worker
+    volumes:
+      - node2-config:/root/.pangea
+
+  # Node 3 - Worker node
+  node3:
+    build:
+      context: ../go
+      dockerfile: Dockerfile
+    container_name: wgt-node3
+    hostname: node3
+    command: >
+      ./go-node 
+      -node-id=3 
+      -capnp-addr=:8080 
+      -libp2p=true 
+      -libp2p-port=9081
+      -mdns=true
+      -local
+    ports:
+      - "8082:8080"
+      - "9083:9081"
+    networks:
+      wgt-mesh:
+        ipv4_address: 172.30.0.12
+    depends_on:
+      - node1
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      - NODE_ID=3
+      - NODE_ROLE=worker
+    volumes:
+      - node3-config:/root/.pangea
+
+  # Node 4 - Worker node
+  node4:
+    build:
+      context: ../go
+      dockerfile: Dockerfile
+    container_name: wgt-node4
+    hostname: node4
+    command: >
+      ./go-node 
+      -node-id=4 
+      -capnp-addr=:8080 
+      -libp2p=true 
+      -libp2p-port=9081
+      -mdns=true
+      -local
+    ports:
+      - "8083:8080"
+      - "9084:9081"
+    networks:
+      wgt-mesh:
+        ipv4_address: 172.30.0.13
+    depends_on:
+      - node1
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      - NODE_ID=4
+      - NODE_ROLE=worker
+    volumes:
+      - node4-config:/root/.pangea
+
+  # Node 5 - Worker node
+  node5:
+    build:
+      context: ../go
+      dockerfile: Dockerfile
+    container_name: wgt-node5
+    hostname: node5
+    command: >
+      ./go-node 
+      -node-id=5 
+      -capnp-addr=:8080 
+      -libp2p=true 
+      -libp2p-port=9081
+      -mdns=true
+      -local
+    ports:
+      - "8084:8080"
+      - "9085:9081"
+    networks:
+      wgt-mesh:
+        ipv4_address: 172.30.0.14
+    depends_on:
+      - node1
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8080"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    environment:
+      - NODE_ID=5
+      - NODE_ROLE=worker
+    volumes:
+      - node5-config:/root/.pangea
+
+networks:
+  wgt-mesh:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  node1-config:
+  node2-config:
+  node3-config:
+  node4-config:
+  node5-config:
