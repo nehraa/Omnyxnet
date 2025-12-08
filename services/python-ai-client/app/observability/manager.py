@@ -2,7 +2,6 @@
 
 import os
 import logging
-from typing import Optional
 
 import sentry_sdk
 from ddtrace import tracer
@@ -84,8 +83,12 @@ class ObservabilityManager:
     
     def _initialize_newrelic(self):
         """Initialize New Relic APM."""
-        # New Relic configuration file or environment variables
-        newrelic.agent.initialize()
+        # Initialize with environment variables (no config file required)
+        # Requires NEW_RELIC_LICENSE_KEY and NEW_RELIC_APP_NAME to be set
+        newrelic.agent.initialize(
+            config_file=None,  # Use environment variables
+            environment=os.getenv('NEW_RELIC_ENVIRONMENT', 'production')
+        )
     
     def _initialize_sentry(self):
         """Initialize Sentry error tracking."""
@@ -98,15 +101,7 @@ class ObservabilityManager:
     
     def _initialize_aws(self):
         """Initialize AWS SDK to use LocalStack."""
-        config = Config(
-            region_name=self.aws_region,
-            signature_version='s3v4',
-            retries={
-                'max_attempts': 3,
-                'mode': 'standard'
-            }
-        )
-        
+        # Config object used when creating clients, not session
         self.aws_session = boto3.Session(
             aws_access_key_id=self.aws_access_key_id,
             aws_secret_access_key=self.aws_secret_access_key,

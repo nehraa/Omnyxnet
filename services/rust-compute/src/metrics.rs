@@ -74,11 +74,11 @@ impl Metrics {
         })
     }
 
-    pub fn encode(&self) -> Result<String, std::fmt::Error> {
+    pub fn encode(&self) -> Result<String, Box<dyn std::error::Error>> {
         let encoder = TextEncoder::new();
         let mut buffer = Vec::new();
         let metric_families = self.registry.gather();
-        encoder.encode(&metric_families, &mut buffer).unwrap();
-        String::from_utf8(buffer).map_err(|_| std::fmt::Error)
+        encoder.encode(&metric_families, &mut buffer)?;
+        String::from_utf8(buffer).map_err(|e| e.into())
     }
 }

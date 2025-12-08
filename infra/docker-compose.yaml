@@ -181,8 +181,8 @@ services:
       - grafana-data:/var/lib/grafana
       - ../grafana/provisioning:/etc/grafana/provisioning:ro
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
       - GF_USERS_ALLOW_SIGN_UP=false
     networks:
       - pangea-network
@@ -206,7 +206,10 @@ services:
       - DOCKER_HOST=unix:///var/run/docker.sock
     volumes:
       - localstack-data:/tmp/localstack
-      - /var/run/docker.sock:/var/run/docker.sock
+      # Mounting Docker socket is required for LocalStack Lambda functionality.
+      # WARNING: This grants the container full access to the Docker daemon and should NEVER be used in production.
+      # If Lambda is not needed, remove this mount. Using read-only mount to limit write access.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - pangea-network
     restart: unless-stopped

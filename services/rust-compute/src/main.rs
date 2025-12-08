@@ -106,10 +106,9 @@ async fn handle_connection(mut socket: tokio::net::TcpStream) -> Result<()> {
 
 /// Start the Prometheus metrics HTTP server
 async fn start_metrics_server(metrics: Arc<Metrics>) {
-    let metrics_clone = Arc::clone(&metrics);
     let app = Router::new()
         .route("/metrics", get(move || {
-            let metrics = Arc::clone(&metrics_clone);
+            let metrics = Arc::clone(&metrics);
             async move {
                 metrics.encode().unwrap_or_else(|_| String::from("Error encoding metrics"))
             }

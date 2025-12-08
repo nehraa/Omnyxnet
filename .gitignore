@@ -111,3 +111,6 @@ Website/server/.env
 #keys
 *ces_key
 .ces_key
+
+# Environment files with secrets
+tools/.env
