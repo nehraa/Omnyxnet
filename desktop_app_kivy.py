@@ -30,6 +30,7 @@ import time
 import hashlib
 import os
 import traceback
+import secrets
 from typing import Optional, Any
 from datetime import datetime
 import re
@@ -59,6 +60,12 @@ from kivy.clock import Clock
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.gridlayout import GridLayout
 from kivy.metrics import dp
+from kivy.core.window import Window
+
+# Set minimum window size for usability
+Window.minimum_width = 1024
+Window.minimum_height = 768
+Window.size = (1200, 900)
 
 # KivyMD imports
 try:
@@ -264,16 +271,20 @@ class MainScreen(MDScreen):
         self.app_ref = app_ref
         
         # Main layout
-        layout = MDBoxLayout(orientation='vertical', spacing=10)
+        layout = MDBoxLayout(orientation='vertical', spacing=5)
         
         # Toolbar
         toolbar = MDTopAppBar(title="Pangea Net - Command Center")
         toolbar.left_action_items = [["menu", lambda x: None]]
+        toolbar.size_hint_y = None
+        toolbar.height = dp(56)
         layout.add_widget(toolbar)
         
-        # Connection card
+        # Scrollable connection card container
+        conn_scroll = ScrollView(size_hint_y=None, height=dp(280))
         self.connection_card = ConnectionCard(app_ref)
-        layout.add_widget(self.connection_card)
+        conn_scroll.add_widget(self.connection_card)
+        layout.add_widget(conn_scroll)
         
         # Tabs for different features
         tabs = MDTabs()
@@ -302,10 +313,13 @@ class MainScreen(MDScreen):
         tab6 = self.create_dcdn_tab(app_ref)
         tabs.add_widget(tab6)
         
+        tabs.size_hint_y = 0.6  # Give tabs 60% of remaining space
         layout.add_widget(tabs)
         
-        # Log view
+        # Log view - fixed height at bottom
         self.log_view = LogView()
+        self.log_view.size_hint_y = None
+        self.log_view.height = dp(150)
         layout.add_widget(self.log_view)
         
         self.add_widget(layout)
@@ -828,6 +842,22 @@ class PangeaDesktopApp(MDApp):
             else:
                 env["DYLD_LIBRARY_PATH"] = rust_lib_path
             
+            # Set CES encryption key to prevent ephemeral key warning
+            if "CES_ENCRYPTION_KEY" not in env:
+                # Generate or load a persistent key for this device
+                ces_key_file = project_root / ".ces_key"
+                if ces_key_file.exists():
+                    with open(ces_key_file, 'r') as f:
+                        env["CES_ENCRYPTION_KEY"] = f.read().strip()
+                else:
+                    # Generate a new persistent key (64 hex chars = 32 bytes)
+                    import secrets
+                    ces_key = secrets.token_hex(32)
+                    with open(ces_key_file, 'w') as f:
+                        f.write(ces_key)
+                    env["CES_ENCRYPTION_KEY"] = ces_key
+                    self.log_message("🔑 Generated new CES encryption key")
+            
             self.log_message(f"📚 Library path: {rust_lib_path}")
             
             self.go_process = subprocess.Popen(
@@ -872,7 +902,8 @@ class PangeaDesktopApp(MDApp):
                             Clock.schedule_once(lambda dt, a=addr: self.log_message(f"📍 Multiaddr: {a}"), 0)
                             Clock.schedule_once(lambda dt: self._update_multiaddr_ui(), 0)
                 except Exception as e:
-                    Clock.schedule_once(lambda dt: self.log_message(f"❌ Reader error ({pipe_name}): {e}"), 0)
+                    error_msg = str(e)
+                    Clock.schedule_once(lambda dt, err=error_msg, pn=pipe_name: self.log_message(f"❌ Reader error ({pn}): {err}"), 0)
 
             # Initialize storage and start threads
             self.local_multiaddrs = set()
