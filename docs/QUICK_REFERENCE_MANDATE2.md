@@ -48,7 +48,7 @@ Configuration is automatically saved and loaded:
   "bootstrap_peers": [
     "/ip4/127.0.0.1/tcp/9081/p2p/12D3KooW..."
   ],
-  "last_saved_at": "2025-12-07 19:00:00",
+  "last_saved_at": "2025-12-07T19:00:00Z",
   "custom_settings": {
     "custom_key": "custom_value"
   }
