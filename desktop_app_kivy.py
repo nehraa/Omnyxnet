@@ -43,6 +43,16 @@ sys.path.insert(0, str(PROJECT_ROOT / "python" / "src"))
 # Constants for timeouts and output limits
 DCDN_DEMO_TIMEOUT = 60  # seconds
 DCDN_TEST_TIMEOUT = 120  # seconds
+
+# Streaming constants
+VIDEO_WIDTH = 640
+VIDEO_HEIGHT = 480
+VIDEO_FPS = 30
+VIDEO_JPEG_QUALITY = 60
+AUDIO_SAMPLE_RATE = 48000
+AUDIO_CHANNELS = 1
+AUDIO_CHUNK_SIZE = 1024
+MAX_INT16 = 32767  # Maximum value for 16-bit signed integer
 DCDN_DEMO_STDOUT_TRUNCATE_LEN = 2000  # characters
 DCDN_DEMO_STDERR_TRUNCATE_LEN = 1000  # characters
 DCDN_TEST_STDOUT_TRUNCATE_LEN = 1000  # characters
@@ -96,6 +106,22 @@ try:
 except ImportError:
     logger.warning("Cap'n Proto client not available. Install dependencies first.")
     CAPNP_AVAILABLE = False
+
+# Try to import optional dependencies for streaming
+try:
+    import cv2
+    CV2_AVAILABLE = True
+except ImportError:
+    logger.warning("OpenCV (cv2) not available. Video streaming will not work.")
+    CV2_AVAILABLE = False
+
+try:
+    import sounddevice as sd
+    import numpy as np
+    SOUNDDEVICE_AVAILABLE = True
+except ImportError:
+    logger.warning("sounddevice not available. Audio streaming will not work.")
+    SOUNDDEVICE_AVAILABLE = False
 
 
 class ConnectionCard(MDCard):
@@ -2421,43 +2447,42 @@ class PangeaDesktopApp(MDApp):
     
     def _start_audio_capture(self):
         """Start capturing and sending audio chunks."""
+        if not SOUNDDEVICE_AVAILABLE:
+            self.log_message("❌ sounddevice not available. Install with: pip install sounddevice numpy")
+            return
+        
+        # Set streaming active BEFORE starting thread to avoid race condition
+        self.streaming_active = True
+        
         def audio_thread():
             try:
-                import sounddevice as sd
-                import numpy as np
-                
-                sample_rate = 48000
-                chunk_size = 1024
-                
                 self.log_message("🎤 Audio capture started")
                 
                 def audio_callback(indata, frames, time_info, status):
                     if status:
                         self.log_message(f"⚠️  Audio status: {status}")
                     
-                    # Convert to bytes
-                    audio_bytes = (indata * 32767).astype(np.int16).tobytes()
+                    # Convert to bytes using constant
+                    audio_bytes = (indata * MAX_INT16).astype(np.int16).tobytes()
                     
                     # Send via Go streaming service
                     self.go_client.send_audio_chunk(
                         data=audio_bytes,
-                        sample_rate=sample_rate,
-                        channels=1
+                        sample_rate=AUDIO_SAMPLE_RATE,
+                        channels=AUDIO_CHANNELS
                     )
                 
                 with sd.InputStream(
-                    samplerate=sample_rate,
-                    channels=1,
+                    samplerate=AUDIO_SAMPLE_RATE,
+                    channels=AUDIO_CHANNELS,
                     dtype=np.float32,
-                    blocksize=chunk_size,
+                    blocksize=AUDIO_CHUNK_SIZE,
                     callback=audio_callback
                 ):
                     while self.streaming_active:
                         time.sleep(0.1)
                 
                 self.log_message("🎤 Audio capture stopped")
-            except ImportError:
-                self.log_message("❌ sounddevice not available. Install with: pip install sounddevice")
             except Exception as e:
                 self.log_message(f"❌ Audio capture error: {str(e)}")
         
@@ -2960,11 +2985,15 @@ class PangeaDesktopApp(MDApp):
     
     def _start_video_capture(self, video_file, peer_ip):
         """Start capturing and sending video frames."""
+        if not CV2_AVAILABLE:
+            self.log_message("❌ OpenCV not available. Install with: pip install opencv-python")
+            return
+        
+        # Set streaming active BEFORE starting thread to avoid race condition
+        self.streaming_active = True
+        
         def capture_thread():
             try:
-                import cv2
-                import time
-                
                 # Open video source
                 if video_file and os.path.exists(video_file):
                     cap = cv2.VideoCapture(video_file)
@@ -2978,8 +3007,7 @@ class PangeaDesktopApp(MDApp):
                     return
                 
                 frame_id = 0
-                fps = 30
-                frame_delay = 1.0 / fps
+                frame_delay = 1.0 / VIDEO_FPS
                 
                 while self.streaming_active and cap.isOpened():
                     ret, frame = cap.read()
@@ -2991,18 +3019,18 @@ class PangeaDesktopApp(MDApp):
                             break
                     
                     # Resize for bandwidth efficiency
-                    frame = cv2.resize(frame, (640, 480))
+                    frame = cv2.resize(frame, (VIDEO_WIDTH, VIDEO_HEIGHT))
                     
                     # Encode as JPEG
-                    _, jpeg_data = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
+                    _, jpeg_data = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, VIDEO_JPEG_QUALITY])
                     
                     # Send via Go streaming service
                     success = self.go_client.send_video_frame(
                         frame_id=frame_id,
                         data=jpeg_data.tobytes(),
-                        width=640,
-                        height=480,
-                        quality=60
+                        width=VIDEO_WIDTH,
+                        height=VIDEO_HEIGHT,
+                        quality=VIDEO_JPEG_QUALITY
                     )
                     
                     if not success:
