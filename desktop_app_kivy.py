@@ -800,6 +800,23 @@ class PangeaDesktopApp(MDApp):
             # We use port 0 to let the OS choose a random port, avoiding conflicts.
             # We remove -local so it can connect to other devices on the LAN.
             self.log_message(f"🚀 Starting Go node from {go_binary}...")
+            
+            # Set up environment with Rust library path (CRITICAL!)
+            env = os.environ.copy()
+            rust_lib_path = str(project_root / "rust" / "target" / "release")
+            if "LD_LIBRARY_PATH" in env:
+                env["LD_LIBRARY_PATH"] = f"{rust_lib_path}:{env['LD_LIBRARY_PATH']}"
+            else:
+                env["LD_LIBRARY_PATH"] = rust_lib_path
+            
+            # Also set DYLD_LIBRARY_PATH for macOS
+            if "DYLD_LIBRARY_PATH" in env:
+                env["DYLD_LIBRARY_PATH"] = f"{rust_lib_path}:{env['DYLD_LIBRARY_PATH']}"
+            else:
+                env["DYLD_LIBRARY_PATH"] = rust_lib_path
+            
+            self.log_message(f"📚 Library path: {rust_lib_path}")
+            
             self.go_process = subprocess.Popen(
                 [
                     str(go_binary),
@@ -811,15 +828,24 @@ class PangeaDesktopApp(MDApp):
                 cwd=str(go_dir),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
+                env=env
             )
             # Start reader threads to extract multiaddr info from stdout/stderr
-            def reader(pipe):
+            def reader(pipe, pipe_name):
                 try:
                     for raw in iter(pipe.readline, ''):
                         line = raw.strip()
                         if not line:
                             continue
+                        
+                        # Log all output for debugging
+                        Clock.schedule_once(lambda dt, l=line: self.log_message(f"[Go-{pipe_name}] {l}"), 0)
+                        
+                        # Check for errors
+                        if "error" in line.lower() or "failed" in line.lower():
+                            Clock.schedule_once(lambda dt, l=line: self.log_message(f"⚠️  {l}"), 0)
+                        
                         # Look for multiaddr patterns like /ip4/1.2.3.4/tcp/PORT/p2p/PEERID
                         m = re.search(r"(/ip4/[0-9.]+/tcp/[0-9]+/p2p/[a-zA-Z0-9]+)", line)
                         if m:
@@ -830,33 +856,46 @@ class PangeaDesktopApp(MDApp):
                                 addr = re.sub(r'/ip4/(0.0.0.0|127.0.0.1)', f'/ip4/{local_ip}', addr)
                             # Save and update UI
                             self.local_multiaddrs.add(addr)
-                            self.log_message(f"ℹ️  Local multiaddr discovered: {addr}")
+                            Clock.schedule_once(lambda dt, a=addr: self.log_message(f"📍 Multiaddr: {a}"), 0)
                             Clock.schedule_once(lambda dt: self._update_multiaddr_ui(), 0)
-                except Exception:
-                    pass
+                except Exception as e:
+                    Clock.schedule_once(lambda dt: self.log_message(f"❌ Reader error ({pipe_name}): {e}"), 0)
 
             # Initialize storage and start threads
             self.local_multiaddrs = set()
             if self.go_process.stdout:
-                threading.Thread(target=reader, args=(self.go_process.stdout,), daemon=True).start()
+                threading.Thread(target=reader, args=(self.go_process.stdout, "stdout"), daemon=True).start()
             if self.go_process.stderr:
-                threading.Thread(target=reader, args=(self.go_process.stderr,), daemon=True).start()
+                threading.Thread(target=reader, args=(self.go_process.stderr, "stderr"), daemon=True).start()
             
             # Wait for node to be ready
             for attempt in range(30):  # 30 seconds timeout
+                # Check if process crashed
+                if self.go_process.poll() is not None:
+                    self.log_message(f"❌ Go node process exited with code {self.go_process.returncode}")
+                    self.log_message("💡 Tip: Check if Rust library is built: cd rust && cargo build --release")
+                    return False
+                
                 if self.is_port_open(self.node_host, self.node_port):
                     self.log_message(f"✅ Go node started successfully (PID: {self.go_process.pid})")
                     # If any multiaddrs were discovered already, update UI immediately
                     if hasattr(self, 'local_multiaddrs') and self.local_multiaddrs:
                         Clock.schedule_once(lambda dt: self._update_multiaddr_ui(), 0)
                     return True
+                
+                if attempt % 5 == 0 and attempt > 0:
+                    self.log_message(f"⏳ Still waiting for node... ({attempt}s)")
+                
                 time.sleep(1)
             
-            self.log_message("❌ Go node did not start in time")
+            self.log_message("❌ Go node did not start in time (30s timeout)")
+            if self.go_process.poll() is None:
+                self.log_message("🔍 Process still running but port not open - possible startup issue")
             return False
         
         except Exception as e:
             self.log_message(f"❌ Error starting Go node: {str(e)}")
+            self.log_message(f"📋 Traceback: {traceback.format_exc()}")
             return False
     
     def connect_to_node(self):
