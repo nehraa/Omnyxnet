@@ -105,9 +105,9 @@ flowchart TD
     %% ========================================
     %% COMMUNICATION LAYER
     %% ========================================
-    PYTHON_COMM_CHAT{{📡 Live Chat<br/>P2P Messaging}}
-    PYTHON_COMM_VIDEO{{📡 Live Video<br/>UDP Streaming}}
-    PYTHON_COMM_VOICE{{📡 Live Voice<br/>Audio Streaming}}
+    PYTHON_COMM_CHAT[[📡 Live Chat<br/>P2P Messaging]]
+    PYTHON_COMM_VIDEO[[📡 Live Video<br/>UDP Streaming]]
+    PYTHON_COMM_VOICE[[📡 Live Voice<br/>Audio Streaming]]
     
     %% ========================================
     %% WIRING - Solid arrows for working connections
