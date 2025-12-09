@@ -32,183 +32,180 @@ flowchart TD
     %% MACHINE CLASS DEFINITIONS - Blueprint Aesthetics
     %% ========================================
     classDef machine fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#000
-    classDef ingestion fill:#ffa726,stroke:#e65100,stroke-width:3px,color:#000
-    classDef security fill:#ffeb3b,stroke:#f57f17,stroke-width:4px,color:#000
-    classDef network fill:#42a5f5,stroke:#0d47a1,stroke-width:3px,color:#fff
-    classDef compute fill:#ef5350,stroke:#b71c1c,stroke-width:3px,color:#fff
-    classDef storage fill:#66bb6a,stroke:#1b5e20,stroke-width:3px,color:#fff
-    classDef ai fill:#ec407a,stroke:#880e4f,stroke-width:3px,color:#fff
-    classDef control fill:#26c6da,stroke:#006064,stroke-width:3px,color:#fff
-    
+    classDef ingestion fill:#ffcc80,stroke:#e65100,stroke-width:2px,color:#000
+    classDef security fill:#fff59d,stroke:#fbc02d,stroke-width:2px,color:#000
+    classDef network fill:#e1f5fe,stroke:#0277bd,stroke-width:2px,color:#000
+    classDef compute fill:#ffcdd2,stroke:#c62828,stroke-width:2px,color:#000
+    classDef storage fill:#c8e6c9,stroke:#2e7d32,stroke-width:2px,color:#000
+    classDef ai fill:#f8bbd0,stroke:#ad1457,stroke-width:2px,color:#000
+    classDef control fill:#b2ebf2,stroke:#00838f,stroke-width:2px,color:#000
+
     %% ========================================
     %% MACHINE GROUP: CLI_CONTROL_PANEL
     %% ========================================
     subgraph CLI_CONTROL["⚙️ CLI_CONTROL_PANEL"]
-        DESKTOP_KIVY["fa:fa-terminal Desktop App<br/>KivyMD GUI"]
-        DESKTOP_TK["fa:fa-terminal Desktop App<br/>Tkinter GUI"]
-        PYTHON_CLI["fa:fa-terminal Python CLI<br/>Command Interface"]
-        GO_MAIN["fa:fa-power-off Go Node Main<br/>Entry Point"]
-        RUST_MAIN["fa:fa-power-off Rust Node Main<br/>Entry Point"]
+        direction TB
+        DESKTOP_KIVY([fa:fa-desktop Desktop App<br/>KivyMD GUI])
+        DESKTOP_TK([fa:fa-window-maximize Desktop App<br/>Tkinter GUI])
+        PYTHON_CLI([fa:fa-terminal Python CLI<br/>Command Interface])
+        GO_MAIN([fa:fa-power-off Go Node Main<br/>Entry Point])
+        RUST_MAIN([fa:fa-cogs Rust Node Main<br/>Entry Point])
     end
-    
+
     %% ========================================
     %% MACHINE GROUP: INGESTION_ENGINE
     %% ========================================
     subgraph INGESTION_ENGINE["🗜️ INGESTION_ENGINE"]
-        RUST_CES["fa:fa-compress CES Pipeline<br/>Compression Engine"]
-        RUST_CODECS["fa:fa-cogs Media Codecs<br/>Opus/Brotli"]
-        PYTHON_PREPROCESSOR["fa:fa-compress Data Preprocessor<br/>Input Preparation"]
+        direction LR
+        RUST_CES[/fa:fa-compress CES Pipeline<br/>Compression Engine\]
+        RUST_CODECS[/fa:fa-file-audio Media Codecs<br/>Opus/Brotli\]
+        PYTHON_PREPROCESSOR[/fa:fa-filter Data Preprocessor<br/>Input Preparation\]
     end
-    
+
     %% ========================================
     %% MACHINE GROUP: SECURITY_VAULT
     %% ========================================
     subgraph SECURITY_VAULT["🔐 SECURITY_VAULT"]
-        RUST_ENCRYPTION["fa:fa-lock XChaCha20Poly1305<br/>Encryption Chamber"]
-        GO_SECURITY["fa:fa-shield-alt Security Manager<br/>Encryption & Keys"]
-        DCDN_VERIFIER["fa:fa-lock Signature Verifier<br/>Ed25519 Auth"]
-        RUST_COMPUTE_VERIFY["fa:fa-shield-alt Merkle Verifier<br/>Result Integrity"]
+        direction TB
+        RUST_ENCRYPTION[[fa:fa-lock XChaCha20Poly1305<br/>Encryption Chamber]]
+        GO_SECURITY[[fa:fa-key Security Manager<br/>Encryption & Keys]]
+        DCDN_VERIFIER[[fa:fa-certificate Signature Verifier<br/>Ed25519 Auth]]
+        RUST_COMPUTE_VERIFY[[fa:fa-shield-alt Merkle Verifier<br/>Result Integrity]]
     end
-    
+
     %% ========================================
     %% MACHINE GROUP: TRANSMISSION_PIPE
     %% ========================================
     subgraph TRANSMISSION_PIPE["🌐 TRANSMISSION_PIPE"]
-        GO_LIBP2P["fa:fa-network-wired LibP2P Network<br/>NAT Traversal"]
-        GO_STREAMING["fa:fa-globe Streaming Service<br/>Video/Audio/Chat"]
-        GO_NETWORK_ADAPTER["fa:fa-network-wired Network Adapter<br/>Multi-Protocol"]
-        GO_PROXY["fa:fa-globe SOCKS5/Tor Proxy<br/>Anonymous Routing"]
-        GO_DHT["fa:fa-network-wired DHT Discovery<br/>Peer Routing"]
-        RUST_DHT["fa:fa-globe Rust DHT<br/>Content Routing"]
-        DCDN_QUIC["fa:fa-network-wired QUIC Transport<br/>Low-Latency UDP"]
-        DCDN_P2P["fa:fa-globe P2P Engine<br/>Mesh Network"]
+        direction TB
+        GO_LIBP2P((fa:fa-project-diagram LibP2P Network<br/>NAT Traversal))
+        GO_STREAMING((fa:fa-broadcast-tower Streaming Service<br/>Video/Audio/Chat))
+        GO_NETWORK_ADAPTER((fa:fa-ethernet Network Adapter<br/>Multi-Protocol))
+        GO_PROXY((fa:fa-user-secret SOCKS5/Tor Proxy<br/>Anonymous Routing))
+        GO_DHT((fa:fa-sitemap DHT Discovery<br/>Peer Routing))
+        RUST_DHT((fa:fa-globe Rust DHT<br/>Content Routing))
+        DCDN_QUIC((fa:fa-tachometer-alt QUIC Transport<br/>Low-Latency UDP))
+        DCDN_P2P((fa:fa-share-alt P2P Engine<br/>Mesh Network))
     end
-    
+
     %% ========================================
     %% MACHINE GROUP: COMPUTE_FACTORY
     %% ========================================
     subgraph COMPUTE_FACTORY["⚙️ COMPUTE_FACTORY"]
-        GO_COMPUTE_MGR["fa:fa-cogs Compute Manager<br/>Task Scheduler"]
-        RUST_UPLOAD["fa:fa-cogs Upload Protocol<br/>CES + Transport"]
-        RUST_DOWNLOAD["fa:fa-cogs Download Protocol<br/>CES + Reconstruct"]
-        RUST_COMPUTE_EXEC["fa:fa-cogs Task Executor<br/>MapReduce"]
-        RUST_COMPUTE_SANDBOX["fa:fa-cogs WASM Sandbox<br/>Secure Execution"]
-        RUST_COMPUTE_METER["fa:fa-cogs Resource Metering<br/>CPU/Memory Limits"]
-        DCDN_FEC["fa:fa-cogs FEC Engine<br/>Reed-Solomon"]
-        GO_ML_COORD["fa:fa-cogs ML Coordinator<br/>Distributed ML"]
+        direction TB
+        GO_COMPUTE_MGR{{fa:fa-tasks Compute Manager<br/>Task Scheduler}}
+        RUST_UPLOAD{{fa:fa-upload Upload Protocol<br/>CES + Transport}}
+        RUST_DOWNLOAD{{fa:fa-download Download Protocol<br/>CES + Reconstruct}}
+        RUST_COMPUTE_EXEC{{fa:fa-microchip Task Executor<br/>MapReduce}}
+        RUST_COMPUTE_SANDBOX{{fa:fa-box-open WASM Sandbox<br/>Secure Execution}}
+        RUST_COMPUTE_METER{{fa:fa-balance-scale Resource Metering<br/>CPU/Memory Limits}}
+        DCDN_FEC{{fa:fa-recycle FEC Engine<br/>Reed-Solomon}}
+        GO_ML_COORD{{fa:fa-network-wired ML Coordinator<br/>Distributed ML}}
     end
-    
+
     %% ========================================
     %% MACHINE GROUP: STORAGE_FACILITY
     %% ========================================
     subgraph STORAGE_FACILITY["🗄️ STORAGE_FACILITY"]
-        GO_SHARED_MEM["fa:fa-database Shared Memory<br/>Go↔Python IPC"]
-        GO_CONFIG["fa:fa-database Config Manager<br/>Persistence"]
-        GO_NODE_STORE["fa:fa-database Node Store<br/>Peer Database"]
-        RUST_CACHE["fa:fa-database File Cache<br/>Manifest Store"]
-        DCDN_STORAGE["fa:fa-database Chunk Store<br/>Ring Buffer"]
+        direction LR
+        GO_SHARED_MEM[(fa:fa-memory Shared Memory<br/>Go↔Python IPC)]
+        GO_CONFIG[(fa:fa-sliders-h Config Manager<br/>Persistence)]
+        GO_NODE_STORE[(fa:fa-database Node Store<br/>Peer Database)]
+        RUST_CACHE[(fa:fa-hdd File Cache<br/>Manifest Store)]
+        DCDN_STORAGE[(fa:fa-server Chunk Store<br/>Ring Buffer)]
     end
-    
+
     %% ========================================
     %% MACHINE GROUP: AI_INTELLIGENCE_CORE
     %% ========================================
     subgraph AI_CORE["🧠 AI_INTELLIGENCE_CORE"]
-        AI_PREDICTOR["fa:fa-brain Threat Predictor<br/>CNN Model"]
-        AI_SHARD["fa:fa-brain Shard Optimizer<br/>ML-based CES"]
-        AI_TRANSLATION["fa:fa-brain Translation Pipeline<br/>ASR → NMT → TTS"]
-        AI_LIPSYNC["fa:fa-brain Video Lipsync<br/>AV Sync"]
-        AI_FEDERATED["fa:fa-brain Federated Learning<br/>P2P-FL & CSM"]
+        direction LR
+        AI_PREDICTOR{{fa:fa-brain Threat Predictor<br/>CNN Model}}
+        AI_SHARD{{fa:fa-layer-group Shard Optimizer<br/>ML-based CES}}
+        AI_TRANSLATION{{fa:fa-language Translation Pipeline<br/>ASR → NMT → TTS}}
+        AI_LIPSYNC{{fa:fa-video Video Lipsync<br/>AV Sync}}
+        AI_FEDERATED{{fa:fa-users-cog Federated Learning<br/>P2P-FL & CSM}}
     end
-    
+
     %% ========================================
     %% INTERFACE BRIDGES
     %% ========================================
-    GO_CAPNP["fa:fa-exchange-alt Cap'n Proto RPC<br/>IPC Service"]
-    RUST_FFI["fa:fa-exchange-alt FFI Bridge<br/>Go ↔ Rust"]
-    PYTHON_GO_CLIENT["fa:fa-exchange-alt Go RPC Client<br/>Cap'n Proto"]
-    PYTHON_COMPUTE_CLIENT["fa:fa-exchange-alt Compute Client<br/>Job Management"]
-    
+    GO_CAPNP>fa:fa-exchange-alt Cap'n Proto RPC<br/>IPC Service]
+    RUST_FFI>fa:fa-random FFI Bridge<br/>Go ↔ Rust]
+    PYTHON_GO_CLIENT>fa:fa-plug Go RPC Client<br/>Cap'n Proto]
+    PYTHON_COMPUTE_CLIENT>fa:fa-laptop-code Compute Client<br/>Job Management]
+
     %% ========================================
-    %% NETWORKING - Tor Tunnels & Proxies
+    %% SERVICES - External
     %% ========================================
-    SERVICE_GO_ORCH["fa:fa-server Go Orchestrator<br/>Service Entry"]
-    SERVICE_PYTHON_AI["fa:fa-server Python AI Client<br/>Service Entry"]
-    SERVICE_RUST_COMPUTE["fa:fa-server Rust Compute<br/>Service Entry"]
+    SERVICE_GO_ORCH([fa:fa-server Go Orchestrator<br/>Service Entry])
+    SERVICE_PYTHON_AI([fa:fa-robot Python AI Client<br/>Service Entry])
+    SERVICE_RUST_COMPUTE([fa:fa-cog Rust Compute<br/>Service Entry])
     
     %% ========================================
     %% COMMUNICATION CHANNELS
     %% ========================================
-    PYTHON_COMM_CHAT["fa:fa-comments Live Chat<br/>P2P Messaging"]
-    PYTHON_COMM_VIDEO["fa:fa-video Live Video<br/>UDP Streaming"]
-    PYTHON_COMM_VOICE["fa:fa-microphone Live Voice<br/>Audio Streaming"]
-    
+    PYTHON_COMM_CHAT([fa:fa-comments Live Chat<br/>P2P Messaging])
+    PYTHON_COMM_VIDEO([fa:fa-video Live Video<br/>UDP Streaming])
+    PYTHON_COMM_VOICE([fa:fa-microphone Live Voice<br/>Audio Streaming])
+
     %% ========================================
-    %% WIRING - Solid arrows for working connections
+    %% WIRING - Logic Flow
     %% ========================================
-    
-    %% Entry Points to Core Services
+
+    %% Connections
     DESKTOP_KIVY --> PYTHON_GO_CLIENT
     DESKTOP_TK --> PYTHON_GO_CLIENT
     PYTHON_CLI --> PYTHON_GO_CLIENT
     PYTHON_CLI --> PYTHON_COMPUTE_CLIENT
     
-    %% Python to Go RPC Bridge
-    PYTHON_GO_CLIENT --> GO_CAPNP
-    PYTHON_COMPUTE_CLIENT --> GO_CAPNP
+    PYTHON_GO_CLIENT ==> GO_CAPNP
+    PYTHON_COMPUTE_CLIENT ==> GO_CAPNP
     
-    %% Go Main Orchestration
-    GO_MAIN --> GO_CAPNP
+    GO_MAIN ==> GO_CAPNP
     GO_MAIN --> GO_LIBP2P
     GO_MAIN --> GO_NODE_STORE
     GO_MAIN --> GO_CONFIG
     GO_MAIN --> GO_SHARED_MEM
     
-    %% Go to Rust FFI Bridge
-    GO_CAPNP --> RUST_FFI
-    RUST_FFI --> RUST_CES
-    RUST_FFI --> RUST_UPLOAD
-    RUST_FFI --> RUST_DOWNLOAD
+    GO_CAPNP ==> RUST_FFI
+    RUST_FFI ==> RUST_CES
+    RUST_FFI ==> RUST_UPLOAD
+    RUST_FFI ==> RUST_DOWNLOAD
     
-    %% CES Pipeline Flow (Compression → Encryption → Sharding)
     RUST_CES --> RUST_CODECS
     RUST_CODECS --> RUST_ENCRYPTION
     RUST_ENCRYPTION --> RUST_UPLOAD
     RUST_UPLOAD --> RUST_CACHE
     
-    %% Download Flow (Retrieval → Decryption → Decompression)
     RUST_DOWNLOAD --> RUST_CACHE
     RUST_CACHE --> RUST_ENCRYPTION
     RUST_ENCRYPTION --> RUST_CODECS
     
-    %% DCDN Architecture
-    RUST_MAIN --> DCDN_QUIC
+    RUST_MAIN ==> DCDN_QUIC
     DCDN_QUIC --> DCDN_FEC
     DCDN_FEC --> DCDN_STORAGE
-    DCDN_STORAGE --> DCDN_P2P
+    DCDN_STORAGE <==> DCDN_P2P
     DCDN_P2P --> DCDN_VERIFIER
     
-    %% Compute System
     GO_COMPUTE_MGR --> RUST_COMPUTE_EXEC
     RUST_COMPUTE_EXEC --> RUST_COMPUTE_SANDBOX
     RUST_COMPUTE_SANDBOX --> RUST_COMPUTE_METER
     RUST_COMPUTE_EXEC --> RUST_COMPUTE_VERIFY
     
-    %% Networking & Security
-    GO_LIBP2P --> GO_NETWORK_ADAPTER
-    GO_NETWORK_ADAPTER --> GO_PROXY
+    GO_LIBP2P <==> GO_NETWORK_ADAPTER
+    GO_NETWORK_ADAPTER <==> GO_PROXY
     GO_LIBP2P --> GO_DHT
     GO_SECURITY --> GO_CAPNP
     GO_STREAMING --> GO_LIBP2P
     
-    %% Python AI Integration
-    PYTHON_GO_CLIENT --> AI_PREDICTOR
-    PYTHON_GO_CLIENT --> AI_SHARD
+    PYTHON_GO_CLIENT -.-> AI_PREDICTOR
+    PYTHON_GO_CLIENT -.-> AI_SHARD
     PYTHON_PREPROCESSOR --> AI_TRANSLATION
     AI_TRANSLATION --> AI_LIPSYNC
     AI_FEDERATED --> GO_ML_COORD
     GO_ML_COORD --> GO_COMPUTE_MGR
     
-    %% Communication Layer
     PYTHON_CLI --> PYTHON_COMM_CHAT
     PYTHON_CLI --> PYTHON_COMM_VIDEO
     PYTHON_CLI --> PYTHON_COMM_VOICE
@@ -216,79 +213,47 @@ flowchart TD
     PYTHON_COMM_VIDEO --> GO_STREAMING
     PYTHON_COMM_VOICE --> GO_STREAMING
     
-    %% Services Architecture
     SERVICE_GO_ORCH --> GO_CAPNP
     SERVICE_PYTHON_AI --> PYTHON_GO_CLIENT
     SERVICE_RUST_COMPUTE --> RUST_COMPUTE_EXEC
     
-    %% Data Flow Connections
     RUST_UPLOAD --> GO_NETWORK_ADAPTER
-    GO_NETWORK_ADAPTER --> GO_LIBP2P
-    GO_LIBP2P --> DCDN_P2P
+    GO_LIBP2P <==> DCDN_P2P
     
     RUST_DHT --> RUST_CACHE
     GO_DHT --> GO_NODE_STORE
-    
-    %% Python Preprocessing
     PYTHON_PREPROCESSOR --> RUST_CES
     
+    %% Future Links
+    RUST_DHT -.-> DCDN_P2P
+    AI_SHARD -.-> RUST_CES
+    GO_PROXY -.-> GO_NETWORK_ADAPTER
+
     %% ========================================
-    %% FUTURE ENHANCEMENTS - Dotted Lines
+    %% APPLY STYLING
     %% ========================================
-    RUST_DHT -.->|Future: Direct DHT| DCDN_P2P
-    AI_SHARD -.->|Future: ML Optimization| RUST_CES
-    GO_PROXY -.->|Optional: Tor Integration| GO_NETWORK_ADAPTER
-    
-    %% ========================================
-    %% APPLY MACHINE STYLING TO GROUPS
-    %% ========================================
-    
-    %% Control Panel Components
-    class DESKTOP_KIVY,DESKTOP_TK,PYTHON_CLI,GO_MAIN,RUST_MAIN control
-    
-    %% Ingestion Engine Components
+    class DESKTOP_KIVY,DESKTOP_TK,PYTHON_CLI,GO_MAIN,RUST_MAIN,SERVICE_GO_ORCH,SERVICE_PYTHON_AI,SERVICE_RUST_COMPUTE control
     class RUST_CES,RUST_CODECS,PYTHON_PREPROCESSOR ingestion
-    
-    %% Security Vault Components
     class RUST_ENCRYPTION,GO_SECURITY,DCDN_VERIFIER,RUST_COMPUTE_VERIFY security
-    
-    %% Transmission Pipe Components
-    class GO_LIBP2P,GO_STREAMING,GO_NETWORK_ADAPTER,GO_PROXY,GO_DHT,RUST_DHT,DCDN_QUIC,DCDN_P2P network
-    
-    %% Compute Factory Components
+    class GO_LIBP2P,GO_STREAMING,GO_NETWORK_ADAPTER,GO_PROXY,GO_DHT,RUST_DHT,DCDN_QUIC,DCDN_P2P,PYTHON_COMM_CHAT,PYTHON_COMM_VIDEO,PYTHON_COMM_VOICE network
     class GO_COMPUTE_MGR,RUST_UPLOAD,RUST_DOWNLOAD,RUST_COMPUTE_EXEC,RUST_COMPUTE_SANDBOX,RUST_COMPUTE_METER,DCDN_FEC,GO_ML_COORD compute
-    
-    %% Storage Facility Components
     class GO_SHARED_MEM,GO_CONFIG,GO_NODE_STORE,RUST_CACHE,DCDN_STORAGE storage
-    
-    %% AI Intelligence Core Components
     class AI_PREDICTOR,AI_SHARD,AI_TRANSLATION,AI_LIPSYNC,AI_FEDERATED ai
-    
-    %% Bridge Components
     class GO_CAPNP,RUST_FFI,PYTHON_GO_CLIENT,PYTHON_COMPUTE_CLIENT network
-    
-    %% Service Components
-    class SERVICE_GO_ORCH,SERVICE_PYTHON_AI,SERVICE_RUST_COMPUTE control
-    
-    %% Communication Components
-    class PYTHON_COMM_CHAT,PYTHON_COMM_VIDEO,PYTHON_COMM_VOICE network
-    
+
     %% ========================================
-    %% CLICKABLE LINKS TO SOURCE FILES
+    %% INTERACTIVITY
     %% ========================================
-    
     click DESKTOP_KIVY "./desktop_app_kivy.py#L1"
     click DESKTOP_TK "./desktop_app.py#L1"
     click PYTHON_CLI "./python/main.py#L1"
     click GO_MAIN "./go/main.go#L16"
     click RUST_MAIN "./rust/src/main.rs#L1"
-    
     click AI_PREDICTOR "./python/src/ai/predictor.py#L1"
     click AI_SHARD "./python/src/ai/shard_optimizer.py#L1"
     click AI_TRANSLATION "./python/src/ai/translation_pipeline.py#L1"
     click AI_LIPSYNC "./python/src/ai/video_lipsync.py#L1"
     click AI_FEDERATED "./python/src/ai/federated_learning.py#L1"
-    
     click GO_CAPNP "./go/capnp_service.go#L1"
     click GO_LIBP2P "./go/libp2p_node.go#L1"
     click GO_SECURITY "./go/security.go#L1"
@@ -301,7 +266,6 @@ flowchart TD
     click GO_NETWORK_ADAPTER "./go/network_adapter.go#L1"
     click GO_DHT "./go/libp2p_node.go#L1"
     click GO_NODE_STORE "./go/types.go#L1"
-    
     click RUST_CES "./rust/src/ces.rs#L21"
     click RUST_ENCRYPTION "./rust/src/ces.rs#L4"
     click RUST_CODECS "./rust/src/codecs.rs#L1"
@@ -310,26 +274,21 @@ flowchart TD
     click RUST_FFI "./rust/src/ffi.rs#L1"
     click RUST_CACHE "./rust/src/cache.rs#L1"
     click RUST_DHT "./rust/src/dht.rs#L1"
-    
     click DCDN_QUIC "./rust/src/dcdn/transport.rs#L1"
     click DCDN_FEC "./rust/src/dcdn/fec.rs#L1"
     click DCDN_P2P "./rust/src/dcdn/p2p.rs#L1"
     click DCDN_STORAGE "./rust/src/dcdn/storage.rs#L1"
     click DCDN_VERIFIER "./rust/src/dcdn/verifier.rs#L1"
-    
     click RUST_COMPUTE_SANDBOX "./rust/src/compute/sandbox.rs#L1"
     click RUST_COMPUTE_EXEC "./rust/src/compute/executor.rs#L1"
     click RUST_COMPUTE_VERIFY "./rust/src/compute/verification.rs#L1"
     click RUST_COMPUTE_METER "./rust/src/compute/metering.rs#L1"
-    
     click PYTHON_GO_CLIENT "./python/src/client/go_client.py#L1"
     click PYTHON_COMPUTE_CLIENT "./python/src/compute/client.py#L1"
     click PYTHON_PREPROCESSOR "./python/src/compute/preprocessor.py#L1"
-    
     click PYTHON_COMM_CHAT "./python/src/communication/live_chat.py#L1"
     click PYTHON_COMM_VIDEO "./python/src/communication/live_video.py#L1"
     click PYTHON_COMM_VOICE "./python/src/communication/live_voice.py#L1"
-    
     click SERVICE_GO_ORCH "./services/go-orchestrator/main.go#L1"
     click SERVICE_PYTHON_AI "./services/python-ai-client/app/main.py#L1"
     click SERVICE_RUST_COMPUTE "./services/rust-compute/src/main.rs#L1"
