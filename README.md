@@ -55,6 +55,13 @@ For testing guides:
 - [docs/testing/TESTING_INDEX.md](docs/testing/TESTING_INDEX.md) - Complete testing documentation hub
 - [CROSS_DEVICE_TESTING.md](docs/CROSS_DEVICE_TESTING.md) - WAN/multi-device testing
 
+## 📐 Architecture Blueprint
+
+**NEW:** Interactive Mermaid.js architectural diagram with visual metaphors!
+- [ARCHITECTURE_BLUEPRINT.md](ARCHITECTURE_BLUEPRINT.md) - **Mechanical Blueprint** showing entire system with clickable links to 48+ source files
+- Visual metaphors: 🗜️ Compression Funnels, 🔐 Encryption Chambers, 🚇 Tor Tunnels, ⚙️ Compute Engines, 🤖 AI Brains
+- Complete data flow documentation for Upload/Download, Compute, Streaming, and AI/ML pipelines
+
 ## 🏗️ Project Structure
 
 ```text
