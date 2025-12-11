@@ -2372,12 +2372,18 @@ class PangeaDesktopApp(MDApp):
                         # Set chat state
                         self.chat_active = True
                         self.chat_peer_addr = peer_addr
+                        self.chat_session_id = f"chat-{int(time.time())}"  # Create session ID
+                        
+                        # Start message receiving loop
+                        Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
+                        self._start_chat_receiver()
+                        return  # Exit this thread, receiver runs separately
                     else:
                         output += "❌ Failed to connect to peer\n"
                         output += f"\n⚠️  Connection to {peer_ip}:9999 failed\n"
                         output += "\n⚠️  IMPORTANT: Both devices must have chat service running!\n"
                         output += "\nSetup Steps:\n"
-                        output += "  1. On BOTH devices: Click 'Start Chat'\n"
+                        output += "  1. On BOTH devices: Click 'Start Chat Session'\n"
                         output += "  2. Device A: Enter Device B's IP and click button\n"
                         output += "  3. Device B: Enter Device A's IP and click button\n"
                         output += "  4. Both should connect successfully\n"
@@ -2405,6 +2411,50 @@ class PangeaDesktopApp(MDApp):
                 Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
         
         threading.Thread(target=chat_thread, daemon=True).start()
+    
+    def _start_chat_receiver(self):
+        """Start a background thread to receive chat messages."""
+        def receiver_thread():
+            try:
+                self.log_message("🔔 Starting message receiver...")
+                last_message_count = 0
+                
+                while self.chat_active:
+                    try:
+                        # Poll for new messages every second
+                        if hasattr(self, 'chat_session_id'):
+                            messages = self.go_client.receive_chat_messages(self.chat_session_id)
+                            
+                            # Display new messages
+                            if messages and len(messages) > last_message_count:
+                                new_messages = messages[last_message_count:]
+                                for msg in new_messages:
+                                    msg_text = msg.get('message', b'').decode('utf-8', errors='replace')
+                                    from_peer = msg.get('from', 'Unknown')
+                                    
+                                    # Append to chat output
+                                    display_text = f"Peer ({from_peer}): {msg_text}\n\n"
+                                    current_output = self.main_screen.comm_output.output_label.text
+                                    Clock.schedule_once(
+                                        lambda dt, txt=display_text, curr=current_output: 
+                                        self._update_comm_output(curr + txt), 0
+                                    )
+                                    
+                                    # Also log to console
+                                    self.log_message(f"📨 Received: {msg_text}")
+                                
+                                last_message_count = len(messages)
+                    except Exception as e:
+                        self.log_message(f"⚠️  Error receiving messages: {str(e)}")
+                    
+                    # Sleep before next poll
+                    time.sleep(1)
+                
+                self.log_message("🔔 Message receiver stopped")
+            except Exception as e:
+                self.log_message(f"❌ Receiver error: {str(e)}")
+        
+        threading.Thread(target=receiver_thread, daemon=True).start()
     
     def send_chat_message(self):
         """Send a chat message via Go streaming service."""
@@ -2452,15 +2502,27 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message("🛑 Stopping chat...")
+        
+        # Stop the receiver loop first
         self.chat_active = False
+        if hasattr(self, 'chat_session_id'):
+            delattr(self, 'chat_session_id')
+        if hasattr(self, 'chat_peer_addr'):
+            delattr(self, 'chat_peer_addr')
         
         def stop_thread():
             try:
+                # Give receiver time to stop
+                time.sleep(1)
+                
                 success = self.go_client.stop_streaming()
                 
                 output = "=== Chat Session Ended ===\n\n"
                 if success:
                     output += "✅ Chat service stopped\n"
+                    output += "✅ Message receiver stopped\n"
+                else:
+                    output += "⚠️  Chat service may already be stopped\n"
                 
                 Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
                 self.log_message("✅ Chat stopped")
