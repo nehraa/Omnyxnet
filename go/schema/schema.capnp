@@ -228,6 +228,18 @@ interface NodeService {
     # Get streaming statistics
     getStreamStats @21 () -> (stats :StreamStats);
     
+    # Get received video frames (for display in GUI)
+    getReceivedFrames @36 (maxFrames :UInt32) -> (frames :List(VideoFrame));
+    
+    # Get received audio chunks (for playback in GUI)
+    getReceivedAudio @37 (maxChunks :UInt32) -> (chunks :List(AudioChunk));
+    
+    # Get local node's multiaddr for sharing
+    getLocalMultiaddr @38 () -> (multiaddr :Text);
+    
+    # List connected libp2p peers
+    listLibp2pPeers @39 () -> (peers :List(Text));
+    
     # === Distributed Compute Service ===
     
     # Submit a new compute job

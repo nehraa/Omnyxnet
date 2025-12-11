@@ -2579,6 +2579,10 @@ class PangeaDesktopApp(MDApp):
                         # Show notification
                         Clock.schedule_once(lambda dt, pa=peer_addr: self.show_notification(f"📹 Video call connected: {pa}", 5, (0.2, 0.8, 0.2, 0.9)), 0)
                         self.streaming_active = True
+                        self.video_peer_addr = peer_addr
+                        
+                        # Start video receiver loop
+                        Clock.schedule_once(lambda dt: self._start_video_receiver(), 0)
                     else:
                         output += "❌ Failed to connect to peer\n"
                         output += f"\n⚠️  Connection to {peer_ip}:9996 failed\n"
@@ -2689,6 +2693,10 @@ class PangeaDesktopApp(MDApp):
                         # Show notification
                         Clock.schedule_once(lambda dt, pa=peer_addr: self.show_notification(f"🎤 Voice call connected: {pa}", 5, (0.2, 0.8, 0.2, 0.9)), 0)
                         self.streaming_active = True
+                        self.voice_peer_addr = peer_addr
+                        
+                        # Start audio receiver loop
+                        Clock.schedule_once(lambda dt: self._start_audio_receiver(), 0)
                     else:
                         output += "❌ Failed to connect to peer\n"
                         output += f"\n⚠️  Connection to {peer_ip}:9998 failed\n"
@@ -3173,19 +3181,20 @@ class PangeaDesktopApp(MDApp):
                 output += f"DCDN Port: 9090 (default)\n"
                 output += f"P2P Port: 9081 (default)\n\n"
                 
-                # Check if Go node is running to get peer ID
-                go_node_running = False
-                try:
-                    # Try to connect to Go node
-                    if self.connected and self.go_client:
-                        go_node_running = True
-                except:
-                    pass
+                # Try to get multiaddr from connected Go node first
+                multiaddr = ""
+                if self.connected and self.go_client:
+                    try:
+                        multiaddr = self.go_client.get_local_multiaddr()
+                        if multiaddr:
+                            output += "✅ Retrieved from connected Go node\n\n"
+                    except Exception as e:
+                        self.log_message(f"⚠️  Could not get multiaddr from Go node: {str(e)}")
                 
-                if not go_node_running:
-                    output += "⚠️  Go node not running - starting temporary node to get peer ID...\n\n"
+                if not multiaddr:
+                    # Fallback: Start temporary node to get multiaddr
+                    output += "⚠️  Go node not connected - starting temporary node...\n\n"
                     
-                    # Start temporary Go node
                     project_root = PROJECT_ROOT
                     go_dir = project_root / "go"
                     
@@ -3212,7 +3221,7 @@ class PangeaDesktopApp(MDApp):
                         env=env
                     )
                     
-                    # Wait for node to start and extract peer ID
+                    # Wait for node to start and extract multiaddr
                     time.sleep(3)
                     
                     # Try to read logs
@@ -3224,7 +3233,7 @@ class PangeaDesktopApp(MDApp):
                             if not line:
                                 break
                             log_output += line
-                            if len(log_output) > MAX_LOG_SIZE:  # Limit log size
+                            if len(log_output) > MAX_LOG_SIZE:
                                 break
                     except:
                         pass
@@ -3235,29 +3244,21 @@ class PangeaDesktopApp(MDApp):
                     if proc.poll() is None:
                         proc.kill()
                     
-                    # Parse logs for peer ID
+                    # Parse logs for multiaddr
                     log_str = log_output.decode('utf-8', errors='replace')
-                else:
-                    # Use existing connection
-                    log_str = ""
-                
-                # Try to extract peer ID from logs or construct multiaddr
-                peer_id = ""
-                multiaddr = ""
-                
-                # Check for full multiaddr in logs
-                multiaddr_match = re.search(r'/ip4/[0-9.]+/tcp/\d+/p2p/[a-zA-Z0-9]+', log_str)
-                if multiaddr_match:
-                    multiaddr = multiaddr_match.group(0)
-                    # Replace 0.0.0.0 or 127.0.0.1 with actual local IP
-                    multiaddr = re.sub(r'/ip4/(0\.0\.0\.0|127\.0\.0\.1)', f'/ip4/{local_ip}', multiaddr)
-                    peer_id = re.search(r'/p2p/([a-zA-Z0-9]+)', multiaddr).group(1) if '/p2p/' in multiaddr else ""
-                else:
-                    # Try to extract just peer ID
-                    peer_id_match = re.search(r'Node ID: ([a-zA-Z0-9]+)', log_str)
-                    if peer_id_match:
-                        peer_id = peer_id_match.group(1)
-                        multiaddr = f"/ip4/{local_ip}/tcp/9081/p2p/{peer_id}"
+                    
+                    # Check for full multiaddr in logs
+                    multiaddr_match = re.search(r'/ip4/[0-9.]+/tcp/\d+/p2p/[a-zA-Z0-9]+', log_str)
+                    if multiaddr_match:
+                        multiaddr = multiaddr_match.group(0)
+                        # Replace 0.0.0.0 or 127.0.0.1 with actual local IP
+                        multiaddr = re.sub(r'/ip4/(0\.0\.0\.0|127\.0\.0\.1)', f'/ip4/{local_ip}', multiaddr)
+                    else:
+                        # Try to extract just peer ID
+                        peer_id_match = re.search(r'Node ID: ([a-zA-Z0-9]+)', log_str)
+                        if peer_id_match:
+                            peer_id = peer_id_match.group(1)
+                            multiaddr = f"/ip4/{local_ip}/tcp/9081/p2p/{peer_id}"
                 
                 if multiaddr:
                     output += "✅ SHARE THIS MULTIADDR WITH THE OTHER NODE:\n\n"
@@ -3268,10 +3269,10 @@ class PangeaDesktopApp(MDApp):
                     output += "  2. Paste this multiaddr\n"
                     output += "  3. They will connect to you!\n"
                 else:
-                    output += "⚠️  Could not extract peer ID\n\n"
+                    output += "⚠️  Could not extract multiaddr\n\n"
                     output += f"Manual multiaddr format:\n"
                     output += f"  /ip4/{local_ip}/tcp/9081/p2p/<PEER_ID>\n\n"
-                    output += "Start a Go node to get the peer ID automatically.\n"
+                    output += "Connect to a Go node first for automatic multiaddr retrieval.\n"
                 
                 Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
                 self.log_message("✅ Multiaddr displayed")
@@ -3707,6 +3708,139 @@ class PangeaDesktopApp(MDApp):
                 Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
         
         threading.Thread(target=test_video_thread, daemon=True).start()
+    
+    def _start_video_receiver(self):
+        """Start a background thread to receive and display video frames."""
+        def receiver_thread():
+            try:
+                self.log_message("📺 Starting video receiver...")
+                
+                # Try to import cv2 for display
+                try:
+                    import cv2
+                    import numpy as np
+                    cv2_available = True
+                except ImportError:
+                    cv2_available = False
+                    self.log_message("⚠️  OpenCV not available - cannot display video")
+                    return
+                
+                window_name = "Incoming Video - Pangea Net"
+                cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+                cv2.resizeWindow(window_name, VIDEO_WIDTH, VIDEO_HEIGHT)
+                
+                frame_count = 0
+                last_frame_id = -1
+                
+                while self.streaming_active:
+                    try:
+                        # Poll for new frames
+                        frames = self.go_client.get_received_frames(max_frames=5)
+                        
+                        if frames:
+                            # Display the most recent frame
+                            latest_frame = frames[-1]
+                            frame_id = latest_frame['frameId']
+                            
+                            # Only display if it's a new frame
+                            if frame_id > last_frame_id:
+                                # Decode JPEG data
+                                jpeg_data = latest_frame['data']
+                                nparr = np.frombuffer(jpeg_data, np.uint8)
+                                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                                
+                                if frame is not None:
+                                    # Display frame
+                                    cv2.imshow(window_name, frame)
+                                    
+                                    frame_count += 1
+                                    last_frame_id = frame_id
+                                    
+                                    if frame_count % 30 == 0:  # Log every second at 30fps
+                                        self.log_message(f"📺 Received {frame_count} frames")
+                        
+                        # Check for window close
+                        if cv2.waitKey(1) & 0xFF == ord('q'):
+                            self.log_message("Video window closed by user")
+                            break
+                        
+                        if cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) < 1:
+                            self.log_message("Video window closed")
+                            break
+                    
+                    except Exception as e:
+                        self.log_message(f"⚠️  Error receiving frame: {str(e)}")
+                    
+                    # Sleep briefly to avoid busy waiting (target ~30fps check rate)
+                    time.sleep(0.033)
+                
+                # Cleanup
+                cv2.destroyWindow(window_name)
+                self.log_message("📺 Video receiver stopped")
+                
+            except Exception as e:
+                self.log_message(f"❌ Video receiver error: {str(e)}\n{traceback.format_exc()}")
+        
+        threading.Thread(target=receiver_thread, daemon=True).start()
+    
+    def _start_audio_receiver(self):
+        """Start a background thread to receive and play audio chunks."""
+        def receiver_thread():
+            try:
+                self.log_message("🔊 Starting audio receiver...")
+                
+                # Try to import pyaudio for playback
+                try:
+                    import pyaudio
+                    pyaudio_available = True
+                except ImportError:
+                    pyaudio_available = False
+                    self.log_message("⚠️  PyAudio not available - cannot play audio")
+                    return
+                
+                # Initialize PyAudio
+                p = pyaudio.PyAudio()
+                stream = p.open(
+                    format=pyaudio.paInt16,
+                    channels=AUDIO_CHANNELS,
+                    rate=AUDIO_SAMPLE_RATE,
+                    output=True,
+                    frames_per_buffer=AUDIO_CHUNK_SIZE
+                )
+                
+                chunk_count = 0
+                
+                while self.streaming_active:
+                    try:
+                        # Poll for new audio chunks
+                        chunks = self.go_client.get_received_audio(max_chunks=10)
+                        
+                        if chunks:
+                            # Play each chunk
+                            for chunk in chunks:
+                                audio_data = chunk['data']
+                                stream.write(audio_data)
+                                chunk_count += 1
+                            
+                            if chunk_count % 50 == 0:  # Log every ~second
+                                self.log_message(f"🔊 Played {chunk_count} audio chunks")
+                    
+                    except Exception as e:
+                        self.log_message(f"⚠️  Error receiving audio: {str(e)}")
+                    
+                    # Sleep briefly
+                    time.sleep(0.02)
+                
+                # Cleanup
+                stream.stop_stream()
+                stream.close()
+                p.terminate()
+                self.log_message("🔊 Audio receiver stopped")
+                
+            except Exception as e:
+                self.log_message(f"❌ Audio receiver error: {str(e)}\n{traceback.format_exc()}")
+        
+        threading.Thread(target=receiver_thread, daemon=True).start()
     
     # ==========================================================================
     # Utility Methods
