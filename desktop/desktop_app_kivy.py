@@ -1167,10 +1167,7 @@ class PangeaDesktopApp(MDApp):
                 if m:
                     addr = m.group(1)
                     if '/ip4/0.0.0.0' in addr:
-                        try:
-                            local_ip = socket.gethostbyname(socket.gethostname())
-                        except Exception:
-                            local_ip = '127.0.0.1'
+                        local_ip = self._detect_local_ip()
                         addr = addr.replace('/ip4/0.0.0.0', f'/ip4/{local_ip}')
                     self.local_multiaddrs = {addr}
                     Clock.schedule_once(lambda dt: self._update_multiaddr_ui(), 0)
@@ -2219,10 +2216,10 @@ class PangeaDesktopApp(MDApp):
                 
                 output = "=== IP Address Information ===\n\n"
                 
-                # Local IP
+                # Local IP - use robust detection
                 try:
                     hostname = socket.gethostname()
-                    local_ip = socket.gethostbyname(hostname)
+                    local_ip = self._detect_local_ip()
                     output += f"Local IP: {local_ip}\n"
                     output += f"Hostname: {hostname}\n\n"
                 except Exception as e:

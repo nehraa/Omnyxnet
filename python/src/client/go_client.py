@@ -689,7 +689,7 @@ class GoNodeClient:
         async def _async_send_chat():
             chat_msg = self.schema.ChatMessage.new_message()
             chat_msg.peerAddr = peer_addr
-            chat_msg.message_ = message  # Note: 'message' might be reserved
+            chat_msg.message = message
             chat_msg.timestamp = int(time.time() * 1000)
             result = await self.service.sendChatMessage(chat_msg)
             return result.success
