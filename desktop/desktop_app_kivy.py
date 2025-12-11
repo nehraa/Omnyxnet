@@ -1167,10 +1167,7 @@ class PangeaDesktopApp(MDApp):
                 if m:
                     addr = m.group(1)
                     if '/ip4/0.0.0.0' in addr:
-                        try:
-                            local_ip = socket.gethostbyname(socket.gethostname())
-                        except Exception:
-                            local_ip = '127.0.0.1'
+                        local_ip = self._detect_local_ip()
                         addr = addr.replace('/ip4/0.0.0.0', f'/ip4/{local_ip}')
                     self.local_multiaddrs = {addr}
                     Clock.schedule_once(lambda dt: self._update_multiaddr_ui(), 0)
@@ -2219,10 +2216,10 @@ class PangeaDesktopApp(MDApp):
                 
                 output = "=== IP Address Information ===\n\n"
                 
-                # Local IP
+                # Local IP - use robust detection
                 try:
                     hostname = socket.gethostname()
-                    local_ip = socket.gethostbyname(hostname)
+                    local_ip = self._detect_local_ip()
                     output += f"Local IP: {local_ip}\n"
                     output += f"Hostname: {hostname}\n\n"
                 except Exception as e:
@@ -2298,12 +2295,18 @@ class PangeaDesktopApp(MDApp):
                     else:
                         output += "❌ Failed to connect to peer\n"
                         output += f"\n⚠️  Connection to {peer_ip}:9999 failed\n"
+                        output += "\n⚠️  IMPORTANT: Both devices must have chat service running!\n"
+                        output += "\nSetup Steps:\n"
+                        output += "  1. On BOTH devices: Click 'Start Chat'\n"
+                        output += "  2. Device A: Enter Device B's IP and click button\n"
+                        output += "  3. Device B: Enter Device A's IP and click button\n"
+                        output += "  4. Both should connect successfully\n"
                         output += "\nTroubleshooting:\n"
-                        output += "  1. Verify peer IP address is correct\n"
-                        output += "  2. Ensure peer node is running and connected\n"
-                        output += "  3. Check firewall allows port 9999\n"
-                        output += "  4. Confirm peer is on same network or reachable\n"
-                        output += "\n💡 Tip: Still listening - peer can initiate connection to you\n"
+                        output += "  • Verify peer IP address is correct (use 'Show My IP')\n"
+                        output += "  • Ensure peer has chat service started (listening)\n"
+                        output += "  • Check firewall allows port 9999 on both devices\n"
+                        output += "  • Confirm devices are on same network\n"
+                        output += "\n💡 This device is STILL LISTENING - peer can connect to you!\n"
                         self.chat_active = True  # Keep listener active
                 else:
                     output += "❌ Failed to start chat service\n"
@@ -2435,12 +2438,18 @@ class PangeaDesktopApp(MDApp):
                     else:
                         output += "❌ Failed to connect to peer\n"
                         output += f"\n⚠️  Connection to {peer_ip}:9996 failed\n"
+                        output += "\n⚠️  IMPORTANT: Both devices must have video service running!\n"
+                        output += "\nSetup Steps:\n"
+                        output += "  1. On BOTH devices: Click 'Start Video Call'\n"
+                        output += "  2. Device A: Enter Device B's IP and click button\n"
+                        output += "  3. Device B: Enter Device A's IP and click button\n"
+                        output += "  4. Both should connect and start streaming\n"
                         output += "\nTroubleshooting:\n"
-                        output += "  1. Verify peer IP address is correct\n"
-                        output += "  2. Ensure peer node is running and connected\n"
-                        output += "  3. Check firewall allows port 9996\n"
-                        output += "  4. Confirm peer is on same network or reachable\n"
-                        output += "\n💡 Tip: Still listening - peer can initiate connection to you\n"
+                        output += "  • Verify peer IP address is correct (use 'Show My IP')\n"
+                        output += "  • Ensure peer has video service started (listening)\n"
+                        output += "  • Check firewall allows port 9996 on both devices\n"
+                        output += "  • Confirm devices are on same network\n"
+                        output += "\n💡 This device is STILL LISTENING - peer can connect to you!\n"
                         self.streaming_active = True  # Keep listener active
                 else:
                     output += "❌ Failed to start video service\n"
@@ -2539,12 +2548,18 @@ class PangeaDesktopApp(MDApp):
                     else:
                         output += "❌ Failed to connect to peer\n"
                         output += f"\n⚠️  Connection to {peer_ip}:9998 failed\n"
+                        output += "\n⚠️  IMPORTANT: Both devices must have voice service running!\n"
+                        output += "\nSetup Steps:\n"
+                        output += "  1. On BOTH devices: Click 'Start Voice Call'\n"
+                        output += "  2. Device A: Enter Device B's IP and click button\n"
+                        output += "  3. Device B: Enter Device A's IP and click button\n"
+                        output += "  4. Both should connect and start streaming\n"
                         output += "\nTroubleshooting:\n"
-                        output += "  1. Verify peer IP address is correct\n"
-                        output += "  2. Ensure peer node is running and connected\n"
-                        output += "  3. Check firewall allows port 9998\n"
-                        output += "  4. Confirm peer is on same network or reachable\n"
-                        output += "\n💡 Tip: Still listening - peer can initiate connection to you\n"
+                        output += "  • Verify peer IP address is correct (use 'Show My IP')\n"
+                        output += "  • Ensure peer has voice service started (listening)\n"
+                        output += "  • Check firewall allows port 9998 on both devices\n"
+                        output += "  • Confirm devices are on same network\n"
+                        output += "\n💡 This device is STILL LISTENING - peer can connect to you!\n"
                         self.streaming_active = True  # Keep listener active
                 else:
                     output += "❌ Failed to start audio service\n"
