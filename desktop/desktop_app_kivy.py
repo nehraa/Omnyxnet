@@ -2562,6 +2562,7 @@ class PangeaDesktopApp(MDApp):
         """Start capturing and sending audio chunks."""
         if not SOUNDDEVICE_AVAILABLE:
             self.log_message("❌ sounddevice not available. Install with: pip install sounddevice numpy")
+            Clock.schedule_once(lambda dt: self.show_warning("Audio Library Missing", "Install sounddevice and numpy for audio streaming"), 0)
             return
         
         # Set streaming active BEFORE starting thread to avoid race condition
@@ -2569,9 +2570,13 @@ class PangeaDesktopApp(MDApp):
         
         def audio_thread():
             try:
-                self.log_message("🎤 Audio capture started")
+                self.log_message("🎤 Audio capture started - streaming to peer")
+                chunks_sent = 0
+                send_failures = 0
                 
                 def audio_callback(indata, frames, time_info, status):
+                    nonlocal chunks_sent, send_failures
+                    
                     if status:
                         self.log_message(f"⚠️  Audio status: {status}")
                     
@@ -2579,11 +2584,22 @@ class PangeaDesktopApp(MDApp):
                     audio_bytes = (indata * MAX_INT16).astype(np.int16).tobytes()
                     
                     # Send via Go streaming service
-                    self.go_client.send_audio_chunk(
+                    success = self.go_client.send_audio_chunk(
                         data=audio_bytes,
                         sample_rate=AUDIO_SAMPLE_RATE,
                         channels=AUDIO_CHANNELS
                     )
+                    
+                    if success:
+                        chunks_sent += 1
+                    else:
+                        send_failures += 1
+                        if send_failures <= 5:  # Log first 5 failures
+                            self.log_message(f"⚠️  Audio chunk send failed")
+                    
+                    # Log progress every 100 chunks (~2 seconds)
+                    if chunks_sent % 100 == 0 and chunks_sent > 0:
+                        self.log_message(f"📊 Audio: {chunks_sent} chunks sent ({send_failures} failures)")
                 
                 with sd.InputStream(
                     samplerate=AUDIO_SAMPLE_RATE,
@@ -2595,9 +2611,10 @@ class PangeaDesktopApp(MDApp):
                     while self.streaming_active:
                         time.sleep(0.1)
                 
-                self.log_message("🎤 Audio capture stopped")
+                self.log_message(f"🎤 Audio capture stopped - {chunks_sent} chunks sent ({send_failures} failures)")
             except Exception as e:
-                self.log_message(f"❌ Audio capture error: {str(e)}")
+                error_msg = f"❌ Audio capture error: {str(e)}\n{traceback.format_exc()}"
+                self.log_message(error_msg)
         
         threading.Thread(target=audio_thread, daemon=True).start()
     
@@ -3100,6 +3117,7 @@ class PangeaDesktopApp(MDApp):
         """Start capturing and sending video frames."""
         if not CV2_AVAILABLE:
             self.log_message("❌ OpenCV not available. Install with: pip install opencv-python")
+            Clock.schedule_once(lambda dt: self.show_warning("OpenCV Missing", "Install opencv-python to enable video streaming"), 0)
             return
         
         # Set streaming active BEFORE starting thread to avoid race condition
@@ -3117,10 +3135,15 @@ class PangeaDesktopApp(MDApp):
                 
                 if not cap.isOpened():
                     self.log_message("❌ Could not open video source")
+                    Clock.schedule_once(lambda dt: self.show_warning("Camera Error", "Could not access camera. Check permissions."), 0)
                     return
                 
                 frame_id = 0
                 frame_delay = 1.0 / VIDEO_FPS
+                send_failures = 0
+                last_log_frame = 0
+                
+                self.log_message(f"✅ Video capture started - sending to peer at {peer_ip}:9996")
                 
                 while self.streaming_active and cap.isOpened():
                     ret, frame = cap.read()
@@ -3147,15 +3170,27 @@ class PangeaDesktopApp(MDApp):
                     )
                     
                     if not success:
-                        self.log_message(f"⚠️  Frame {frame_id} send failed")
+                        send_failures += 1
+                        if send_failures <= 5:  # Log first 5 failures
+                            self.log_message(f"⚠️  Frame {frame_id} send failed")
+                    
+                    # Log progress every 30 frames (1 second at 30fps)
+                    if frame_id - last_log_frame >= 30:
+                        if send_failures > 0:
+                            self.log_message(f"📊 Sent {frame_id} frames ({send_failures} failures)")
+                        else:
+                            self.log_message(f"📊 Sent {frame_id} frames successfully")
+                        last_log_frame = frame_id
                     
                     frame_id += 1
                     time.sleep(frame_delay)
                 
                 cap.release()
-                self.log_message("📹 Video capture stopped")
+                total_success = frame_id - send_failures
+                self.log_message(f"📹 Video capture stopped - {total_success}/{frame_id} frames sent successfully")
             except Exception as e:
-                self.log_message(f"❌ Video capture error: {str(e)}")
+                error_msg = f"❌ Video capture error: {str(e)}\n{traceback.format_exc()}"
+                self.log_message(error_msg)
         
         self.streaming_active = True
         threading.Thread(target=capture_thread, daemon=True).start()
