@@ -43,6 +43,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "python" / "src"))
 # Constants for timeouts and output limits
 DCDN_DEMO_TIMEOUT = 60  # seconds
 DCDN_TEST_TIMEOUT = 120  # seconds
+MAX_LOGGED_FAILURES = 5  # Max streaming failures to log individually
 
 # Streaming constants
 VIDEO_WIDTH = 640
@@ -1200,8 +1201,11 @@ class PangeaDesktopApp(MDApp):
     def _auto_start_p2p_listeners(self):
         """Auto-start P2P listening services on standard ports (always-on P2P model)."""
         try:
+            services_status = {'video': False, 'audio': False, 'chat': False}
+            
             # Start video listener on port 9996
             video_success = self.go_client.start_streaming(port=9996, stream_type=0)
+            services_status['video'] = video_success
             if video_success:
                 self.log_message("✅ Video listening on port 9996")
             else:
@@ -1211,6 +1215,7 @@ class PangeaDesktopApp(MDApp):
             
             # Start audio listener on port 9998
             audio_success = self.go_client.start_streaming(port=9998, stream_type=1)
+            services_status['audio'] = audio_success
             if audio_success:
                 self.log_message("✅ Audio listening on port 9998")
             else:
@@ -1220,17 +1225,22 @@ class PangeaDesktopApp(MDApp):
             
             # Start chat listener on port 9999
             chat_success = self.go_client.start_streaming(port=9999, stream_type=2)
+            services_status['chat'] = chat_success
             if chat_success:
                 self.log_message("✅ Chat listening on port 9999")
             else:
                 self.log_message("⚠️  Chat listener failed (port 9999 may be in use)")
             
-            if video_success or audio_success or chat_success:
-                self.log_message("🎉 P2P services ready - peers can now connect to you!")
+            # Show summary with specific service status
+            active_services = [name for name, status in services_status.items() if status]
+            if active_services:
+                status_str = ', '.join([f"{name} {'✅' if services_status[name] else '❌'}" for name in ['video', 'audio', 'chat']])
+                self.log_message(f"🎉 P2P services ready: {status_str}")
             else:
-                self.log_message("⚠️  P2P listeners may already be running or ports are in use")
+                self.log_message("⚠️  No P2P listeners started - ports may already be in use")
         except Exception as e:
             self.log_message(f"⚠️  Error starting P2P listeners: {str(e)}")
+            logger.error(f"P2P listener startup error: {traceback.format_exc()}")
     
     def on_connect_failed(self, host, port):
         """Handle failed connection."""
@@ -1250,8 +1260,8 @@ class PangeaDesktopApp(MDApp):
             try:
                 if self.go_client:
                     self.go_client.stop_streaming()
-            except:
-                pass
+            except Exception as e:
+                logger.error(f"Error stopping streaming on disconnect: {e}")
             self.streaming_active = False
             self.chat_active = False
         
@@ -1471,8 +1481,9 @@ class PangeaDesktopApp(MDApp):
                                 output += f"     Jitter: {quality['jitterMs']:.2f}ms\n"
                                 output += f"     Packet Loss: {quality['packetLoss']:.2%}\n"
                             output += "\n"
-                        except:
-                            output += f"  ✅ Peer ID {peer_id} (connected)\n\n"
+                        except Exception as e:
+                            output += f"  ✅ Peer ID {peer_id} (connected, quality unavailable)\n\n"
+                            logger.debug(f"Could not get quality for peer {peer_id}: {e}")
                 else:
                     output += "  No active peer connections\n"
                 output += "\n"
@@ -2594,7 +2605,7 @@ class PangeaDesktopApp(MDApp):
                         chunks_sent += 1
                     else:
                         send_failures += 1
-                        if send_failures <= 5:  # Log first 5 failures
+                        if send_failures <= MAX_LOGGED_FAILURES:
                             self.log_message(f"⚠️  Audio chunk send failed")
                     
                     # Log progress every 100 chunks (~2 seconds)
@@ -3171,7 +3182,7 @@ class PangeaDesktopApp(MDApp):
                     
                     if not success:
                         send_failures += 1
-                        if send_failures <= 5:  # Log first 5 failures
+                        if send_failures <= MAX_LOGGED_FAILURES:
                             self.log_message(f"⚠️  Frame {frame_id} send failed")
                     
                     # Log progress every 30 frames (1 second at 30fps)
