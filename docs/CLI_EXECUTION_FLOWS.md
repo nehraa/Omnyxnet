@@ -435,28 +435,32 @@ sequenceDiagram
 All RPC calls in `GoNodeClient` follow this pattern:
 
 ```python
-def method_name(self, args) -> ReturnType:
+# NOTE: This is a template showing the common pattern.
+# Replace placeholders with actual method/type names from the implementation.
+
+def method_name(self, args) -> ReturnType:  # e.g., get_all_nodes(self) -> List[Dict]
     """Method documentation."""
     if not self._connected:
         raise RuntimeError("Not connected to Go node")
     
-    async def _async_method():
+    async def _async_method():  # Internal async wrapper
         # Create request message if needed
-        request = self.schema.RequestType.new_message()
-        request.field = value
+        request = self.schema.RequestType.new_message()  # e.g., NodeQuery.new_message()
+        request.field = value  # Set request fields
         
         # Make RPC call
-        result = await self.service.rpcMethodName(request)
+        result = await self.service.rpcMethodName(request)  # e.g., service.getAllNodes()
         
         # Parse and return result
-        return parse_result(result)
+        return parse_result(result)  # Extract and transform response data
     
     try:
+        # Schedule coroutine in background event loop
         future = asyncio.run_coroutine_threadsafe(_async_method(), self._loop)
         return future.result(timeout=5.0)
     except Exception as e:
         logger.error(f"Error: {e}")
-        return fallback_value
+        return fallback_value  # e.g., [] for list methods, None for optional returns
 ```
 
 ### Connection Lifecycle
