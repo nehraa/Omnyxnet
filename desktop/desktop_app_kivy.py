@@ -552,44 +552,75 @@ class MainScreen(MDScreen):
         chat_label = MDLabel(text="Chat Messaging", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
         tab.inner_layout.add_widget(chat_label)
         
+        # IP Display Row
+        ip_row = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
+        ip_row.add_widget(MDRaisedButton(
+            text="Show My IP",
+            size_hint_x=0.25,
+            on_release=lambda x: app_ref.show_my_ip(),
+            md_bg_color=(0.2, 0.6, 0.2, 1)  # Green color for visibility
+        ))
+        ip_row.add_widget(MDLabel(
+            text="← Share this IP with the other node",
+            size_hint_x=0.75
+        ))
+        tab.inner_layout.add_widget(ip_row)
+        
         chat_input_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.chat_peer_ip = MDTextField(
-            hint_text="Peer IP address",
+            hint_text="Peer IP address (from their 'Show My IP')",
             mode="rectangle",
-            size_hint_x=0.4
+            size_hint_x=0.5
         )
         chat_input_layout.add_widget(self.chat_peer_ip)
-        self.chat_message = MDTextField(
-            hint_text="Message to send",
-            mode="rectangle",
-            size_hint_x=0.4
-        )
-        chat_input_layout.add_widget(self.chat_message)
         chat_input_layout.add_widget(MDRaisedButton(
-            text="Start Chat",
-            size_hint_x=0.2,
+            text="Start Chat Session",
+            size_hint_x=0.25,
             on_release=lambda x: app_ref.start_chat()
+        ))
+        chat_input_layout.add_widget(MDRaisedButton(
+            text="Stop Chat",
+            size_hint_x=0.25,
+            on_release=lambda x: app_ref.stop_chat()
         ))
         tab.inner_layout.add_widget(chat_input_layout)
         
-        chat_button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
-        chat_button_layout.add_widget(MDRaisedButton(
+        # Message sending row
+        msg_row = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
+        self.chat_message = MDTextField(
+            hint_text="Type your message here...",
+            mode="rectangle",
+            size_hint_x=0.7
+        )
+        msg_row.add_widget(self.chat_message)
+        msg_row.add_widget(MDRaisedButton(
             text="Send Message",
+            size_hint_x=0.3,
             on_release=lambda x: app_ref.send_chat_message()
         ))
-        chat_button_layout.add_widget(MDRaisedButton(
-            text="Stop Chat",
-            on_release=lambda x: app_ref.stop_chat()
-        ))
-        tab.inner_layout.add_widget(chat_button_layout)
+        tab.inner_layout.add_widget(msg_row)
         
         # Video Section
         video_label = MDLabel(text="Video Call", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
         tab.inner_layout.add_widget(video_label)
         
+        # IP Display Row for Video
+        video_ip_row = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
+        video_ip_row.add_widget(MDRaisedButton(
+            text="Show My IP",
+            size_hint_x=0.25,
+            on_release=lambda x: app_ref.show_my_ip(),
+            md_bg_color=(0.2, 0.6, 0.2, 1)
+        ))
+        video_ip_row.add_widget(MDLabel(
+            text="← Share this IP with the other node",
+            size_hint_x=0.75
+        ))
+        tab.inner_layout.add_widget(video_ip_row)
+        
         video_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.video_peer_ip = MDTextField(
-            hint_text="Peer IP address",
+            hint_text="Peer IP address (from their 'Show My IP')",
             mode="rectangle",
             size_hint_x=0.5
         )
@@ -610,9 +641,23 @@ class MainScreen(MDScreen):
         voice_label = MDLabel(text="Voice Call", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
         tab.inner_layout.add_widget(voice_label)
         
+        # IP Display Row for Voice
+        voice_ip_row = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
+        voice_ip_row.add_widget(MDRaisedButton(
+            text="Show My IP",
+            size_hint_x=0.25,
+            on_release=lambda x: app_ref.show_my_ip(),
+            md_bg_color=(0.2, 0.6, 0.2, 1)
+        ))
+        voice_ip_row.add_widget(MDLabel(
+            text="← Share this IP with the other node",
+            size_hint_x=0.75
+        ))
+        tab.inner_layout.add_widget(voice_ip_row)
+        
         voice_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.voice_peer_ip = MDTextField(
-            hint_text="Peer IP address",
+            hint_text="Peer IP address (from their 'Show My IP')",
             mode="rectangle",
             size_hint_x=0.5
         )
@@ -664,6 +709,41 @@ class MainScreen(MDScreen):
         # DCDN Info
         info_label = MDLabel(text="Distributed CDN System", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
         tab.inner_layout.add_widget(info_label)
+        
+        # Connection Section
+        conn_label = MDLabel(text="P2P Connection Setup", font_style="Subtitle1", size_hint_y=None, height=dp(30), adaptive_height=True)
+        tab.inner_layout.add_widget(conn_label)
+        
+        conn_button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
+        conn_button_layout.add_widget(MDRaisedButton(
+            text="Show My Multiaddr",
+            size_hint_x=0.33,
+            on_release=lambda x: app_ref.show_dcdn_multiaddr(),
+            md_bg_color=(0.2, 0.6, 0.2, 1)  # Green
+        ))
+        conn_button_layout.add_widget(MDRaisedButton(
+            text="Connect to Peer",
+            size_hint_x=0.33,
+            on_release=lambda x: app_ref.connect_dcdn_peer(),
+            md_bg_color=(0.2, 0.4, 0.8, 1)  # Blue
+        ))
+        conn_button_layout.add_widget(MDRaisedButton(
+            text="Show My IP",
+            size_hint_x=0.34,
+            on_release=lambda x: app_ref.show_my_ip(),
+            md_bg_color=(0.2, 0.6, 0.2, 1)  # Green
+        ))
+        tab.inner_layout.add_widget(conn_button_layout)
+        
+        # Peer Multiaddr Input
+        peer_input_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
+        self.dcdn_peer_multiaddr = MDTextField(
+            hint_text="Paste peer's multiaddr here (from their 'Show My Multiaddr')",
+            mode="rectangle",
+            size_hint_x=1.0
+        )
+        peer_input_layout.add_widget(self.dcdn_peer_multiaddr)
+        tab.inner_layout.add_widget(peer_input_layout)
         
         # Basic DCDN Buttons
         button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
@@ -3014,6 +3094,233 @@ class PangeaDesktopApp(MDApp):
                 Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
         
         threading.Thread(target=dcdn_info_thread, daemon=True).start()
+    
+    def show_dcdn_multiaddr(self):
+        """Display this node's DCDN multiaddr for peer to connect."""
+        self.log_message("🌐 Getting DCDN multiaddr...")
+        
+        def show_multiaddr_thread():
+            try:
+                output = "=== MY DCDN MULTIADDR ===\n\n"
+                
+                # Get local IP
+                local_ip = self._detect_local_ip()
+                output += f"Local IP: {local_ip}\n"
+                output += f"DCDN Port: 9090 (default)\n"
+                output += f"P2P Port: 9081 (default)\n\n"
+                
+                # Check if Go node is running to get peer ID
+                go_node_running = False
+                try:
+                    # Try to connect to Go node
+                    if self.connected and self.go_client:
+                        go_node_running = True
+                except:
+                    pass
+                
+                if not go_node_running:
+                    output += "⚠️  Go node not running - starting temporary node to get peer ID...\n\n"
+                    
+                    # Start temporary Go node
+                    project_root = PROJECT_ROOT
+                    go_dir = project_root / "go"
+                    
+                    if not (go_dir / "bin" / "go-node").exists():
+                        output += "❌ Go node not built. Please build first.\n"
+                        Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                        return
+                    
+                    # Set library paths
+                    env = os.environ.copy()
+                    rust_lib = str(project_root / "rust" / "target" / "release")
+                    env["LD_LIBRARY_PATH"] = f"{rust_lib}:{env.get('LD_LIBRARY_PATH', '')}"
+                    env["DYLD_LIBRARY_PATH"] = f"{rust_lib}:{env.get('DYLD_LIBRARY_PATH', '')}"
+                    
+                    # Start node temporarily
+                    proc = subprocess.Popen(
+                        [str(go_dir / "bin" / "go-node"), 
+                         "-node-id=1", "-capnp-addr=:8080", 
+                         "-libp2p=true", "-libp2p-port=9081", "-local"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=False,
+                        cwd=str(go_dir),
+                        env=env
+                    )
+                    
+                    # Wait for node to start and extract peer ID
+                    time.sleep(3)
+                    
+                    # Try to read logs
+                    log_output = b""
+                    try:
+                        proc.stdout.flush()
+                        while True:
+                            line = proc.stdout.readline()
+                            if not line:
+                                break
+                            log_output += line
+                            if len(log_output) > 10000:  # Limit log size
+                                break
+                    except:
+                        pass
+                    
+                    # Kill the temporary node
+                    proc.terminate()
+                    time.sleep(1)
+                    if proc.poll() is None:
+                        proc.kill()
+                    
+                    # Parse logs for peer ID
+                    log_str = log_output.decode('utf-8', errors='replace')
+                else:
+                    # Use existing connection
+                    log_str = ""
+                
+                # Try to extract peer ID from logs or construct multiaddr
+                peer_id = ""
+                multiaddr = ""
+                
+                # Check for full multiaddr in logs
+                import re
+                multiaddr_match = re.search(r'/ip4/[0-9.]+/tcp/\d+/p2p/[a-zA-Z0-9]+', log_str)
+                if multiaddr_match:
+                    multiaddr = multiaddr_match.group(0)
+                    # Replace 0.0.0.0 or 127.0.0.1 with actual local IP
+                    multiaddr = re.sub(r'/ip4/(0\.0\.0\.0|127\.0\.0\.1)', f'/ip4/{local_ip}', multiaddr)
+                    peer_id = re.search(r'/p2p/([a-zA-Z0-9]+)', multiaddr).group(1) if '/p2p/' in multiaddr else ""
+                else:
+                    # Try to extract just peer ID
+                    peer_id_match = re.search(r'Node ID: ([a-zA-Z0-9]+)', log_str)
+                    if peer_id_match:
+                        peer_id = peer_id_match.group(1)
+                        multiaddr = f"/ip4/{local_ip}/tcp/9081/p2p/{peer_id}"
+                
+                if multiaddr:
+                    output += "✅ SHARE THIS MULTIADDR WITH THE OTHER NODE:\n\n"
+                    output += f"  {multiaddr}\n\n"
+                    output += "(Copy the full line above)\n\n"
+                    output += "The other node should:\n"
+                    output += "  1. Click 'Connect to Peer'\n"
+                    output += "  2. Paste this multiaddr\n"
+                    output += "  3. They will connect to you!\n"
+                else:
+                    output += "⚠️  Could not extract peer ID\n\n"
+                    output += f"Manual multiaddr format:\n"
+                    output += f"  /ip4/{local_ip}/tcp/9081/p2p/<PEER_ID>\n\n"
+                    output += "Start a Go node to get the peer ID automatically.\n"
+                
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                self.log_message("✅ Multiaddr displayed")
+            except Exception as e:
+                error_msg = f"❌ Error getting multiaddr: {str(e)}\n"
+                error_msg += f"Traceback: {traceback.format_exc()}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+        
+        threading.Thread(target=show_multiaddr_thread, daemon=True).start()
+    
+    def connect_dcdn_peer(self):
+        """Connect to a DCDN peer using their multiaddr."""
+        peer_multiaddr = self.main_screen.dcdn_peer_multiaddr.text.strip()
+        
+        if not peer_multiaddr:
+            self.show_warning("No Multiaddr", "Please enter the peer's multiaddr in the text field")
+            return
+        
+        self.log_message(f"🔗 Connecting to DCDN peer: {peer_multiaddr[:50]}...")
+        
+        def connect_thread():
+            try:
+                output = "=== CONNECTING TO DCDN PEER ===\n\n"
+                output += f"Peer Multiaddr: {peer_multiaddr}\n\n"
+                
+                # Parse multiaddr
+                import re
+                peer_ip = re.search(r'/ip4/([0-9.]+)', peer_multiaddr)
+                peer_port = re.search(r'/tcp/(\d+)', peer_multiaddr)
+                peer_id = re.search(r'/p2p/([a-zA-Z0-9]+)', peer_multiaddr)
+                
+                if not peer_ip:
+                    output += "❌ Could not parse IP from multiaddr\n"
+                    Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                    return
+                
+                peer_ip = peer_ip.group(1)
+                peer_port = peer_port.group(1) if peer_port else "9081"
+                peer_id = peer_id.group(1) if peer_id else ""
+                
+                output += f"Peer IP: {peer_ip}\n"
+                output += f"Peer Port: {peer_port}\n"
+                if peer_id:
+                    output += f"Peer ID: {peer_id[:20]}...\n"
+                output += "\n"
+                
+                # Check if Go node is running
+                if not self.connected or not self.go_client:
+                    output += "Starting local Go node to connect...\n\n"
+                    
+                    # Start local Go node with peer connection
+                    project_root = PROJECT_ROOT
+                    go_dir = project_root / "go"
+                    
+                    if not (go_dir / "bin" / "go-node").exists():
+                        output += "❌ Go node not built. Please build first.\n"
+                        Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                        return
+                    
+                    # Set library paths
+                    env = os.environ.copy()
+                    rust_lib = str(project_root / "rust" / "target" / "release")
+                    env["LD_LIBRARY_PATH"] = f"{rust_lib}:{env.get('LD_LIBRARY_PATH', '')}"
+                    env["DYLD_LIBRARY_PATH"] = f"{rust_lib}:{env.get('DYLD_LIBRARY_PATH', '')}"
+                    
+                    # Start node with peer connection
+                    proc = subprocess.Popen(
+                        [str(go_dir / "bin" / "go-node"),
+                         "-node-id=2", "-capnp-addr=:8081",
+                         "-libp2p=true", "-libp2p-port=9082",
+                         f"-peers={peer_multiaddr}", "-local"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=False,
+                        cwd=str(go_dir),
+                        env=env
+                    )
+                    
+                    time.sleep(3)
+                    
+                    # Check if connected
+                    if proc.poll() is None:
+                        output += "✅ Node started and attempting connection...\n\n"
+                        output += "Connection details:\n"
+                        output += f"  Peer IP: {peer_ip}\n"
+                        output += f"  Peer Port: {peer_port}\n"
+                        output += "\n"
+                        output += "🎉 Connection in progress!\n"
+                        output += "\nNode is running in background.\n"
+                        output += "You can now use DCDN features.\n"
+                    else:
+                        output += "❌ Node failed to start\n"
+                        # Try to get error output
+                        err_out = proc.stdout.read().decode('utf-8', errors='replace')
+                        if err_out:
+                            output += f"\nError output:\n{err_out[:500]}\n"
+                else:
+                    output += "✅ Using existing Go node connection\n\n"
+                    # Try to connect to peer via Go client if method exists
+                    output += "Note: Manual peer connection through existing node\n"
+                    output += "Use CLI commands to connect if needed.\n"
+                
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                self.log_message("✅ Connection initiated")
+            except Exception as e:
+                error_msg = f"❌ Error connecting to peer: {str(e)}\n"
+                error_msg += f"Traceback: {traceback.format_exc()}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+        
+        threading.Thread(target=connect_thread, daemon=True).start()
     
     def test_dcdn(self):
         """Run DCDN tests."""
