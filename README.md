@@ -227,6 +227,8 @@ download                Download file using CES reconstruction and Go transport 
 
 AI/ML interface for threat prediction and node management.
 
+**📖 For detailed execution flows of all CLI commands, see [CLI Execution Flows Documentation](docs/CLI_EXECUTION_FLOWS.md)**
+
 ```bash
 # Activate virtual environment first
 source .venv/bin/activate

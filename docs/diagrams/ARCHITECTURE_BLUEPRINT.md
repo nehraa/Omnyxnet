@@ -451,6 +451,7 @@ Results aggregation and verification
 
 - [README.md](./README.md) - Project overview and quick start
 - [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) - Detailed architecture documentation
+- [docs/CLI_EXECUTION_FLOWS.md](./docs/CLI_EXECUTION_FLOWS.md) - Detailed Python CLI command execution flows
 - [docs/VERSION.md](./docs/VERSION.md) - Version history and features
 - [docs/SETUP_GUIDE.md](./docs/SETUP_GUIDE.md) - Setup and installation guide
 - [python/README.md](./python/README.md) - Python layer documentation
