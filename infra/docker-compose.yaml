@@ -14,28 +14,11 @@ services:
       - NODE_ID=1
       - RPC_ADDR=0.0.0.0:8080
       - LOG_LEVEL=info
-      # Datadog
-      - DD_API_KEY=${DD_API_KEY}
-      - DD_SITE=${DD_SITE}
       - DD_ENV=production
       - DD_SERVICE=go-orchestrator
       - DD_VERSION=0.6.0-alpha
-      # New Relic
-      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
       - NEW_RELIC_APP_NAME=go-orchestrator
-      # Sentry
-      - SENTRY_DSN=${SENTRY_DSN}
       - SENTRY_ENVIRONMENT=production
-      - SENTRY_SEND_DEFAULT_PII=${SENTRY_SEND_DEFAULT_PII}
-      # LocalStack / AWS
-      - LOCALSTACK_ENDPOINT_URL=${LOCALSTACK_ENDPOINT_URL}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION}
-      # CI/Code Quality Tools
-      - TRAVIS_TOKEN=${TRAVIS_TOKEN}
-      - CODECOV_TOKEN=${CODECOV_TOKEN}
-      - CODESCENE_PAT_TOKEN=${CODESCENE_PAT_TOKEN}
     env_file:
       - ../tools/.env
     networks:
@@ -68,10 +51,6 @@ services:
       - WORKERS=4
       - CHUNK_SIZE=32
       - RUST_LOG=info
-      # CI/Code Quality Tools
-      - TRAVIS_TOKEN=${TRAVIS_TOKEN}
-      - CODECOV_TOKEN=${CODECOV_TOKEN}
-      - CODESCENE_PAT_TOKEN=${CODESCENE_PAT_TOKEN}
     env_file:
       - ../tools/.env
     networks:
@@ -108,28 +87,11 @@ services:
       - EPOCHS=5
       - PYTHONUNBUFFERED=1
       - METRICS_PORT=8081
-      # Datadog
-      - DD_API_KEY=${DD_API_KEY}
-      - DD_SITE=${DD_SITE}
       - DD_ENV=production
       - DD_SERVICE=python-ai-client
       - DD_VERSION=0.6.0-alpha
-      # New Relic
-      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
       - NEW_RELIC_APP_NAME=python-ai-client
-      # Sentry
-      - SENTRY_DSN=${SENTRY_DSN}
       - SENTRY_ENVIRONMENT=production
-      - SENTRY_SEND_DEFAULT_PII=${SENTRY_SEND_DEFAULT_PII}
-      # LocalStack / AWS
-      - LOCALSTACK_ENDPOINT_URL=${LOCALSTACK_ENDPOINT_URL}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION}
-      # CI/Code Quality Tools
-      - TRAVIS_TOKEN=${TRAVIS_TOKEN}
-      - CODECOV_TOKEN=${CODECOV_TOKEN}
-      - CODESCENE_PAT_TOKEN=${CODESCENE_PAT_TOKEN}
     env_file:
       - ../tools/.env
     networks:
@@ -159,7 +121,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ../prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -181,8 +143,8 @@ services:
       - grafana-data:/var/lib/grafana
       - ../grafana/provisioning:/etc/grafana/provisioning:ro
     environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-changeme}
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=changeme
       - GF_USERS_ALLOW_SIGN_UP=false
     networks:
       - pangea-network
@@ -200,10 +162,11 @@ services:
       - "4571:4571"
     environment:
       - SERVICES=s3,sqs,lambda,dynamodb
-      - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN}
       - DEBUG=1
       - DATA_DIR=/tmp/localstack/data
       - DOCKER_HOST=unix:///var/run/docker.sock
+    env_file:
+      - ../tools/.env
     volumes:
       - localstack-data:/tmp/localstack
       # Mounting Docker socket is required for LocalStack Lambda functionality.
