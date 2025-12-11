@@ -553,7 +553,7 @@ class MainScreen(MDScreen):
         
         chat_input_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.chat_peer_ip = MDTextField(
-            hint_text="Peer IP (or 'server' to listen)",
+            hint_text="Peer IP to connect (already listening on :9999)",
             mode="rectangle",
             size_hint_x=0.4
         )
@@ -588,7 +588,7 @@ class MainScreen(MDScreen):
         
         video_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.video_peer_ip = MDTextField(
-            hint_text="Peer IP (or 'server' to listen)",
+            hint_text="Peer IP to connect (already listening on :9996)",
             mode="rectangle",
             size_hint_x=0.5
         )
@@ -611,7 +611,7 @@ class MainScreen(MDScreen):
         
         voice_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.voice_peer_ip = MDTextField(
-            hint_text="Peer IP (or 'server' to listen)",
+            hint_text="Peer IP to connect (already listening on :9998)",
             mode="rectangle",
             size_hint_x=0.5
         )
@@ -1192,6 +1192,45 @@ class PangeaDesktopApp(MDApp):
         self.fetch_node_multiaddr()
         # Run health checks after successful connection
         self.run_health_checks()
+        
+        # Auto-start P2P listening services (always-on P2P model)
+        self.log_message("🔊 Starting always-on P2P listening services...")
+        threading.Thread(target=self._auto_start_p2p_listeners, daemon=True).start()
+    
+    def _auto_start_p2p_listeners(self):
+        """Auto-start P2P listening services on standard ports (always-on P2P model)."""
+        try:
+            # Start video listener on port 9996
+            video_success = self.go_client.start_streaming(port=9996, stream_type=0)
+            if video_success:
+                self.log_message("✅ Video listening on port 9996")
+            else:
+                self.log_message("⚠️  Video listener failed (port 9996 may be in use)")
+            
+            time.sleep(0.5)  # Brief delay between services
+            
+            # Start audio listener on port 9998
+            audio_success = self.go_client.start_streaming(port=9998, stream_type=1)
+            if audio_success:
+                self.log_message("✅ Audio listening on port 9998")
+            else:
+                self.log_message("⚠️  Audio listener failed (port 9998 may be in use)")
+            
+            time.sleep(0.5)
+            
+            # Start chat listener on port 9999
+            chat_success = self.go_client.start_streaming(port=9999, stream_type=2)
+            if chat_success:
+                self.log_message("✅ Chat listening on port 9999")
+            else:
+                self.log_message("⚠️  Chat listener failed (port 9999 may be in use)")
+            
+            if video_success or audio_success or chat_success:
+                self.log_message("🎉 P2P services ready - peers can now connect to you!")
+            else:
+                self.log_message("⚠️  P2P listeners may already be running or ports are in use")
+        except Exception as e:
+            self.log_message(f"⚠️  Error starting P2P listeners: {str(e)}")
     
     def on_connect_failed(self, host, port):
         """Handle failed connection."""
@@ -1205,6 +1244,17 @@ class PangeaDesktopApp(MDApp):
     
     def disconnect_from_node(self):
         """Disconnect from Go node."""
+        # Stop all streaming services first
+        if self.streaming_active or self.chat_active:
+            self.log_message("🛑 Stopping P2P services...")
+            try:
+                if self.go_client:
+                    self.go_client.stop_streaming()
+            except:
+                pass
+            self.streaming_active = False
+            self.chat_active = False
+        
         if self.go_client:
             if hasattr(self.go_client, 'close'):
                 self.go_client.close()
@@ -1390,30 +1440,63 @@ class PangeaDesktopApp(MDApp):
     # ==========================================================================
     
     def list_nodes(self):
-        """List all nodes in the network."""
+        """List all nodes in the network - both routing table and connected peers."""
         if not self.connected:
             self.show_warning("Not Connected", "Please connect to a node first")
             return
         
-        self.log_message("📋 Listing all nodes...")
+        self.log_message("📋 Listing all nodes and peers...")
         
         def list_nodes_thread():
             try:
+                # Get routing table nodes
                 nodes = self.go_client.get_all_nodes()
-                if nodes:
-                    output = f"Found {len(nodes)} node(s):\n\n"
-                    for node in nodes:
-                        output += f"Node {node['id']}:\n"
-                        output += f"  Status: {node['status']}\n"
-                        output += f"  Latency: {node['latencyMs']:.2f}ms\n"
-                        output += f"  Threat Score: {node['threatScore']:.3f}\n\n"
-                    Clock.schedule_once(lambda dt: self._update_node_output(output), 0)
-                    self.log_message(f"✅ Found {len(nodes)} node(s)")
+                
+                # Get actively connected peers
+                peers = self.go_client.get_connected_peers()
+                
+                output = "=== Network Nodes & Peers ===\n\n"
+                
+                # Show connected peers first (most important)
+                output += f"📡 ACTIVELY CONNECTED PEERS: {len(peers)}\n"
+                if peers:
+                    output += "-" * 50 + "\n"
+                    for peer_id in peers:
+                        try:
+                            # Try to get connection quality for each peer
+                            quality = self.go_client.get_connection_quality(peer_id)
+                            output += f"  ✅ Peer ID {peer_id}:\n"
+                            if quality:
+                                output += f"     Latency: {quality['latencyMs']:.2f}ms\n"
+                                output += f"     Jitter: {quality['jitterMs']:.2f}ms\n"
+                                output += f"     Packet Loss: {quality['packetLoss']:.2%}\n"
+                            output += "\n"
+                        except:
+                            output += f"  ✅ Peer ID {peer_id} (connected)\n\n"
                 else:
-                    Clock.schedule_once(lambda dt: self._update_node_output("No nodes found"), 0)
-                    self.log_message("⚠️  No nodes found")
+                    output += "  No active peer connections\n"
+                output += "\n"
+                
+                # Show routing table nodes
+                output += f"🗺️  ROUTING TABLE NODES: {len(nodes) if nodes else 0}\n"
+                if nodes:
+                    output += "-" * 50 + "\n"
+                    for node in nodes:
+                        output += f"  Node {node['id']}:\n"
+                        status_icon = "✅" if node['status'] == 1 else "⚠️"
+                        output += f"     {status_icon} Status: {node['status']}\n"
+                        output += f"     Latency: {node['latencyMs']:.2f}ms\n"
+                        output += f"     Threat Score: {node['threatScore']:.3f}\n\n"
+                else:
+                    output += "  No nodes in routing table\n"
+                
+                output += "\n💡 Tip: Use 'Get Node Info' for detailed network metrics\n"
+                
+                Clock.schedule_once(lambda dt: self._update_node_output(output), 0)
+                self.log_message(f"✅ Found {len(peers)} active peers, {len(nodes) if nodes else 0} routing nodes")
             except Exception as e:
-                error_msg = f"❌ Error listing nodes: {str(e)}"
+                error_msg = f"❌ Error listing nodes: {str(e)}\n"
+                error_msg += f"Traceback: {traceback.format_exc()}"
                 self.log_message(error_msg)
                 Clock.schedule_once(lambda dt: self._update_node_output(error_msg), 0)
         
@@ -1885,8 +1968,10 @@ class PangeaDesktopApp(MDApp):
                             save_path = os.path.join(download_dir, f"downloaded_{file_hash[:8]}.dat")
                             with open(save_path, 'wb') as f:
                                 f.write(data)
-                            output += f"\nSaved to: {save_path}\n"
-                            self.log_message(f"✅ Downloaded and verified {bytes_downloaded} bytes")
+                            output += f"\n📁 FILE SAVED TO:\n"
+                            output += f"   {save_path}\n"
+                            output += f"\n💡 You can find your file at the above location\n"
+                            self.log_message(f"✅ Downloaded and verified {bytes_downloaded} bytes → {save_path}")
                         else:
                             output += "\n⚠️  File NOT saved due to verification failure\n"
                             self.log_message(f"❌ Verification failed for downloaded file")
@@ -2211,7 +2296,7 @@ class PangeaDesktopApp(MDApp):
         
         peer_ip = self.main_screen.chat_peer_ip.text.strip()
         if not peer_ip:
-            self.show_warning("Missing Info", "Please enter peer IP (automatic listening enabled)")
+            self.show_warning("Missing Info", "Please enter peer IP to connect\n\nNote: You are already listening on port 9999")
             return
         
         self.log_message(f"💬 Starting chat with {peer_ip}...")
@@ -2222,41 +2307,40 @@ class PangeaDesktopApp(MDApp):
                 output += f"Connecting to peer: {peer_ip}\n"
                 output += f"Tor: {'Enabled 🧅' if self.is_tor_enabled() else 'Disabled'}\n\n"
                 
-                # Start always-listening P2P chat service
-                output += "Starting always-listening P2P chat service...\n"
-                success = self.go_client.start_streaming(port=9999, stream_type=2)  # 2 = chat
+                # Note: Already listening from auto-start, just connect to peer
+                output += "📡 You are already listening on port 9999 (auto-started)\n"
+                output += f"🔗 Now connecting to peer at {peer_ip}:9999...\n\n"
                 
-                if success:
-                    output += "✅ Listening for chat on port 9999\n\n"
+                # Connect to peer
+                conn_success, peer_addr = self.go_client.connect_stream_peer(peer_ip, 9999)
+                
+                if conn_success:
+                    output += f"✅ Connected to peer at {peer_addr}\n\n"
+                    output += "💬 Chat is now ACTIVE - use 'Send Message' to chat\n"
+                    output += "\nYou can:\n"
+                    output += "  • Type a message in the message field\n"
+                    output += "  • Click 'Send Message' to send\n"
+                    output += "  • Receive messages from peer\n"
                     
-                    # Connect to peer
-                    output += f"Connecting to {peer_ip}:9999...\n"
-                    conn_success, peer_addr = self.go_client.connect_stream_peer(peer_ip, 9999)
+                    # Show notification
+                    Clock.schedule_once(lambda dt, pa=peer_addr: self.show_notification(f"💬 Chat connected: {pa}", 5, (0.2, 0.8, 0.2, 0.9)), 0)
                     
-                    if conn_success:
-                        output += f"✅ Connected to peer at {peer_addr}\n\n"
-                        output += "💡 Chat is now active!\n"
-                        output += "  • Type messages below and click 'Send Message'\n"
-                        output += "  • Incoming messages will appear here\n\n"
-                        
-                        # Store peer address for sending messages
-                        self.chat_peer_addr = peer_addr
-                        
-                        # Show notification
-                        Clock.schedule_once(lambda dt, pa=peer_addr: self.show_notification(f"💬 Chat connected: {pa}", 5, (0.2, 0.8, 0.2, 0.9)), 0)
-                    else:
-                        output += "⚠️  Could not connect to peer\n"
-                        output += "But still listening for incoming chat...\n"
-                    
+                    # Set chat state
                     self.chat_active = True
+                    self.chat_peer_addr = peer_addr
                 else:
-                    output += "❌ Failed to start chat service\n"
-                    output += "Port 9999 may be in use\n"
+                    output += "❌ Failed to connect to peer\n"
+                    output += f"⚠️  Make sure peer is running and accessible at {peer_ip}:9999\n"
+                    output += "\nPossible issues:\n"
+                    output += "  • Peer may not be online\n"
+                    output += "  • Firewall blocking port 9999\n"
+                    output += "  • Peer may not have started their node yet\n"
                 
                 Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
-                self.log_message("✅ Chat session started")
+                self.log_message("✅ Chat session info displayed")
             except Exception as e:
-                error_msg = f"❌ Error starting chat: {str(e)}"
+                error_msg = f"❌ Error starting chat: {str(e)}\n"
+                error_msg += f"Traceback: {traceback.format_exc()}"
                 self.log_message(error_msg)
                 Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
         
@@ -2334,7 +2418,7 @@ class PangeaDesktopApp(MDApp):
         
         peer_ip = self.main_screen.video_peer_ip.text.strip()
         if not peer_ip:
-            self.show_warning("Missing Info", "Please enter peer IP (automatic listening enabled)")
+            self.show_warning("Missing Info", "Please enter peer IP to connect\n\nNote: You are already listening on port 9996")
             return
         
         self.log_message(f"📹 Starting video call with {peer_ip}...")
@@ -2345,43 +2429,41 @@ class PangeaDesktopApp(MDApp):
                 output += f"Connecting to peer: {peer_ip}\n"
                 output += f"Tor: {'Enabled 🧅' if self.is_tor_enabled() else 'Disabled'}\n\n"
                 
-                # Always start in listening mode first (P2P model)
-                output += "Starting always-listening P2P video service...\n"
-                success = self.go_client.start_streaming(port=9996, stream_type=0)  # 0 = video
+                # Note: Already listening from auto-start, just connect to peer
+                output += "📡 You are already listening on port 9996 (auto-started)\n"
+                output += f"🔗 Now connecting to peer at {peer_ip}:9996...\n\n"
                 
-                if success:
-                    output += "✅ Listening for incoming video on port 9996\n\n"
+                # Connect to peer
+                conn_success, peer_addr = self.go_client.connect_stream_peer(peer_ip, 9996)
+                
+                if conn_success:
+                    output += f"✅ Connected to peer at {peer_addr}\n\n"
+                    output += "📹 Starting video capture and transmission...\n"
                     
-                    # Now connect to peer
-                    output += f"Connecting to {peer_ip}:9996...\n"
-                    conn_success, peer_addr = self.go_client.connect_stream_peer(peer_ip, 9996)
+                    # Start video capture in background
+                    Clock.schedule_once(lambda dt: self._start_video_capture("", peer_ip), 0)
                     
-                    if conn_success:
-                        output += f"✅ Connected to peer at {peer_addr}\n\n"
-                        output += "Starting video capture and transmission...\n"
-                        
-                        # Start video capture in background
-                        Clock.schedule_once(lambda dt: self._start_video_capture("", peer_ip), 0)
-                        
-                        output += "\n💡 Video is now streaming both ways!\n"
-                        output += "  • Your video → Peer\n"
-                        output += "  • Peer video → You (check window)\n"
-                        
-                        # Show notification
-                        Clock.schedule_once(lambda dt, pa=peer_addr: self.show_notification(f"📹 Video call connected: {pa}", 5, (0.2, 0.8, 0.2, 0.9)), 0)
-                    else:
-                        output += "⚠️  Could not connect to peer\n"
-                        output += "But still listening for incoming connection...\n"
+                    output += "\n💡 Video streaming is now ACTIVE:\n"
+                    output += "  • YOUR camera → Peer (sending)\n"
+                    output += "  • Peer camera → YOU (receiving in separate window)\n"
+                    output += "\n⚠️  Note: Receiving display requires OpenCV backend support\n"
                     
+                    # Show notification
+                    Clock.schedule_once(lambda dt, pa=peer_addr: self.show_notification(f"📹 Video call connected: {pa}", 5, (0.2, 0.8, 0.2, 0.9)), 0)
                     self.streaming_active = True
                 else:
-                    output += "❌ Failed to start video service\n"
-                    output += "Port 9996 may be in use\n"
+                    output += "❌ Failed to connect to peer\n"
+                    output += f"⚠️  Make sure peer is running and accessible at {peer_ip}:9996\n"
+                    output += "\nPossible issues:\n"
+                    output += "  • Peer may not be online\n"
+                    output += "  • Firewall blocking port 9996\n"
+                    output += "  • Peer may not have started their node yet\n"
                 
                 Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
                 self.log_message("✅ Video call info displayed")
             except Exception as e:
-                error_msg = f"❌ Error starting video: {str(e)}"
+                error_msg = f"❌ Error starting video: {str(e)}\n"
+                error_msg += f"Traceback: {traceback.format_exc()}"
                 self.log_message(error_msg)
                 Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
         
@@ -2426,7 +2508,7 @@ class PangeaDesktopApp(MDApp):
         
         peer_ip = self.main_screen.voice_peer_ip.text.strip()
         if not peer_ip:
-            self.show_warning("Missing Info", "Please enter peer IP (automatic listening enabled)")
+            self.show_warning("Missing Info", "Please enter peer IP to connect\n\nNote: You are already listening on port 9998")
             return
         
         self.log_message(f"🎤 Starting voice call with {peer_ip}...")
@@ -2437,43 +2519,40 @@ class PangeaDesktopApp(MDApp):
                 output += f"Connecting to peer: {peer_ip}\n"
                 output += f"Tor: {'Enabled 🧅' if self.is_tor_enabled() else 'Disabled'}\n\n"
                 
-                # Start always-listening P2P audio service
-                output += "Starting always-listening P2P audio service...\n"
-                success = self.go_client.start_streaming(port=9998, stream_type=1)  # 1 = audio
+                # Note: Already listening from auto-start, just connect to peer
+                output += "📡 You are already listening on port 9998 (auto-started)\n"
+                output += f"🔗 Now connecting to peer at {peer_ip}:9998...\n\n"
                 
-                if success:
-                    output += "✅ Listening for incoming audio on port 9998\n\n"
+                # Connect to peer
+                conn_success, peer_addr = self.go_client.connect_stream_peer(peer_ip, 9998)
+                
+                if conn_success:
+                    output += f"✅ Connected to peer at {peer_addr}\n\n"
+                    output += "🎤 Starting audio capture and transmission...\n"
                     
-                    # Connect to peer
-                    output += f"Connecting to {peer_ip}:9998...\n"
-                    conn_success, peer_addr = self.go_client.connect_stream_peer(peer_ip, 9998)
+                    # Start audio capture in background
+                    Clock.schedule_once(lambda dt: self._start_audio_capture(), 0)
                     
-                    if conn_success:
-                        output += f"✅ Connected to peer at {peer_addr}\n\n"
-                        output += "Starting audio capture and transmission...\n"
-                        
-                        # Start audio capture in background
-                        Clock.schedule_once(lambda dt: self._start_audio_capture(), 0)
-                        
-                        output += "\n💡 Voice call is now active!\n"
-                        output += "  • Your mic → Peer\n"
-                        
-                        # Show notification
-                        Clock.schedule_once(lambda dt, pa=peer_addr: self.show_notification(f"🎤 Voice call connected: {pa}", 5, (0.2, 0.8, 0.2, 0.9)), 0)
-                        output += "  • Peer audio → Your speakers\n"
-                    else:
-                        output += "⚠️  Could not connect to peer\n"
-                        output += "But still listening for incoming call...\n"
+                    output += "\n💡 Voice call is now ACTIVE:\n"
+                    output += "  • YOUR mic → Peer (sending)\n"
+                    output += "  • Peer audio → YOUR speakers (receiving)\n"
                     
+                    # Show notification
+                    Clock.schedule_once(lambda dt, pa=peer_addr: self.show_notification(f"🎤 Voice call connected: {pa}", 5, (0.2, 0.8, 0.2, 0.9)), 0)
                     self.streaming_active = True
                 else:
-                    output += "❌ Failed to start audio service\n"
-                    output += "Port 9998 may be in use\n"
+                    output += "❌ Failed to connect to peer\n"
+                    output += f"⚠️  Make sure peer is running and accessible at {peer_ip}:9998\n"
+                    output += "\nPossible issues:\n"
+                    output += "  • Peer may not be online\n"
+                    output += "  • Firewall blocking port 9998\n"
+                    output += "  • Peer may not have started their node yet\n"
                 
                 Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
                 self.log_message("✅ Voice call info displayed")
             except Exception as e:
-                error_msg = f"❌ Error starting voice: {str(e)}"
+                error_msg = f"❌ Error starting voice: {str(e)}\n"
+                error_msg += f"Traceback: {traceback.format_exc()}"
                 self.log_message(error_msg)
                 Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
         
