@@ -31,9 +31,10 @@ import hashlib
 import os
 import traceback
 import secrets
+import re
+import uuid
 from typing import Optional, Any
 from datetime import datetime
-import re
 
 # Add Python module to path
 PROJECT_ROOT = Path(__file__).parent.parent  # Go up to WGT/
@@ -44,6 +45,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "python" / "src"))
 DCDN_DEMO_TIMEOUT = 60  # seconds
 DCDN_TEST_TIMEOUT = 120  # seconds
 MAX_LOGGED_FAILURES = 5  # Max streaming failures to log individually
+MAX_LOG_SIZE = 10000  # Maximum log output size to read from subprocess
 
 # Streaming constants
 VIDEO_WIDTH = 640
@@ -2372,7 +2374,7 @@ class PangeaDesktopApp(MDApp):
                         # Set chat state
                         self.chat_active = True
                         self.chat_peer_addr = peer_addr
-                        self.chat_session_id = f"chat-{int(time.time())}"  # Create session ID
+                        self.chat_session_id = f"chat-{uuid.uuid4().hex[:12]}"  # Unique session ID
                         
                         # Start message receiving loop
                         Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
@@ -3222,7 +3224,7 @@ class PangeaDesktopApp(MDApp):
                             if not line:
                                 break
                             log_output += line
-                            if len(log_output) > 10000:  # Limit log size
+                            if len(log_output) > MAX_LOG_SIZE:  # Limit log size
                                 break
                     except:
                         pass
@@ -3244,7 +3246,6 @@ class PangeaDesktopApp(MDApp):
                 multiaddr = ""
                 
                 # Check for full multiaddr in logs
-                import re
                 multiaddr_match = re.search(r'/ip4/[0-9.]+/tcp/\d+/p2p/[a-zA-Z0-9]+', log_str)
                 if multiaddr_match:
                     multiaddr = multiaddr_match.group(0)
@@ -3298,7 +3299,6 @@ class PangeaDesktopApp(MDApp):
                 output += f"Peer Multiaddr: {peer_multiaddr}\n\n"
                 
                 # Parse multiaddr
-                import re
                 peer_ip = re.search(r'/ip4/([0-9.]+)', peer_multiaddr)
                 peer_port = re.search(r'/tcp/(\d+)', peer_multiaddr)
                 peer_id = re.search(r'/p2p/([a-zA-Z0-9]+)', peer_multiaddr)

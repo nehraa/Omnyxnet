@@ -4,7 +4,7 @@
 # Tests the improved chat functionality between two nodes
 #
 
-set -e
+set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT"
@@ -90,10 +90,14 @@ if [ "$run_auto" = "y" ] || [ "$run_auto" = "Y" ]; then
     export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
     export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
     
+    # Create log directory
+    LOG_DIR="$HOME/.wgt/test_logs"
+    mkdir -p "$LOG_DIR"
+    
     # Start first Go node
     echo "Starting Node A on port 8080..."
     cd go
-    ./bin/go-node -node-id=1 -capnp-addr=:8080 -libp2p=true -libp2p-port=9081 -local > /tmp/node_a.log 2>&1 &
+    ./bin/go-node -node-id=1 -capnp-addr=:8080 -libp2p=true -libp2p-port=9081 -local > "$LOG_DIR/node_a.log" 2>&1 &
     NODE_A_PID=$!
     cd ..
     sleep 2
@@ -101,7 +105,7 @@ if [ "$run_auto" = "y" ] || [ "$run_auto" = "Y" ]; then
     # Start second Go node  
     echo "Starting Node B on port 8081..."
     cd go
-    ./bin/go-node -node-id=2 -capnp-addr=:8081 -libp2p=true -libp2p-port=9082 -local > /tmp/node_b.log 2>&1 &
+    ./bin/go-node -node-id=2 -capnp-addr=:8081 -libp2p=true -libp2p-port=9082 -local > "$LOG_DIR/node_b.log" 2>&1 &
     NODE_B_PID=$!
     cd ..
     sleep 2
@@ -120,27 +124,27 @@ if [ "$run_auto" = "y" ] || [ "$run_auto" = "Y" ]; then
     echo "  kill $NODE_A_PID $NODE_B_PID"
     echo ""
     echo "Logs:"
-    echo "  Node A: /tmp/node_a.log"
-    echo "  Node B: /tmp/node_b.log"
+    echo "  Node A: $LOG_DIR/node_a.log"
+    echo "  Node B: $LOG_DIR/node_b.log"
     echo ""
     
     # Save PIDs for cleanup
-    echo "$NODE_A_PID" > /tmp/test_node_a.pid
-    echo "$NODE_B_PID" > /tmp/test_node_b.pid
+    echo "$NODE_A_PID" > "$LOG_DIR/test_node_a.pid"
+    echo "$NODE_B_PID" > "$LOG_DIR/test_node_b.pid"
     
     read -p "Press Enter when done testing to stop nodes..."
     
     # Cleanup
-    if [ -f /tmp/test_node_a.pid ]; then
-        NODE_A_PID=$(cat /tmp/test_node_a.pid)
+    if [ -f "$LOG_DIR/test_node_a.pid" ]; then
+        NODE_A_PID=$(cat "$LOG_DIR/test_node_a.pid")
         kill $NODE_A_PID 2>/dev/null || true
-        rm /tmp/test_node_a.pid
+        rm "$LOG_DIR/test_node_a.pid"
     fi
     
-    if [ -f /tmp/test_node_b.pid ]; then
-        NODE_B_PID=$(cat /tmp/test_node_b.pid)
+    if [ -f "$LOG_DIR/test_node_b.pid" ]; then
+        NODE_B_PID=$(cat "$LOG_DIR/test_node_b.pid")
         kill $NODE_B_PID 2>/dev/null || true
-        rm /tmp/test_node_b.pid
+        rm "$LOG_DIR/test_node_b.pid"
     fi
     
     echo "✅ Test nodes stopped"
