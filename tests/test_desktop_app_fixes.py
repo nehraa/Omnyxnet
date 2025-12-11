@@ -39,7 +39,7 @@ def test_ip_detection():
         if sock:
             try:
                 sock.close()
-            except:
+            except OSError:
                 pass
 
 def test_schema_field():
@@ -93,7 +93,7 @@ def test_multiaddr_ip_replacement():
             result = addr
             
         if result == expected:
-            print(f"✅ {addr[:40]}... → {result[:40]}...")
+            print(f"✅ {addr} → {result}")
         else:
             print(f"❌ {addr} → {result} (expected: {expected})")
             all_passed = False
