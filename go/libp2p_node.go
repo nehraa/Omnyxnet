@@ -113,6 +113,19 @@ func NewLibP2PPangeaNodeWithOptions(nodeID uint32, store *NodeStore, localMode, 
 
 		// Resource management
 		libp2p.ResourceManager(&network.NullResourceManager{}),
+
+		// Address filtering - don't announce localhost addresses
+		libp2p.AddrsFactory(func(addrs []multiaddr.Multiaddr) []multiaddr.Multiaddr {
+			filtered := make([]multiaddr.Multiaddr, 0, len(addrs))
+			for _, addr := range addrs {
+				addrStr := addr.String()
+				// Skip localhost addresses
+				if !strings.Contains(addrStr, "127.0.0.1") && !strings.Contains(addrStr, "::1") {
+					filtered = append(filtered, addr)
+				}
+			}
+			return filtered
+		}),
 	)
 
 	// Configure listen addresses based on mode
@@ -220,7 +233,11 @@ func (n *LibP2PPangeaNode) Start() error {
 	log.Printf("📍 Node ID: %s", n.host.ID().String())
 	log.Printf("🌐 Listening addresses:")
 	for _, addr := range n.host.Addrs() {
-		log.Printf("   %s/p2p/%s", addr, n.host.ID())
+		addrStr := addr.String()
+		// Skip localhost addresses in display
+		if !strings.Contains(addrStr, "127.0.0.1") && !strings.Contains(addrStr, "::1") {
+			log.Printf("   %s/p2p/%s", addr, n.host.ID())
+		}
 	}
 
 	// Start peer discovery

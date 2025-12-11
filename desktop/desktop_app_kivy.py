@@ -36,7 +36,7 @@ from datetime import datetime
 import re
 
 # Add Python module to path
-PROJECT_ROOT = Path(__file__).parent
+PROJECT_ROOT = Path(__file__).parent.parent  # Go up to WGT/
 sys.path.insert(0, str(PROJECT_ROOT / "python"))
 sys.path.insert(0, str(PROJECT_ROOT / "python" / "src"))
 
@@ -869,17 +869,20 @@ class PangeaDesktopApp(MDApp):
         self.log_message("🔍 Checking for Go node on localhost:8080...")
         
         def startup_thread():
-            # Check if Go node is running
-            if self.is_port_open(self.node_host, self.node_port):
-                self.log_message("✅ Go node is already running on localhost:8080")
+            # Kill any existing go-node processes to avoid conflicts
+            try:
+                subprocess.run(["pkill", "-f", "go-node"], capture_output=True, timeout=2)
+                time.sleep(0.5)
+            except Exception:
+                pass
+            
+            # Start fresh Go node
+            self.log_message("🚀 Starting Go node...")
+            if self.start_go_node():
                 Clock.schedule_once(lambda dt: self.connect_to_node(), 0.5)
             else:
-                self.log_message("⚠️  Go node not found. Attempting to start...")
-                if self.start_go_node():
-                    Clock.schedule_once(lambda dt: self.connect_to_node(), 0.5)
-                else:
-                    self.log_message("❌ Failed to start Go node. Please start it manually:")
-                    self.log_message("   cd go && go build -o bin/go-node . && ./bin/go-node -node-id=1 -capnp-addr=:8080 -libp2p=true -libp2p-port=0")
+                self.log_message("❌ Failed to start Go node. Please start it manually:")
+                self.log_message("   cd go && go build -o bin/go-node . && ./bin/go-node -node-id=1 -capnp-addr=:8080 -libp2p=true -libp2p-port=0")
         
         threading.Thread(target=startup_thread, daemon=True).start()
     
@@ -1104,11 +1107,40 @@ class PangeaDesktopApp(MDApp):
             # Update UI label
             if hasattr(self, 'main_screen') and hasattr(self.main_screen, 'connection_card'):
                 self.main_screen.connection_card.multiaddr_label.text = f"Multiaddr: {addrs[0]}"
+            # Log it
+            self.log_message(f"📍 Local multiaddr: {addrs[0]}")
             # Also write to file output for convenience
             if hasattr(self, 'main_screen') and hasattr(self.main_screen, 'file_output'):
                 self.main_screen.file_output.add_text(f"Local multiaddrs: {display}")
         except Exception:
             pass
+    
+    def fetch_node_multiaddr(self):
+        """Fetch multiaddr from the running Go node's log output."""
+        def fetch_thread():
+            try:
+                # Read from the go-node log file
+                log_path = '/tmp/go-node.log'
+                if os.path.exists(log_path):
+                    with open(log_path, 'r') as f:
+                        content = f.read()
+                    # Look for multiaddr pattern
+                    matches = re.findall(r'/ip4/[0-9.]+/tcp/[0-9]+/p2p/[a-zA-Z0-9]+', content)
+                    if matches:
+                        # Filter out localhost addresses
+                        valid_addrs = [addr for addr in matches if '127.0.0.1' not in addr]
+                        if valid_addrs:
+                            self.local_multiaddrs = set(valid_addrs)
+                            Clock.schedule_once(lambda dt: self._update_multiaddr_ui(), 0)
+                            return
+                
+                # Fallback: parse from process output if we started it
+                if hasattr(self, 'local_multiaddrs') and self.local_multiaddrs:
+                    Clock.schedule_once(lambda dt: self._update_multiaddr_ui(), 0)
+            except Exception as e:
+                self.log_message(f"⚠️  Could not fetch multiaddr: {e}")
+        
+        threading.Thread(target=fetch_thread, daemon=True).start()
 
     def request_local_multiaddrs(self):
         """Public request to populate/show local multiaddrs.
@@ -1156,6 +1188,8 @@ class PangeaDesktopApp(MDApp):
         self.main_screen.connection_card.status_label.text = "● Connected"
         self.main_screen.connection_card.status_label.text_color = (0, 1, 0, 1)
         self.log_message(f"✅ Connected to {host}:{port}")
+        # Get and display multiaddr from running node
+        self.fetch_node_multiaddr()
         # Run health checks after successful connection
         self.run_health_checks()
     
