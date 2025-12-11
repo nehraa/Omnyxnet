@@ -65,47 +65,42 @@ The user reported the following problems:
 ```
 
 ### Issue #8: Not True P2P (Manual "Server" Mode)
-**Root Cause:** Previous implementation required users to:
-1. Type "server" in peer IP field to enable listening
-2. Click "Start Video" to begin listening
-3. This contradicts P2P philosophy where all nodes are always ready to receive
+**Root Cause:** UI hint text said "or 'server' to listen" which was confusing, but the code actually always listened when user clicked "Start Video/Audio/Chat". The user thought they had to type "server" manually.
 
 **Solution:**
-- Implemented `_auto_start_p2p_listeners()` called on node connection
-- Automatically starts listening on all three ports
-- Shows specific status for each service
-- No manual "server" setup needed anymore
-- Peers can now connect at any time without setup
+- Changed UI hints to simple "Peer IP address"
+- Clarified messaging to explain that clicking "Start" both starts listening AND connects to peer
+- This is true P2P: both sides listen and connect simultaneously
 
 ## Implementation Details
 
-### 1. Auto-Start P2P Listeners
+### 1. On-Demand P2P Service Start
 
-**Location:** `on_connect_success()` → `_auto_start_p2p_listeners()`
+**Critical Finding:** The Go backend only supports ONE active streaming session at a time. Attempting to start multiple listeners (video + audio + chat) simultaneously causes failures.
+
+**Solution:** Start listener only when user clicks "Start Video/Audio/Chat", matching the working CLI behavior.
+
+**Location:** `start_video_call()`, `start_voice_call()`, `start_chat()`
 
 ```python
-def _auto_start_p2p_listeners(self):
-    """Auto-start P2P listening services on standard ports."""
-    services_status = {'video': False, 'audio': False, 'chat': False}
+def start_video_call(self):
+    # Start P2P video service (listening + connecting)
+    output += "🎬 Starting P2P video service on port 9996...\n"
+    success = self.go_client.start_streaming(port=9996, stream_type=0)
     
-    # Start video listener on port 9996
-    video_success = self.go_client.start_streaming(port=9996, stream_type=0)
-    services_status['video'] = video_success
-    
-    # Start audio listener on port 9998
-    audio_success = self.go_client.start_streaming(port=9998, stream_type=1)
-    services_status['audio'] = audio_success
-    
-    # Start chat listener on port 9999
-    chat_success = self.go_client.start_streaming(port=9999, stream_type=2)
-    services_status['chat'] = chat_success
-    
-    # Show summary with specific service status
-    active_services = [name for name, status in services_status.items() if status]
-    if active_services:
-        status_str = ', '.join([f"{name} {'✅' if services_status[name] else '❌'}" 
-                               for name in ['video', 'audio', 'chat']])
-        self.log_message(f"🎉 P2P services ready: {status_str}")
+    if success:
+        output += "✅ Video service started - now listening for connections\n\n"
+        
+        # Connect to peer
+        output += f"🔗 Connecting to peer at {peer_ip}:9996...\n"
+        conn_success, peer_addr = self.go_client.connect_stream_peer(peer_ip, 9996)
+        
+        if conn_success:
+            # Start video capture and transmission
+            self._start_video_capture("", peer_ip)
+        else:
+            # Still listening - peer can connect to us
+            output += "💡 Tip: Still listening - peer can initiate connection to you\n"
 ```
 
 ### 2. Enhanced Node Management
@@ -152,24 +147,34 @@ output = "=== Video Call ===\n\n"
 output += f"Connecting to peer: {peer_ip}\n"
 output += f"Tor: {'Enabled 🧅' if self.is_tor_enabled() else 'Disabled'}\n\n"
 
-# Note: Already listening from auto-start
-output += "📡 You are already listening on port 9996 (auto-started)\n"
-output += f"🔗 Now connecting to peer at {peer_ip}:9996...\n\n"
+# Start P2P video service (listening + connecting)
+output += "🎬 Starting P2P video service on port 9996...\n"
+success = self.go_client.start_streaming(port=9996, stream_type=0)
 
-# Connect to peer
-conn_success, peer_addr = self.go_client.connect_stream_peer(peer_ip, 9996)
-
-if conn_success:
-    output += f"✅ Connected to peer at {peer_addr}\n\n"
-    output += "💡 Video streaming is now ACTIVE:\n"
-    output += "  • YOUR camera → Peer (sending)\n"
-    output += "  • Peer camera → YOU (receiving in separate window)\n"
+if success:
+    output += "✅ Video service started - now listening for connections\n\n"
+    
+    # Connect to peer
+    output += f"🔗 Connecting to peer at {peer_ip}:9996...\n"
+    conn_success, peer_addr = self.go_client.connect_stream_peer(peer_ip, 9996)
+    
+    if conn_success:
+        output += f"✅ Connected to peer at {peer_addr}\n\n"
+        output += "💡 Video call is now ACTIVE:\n"
+        output += "  • YOUR camera → Peer (sending)\n"
+        output += "📊 Check logs for frame transmission statistics\n"
+    else:
+        output += "❌ Failed to connect to peer\n"
+        output += "\nTroubleshooting:\n"
+        output += "  1. Verify peer IP address is correct\n"
+        output += "  2. Ensure peer node is running and connected\n"
+        output += "  3. Check firewall allows port 9996\n"
+        output += "\n💡 Tip: Still listening - peer can initiate connection to you\n"
 else:
-    output += "❌ Failed to connect to peer\n"
-    output += "\nPossible issues:\n"
-    output += "  • Peer may not be online\n"
-    output += "  • Firewall blocking port 9996\n"
-    output += "  • Peer may not have started their node yet\n"
+    output += "❌ Failed to start video service\n"
+    output += "  • Port 9996 already in use\n"
+    output += "  • Another streaming session active\n"
+    output += "\n💡 Tip: Try stopping other streams first\n"
 ```
 
 ### 4. Detailed Streaming Progress
@@ -206,8 +211,10 @@ hint_text="Peer IP (or 'server' to listen)"
 
 **After:**
 ```python
-hint_text="Peer IP to connect (already listening on :9996)"
+hint_text="Peer IP address"
 ```
+
+Simple and clear - no confusing "server" mode mention.
 
 ## Known Limitations
 
@@ -366,9 +373,15 @@ Key security aspects:
 
 ## Conclusion
 
-These fixes transform the desktop application from a manual client-server model to a true always-on P2P system. Users no longer need to understand "server" mode or manually configure listeners. The enhanced feedback and logging help users understand what's happening and debug issues.
+These fixes align the GUI behavior with the working CLI implementation. The key insight was that the Go backend only supports ONE active streaming session at a time, so attempting to auto-start all 3 services simultaneously was causing failures.
 
-The main remaining limitation is video/audio receiving, which requires architectural changes beyond the scope of this fix. This is documented in the code and UI to manage user expectations.
+Now the GUI matches the CLI approach:
+- Start listener when user initiates the service (on-demand)
+- Both listen AND connect in one operation (true P2P)
+- Clear error messages when things fail
+- Keeps listener active so peer can also initiate connection
+
+The enhanced feedback and logging help users understand what's happening and debug issues. The main remaining limitation is video/audio receiving display, which requires architectural changes beyond the scope of this fix.
 
 ## Related Files
 
