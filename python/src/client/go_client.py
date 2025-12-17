@@ -754,6 +754,112 @@ class GoNodeClient:
             logger.error(f"Error getting stream stats: {e}")
             return None
     
+    def get_received_frames(self, max_frames: int = 30) -> List[Dict]:
+        """
+        Get received video frames from buffer.
+        
+        Args:
+            max_frames: Maximum number of frames to retrieve
+            
+        Returns:
+            List of frame dictionaries with frameId, data, width, height, quality
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_get_frames():
+            result = await self.service.getReceivedFrames(max_frames)
+            frames = []
+            for frame in result.frames:
+                frames.append({
+                    'frameId': frame.frameId,
+                    'data': bytes(frame.data),
+                    'width': frame.width,
+                    'height': frame.height,
+                    'quality': frame.quality
+                })
+            return frames
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_get_frames(), self._loop)
+            return future.result(timeout=2.0)
+        except Exception as e:
+            logger.error(f"Error getting received frames: {e}")
+            return []
+    
+    def get_received_audio(self, max_chunks: int = 50) -> List[Dict]:
+        """
+        Get received audio chunks from buffer.
+        
+        Args:
+            max_chunks: Maximum number of chunks to retrieve
+            
+        Returns:
+            List of audio chunk dictionaries with data, sampleRate, channels
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_get_audio():
+            result = await self.service.getReceivedAudio(max_chunks)
+            chunks = []
+            for chunk in result.chunks:
+                chunks.append({
+                    'data': bytes(chunk.data),
+                    'sampleRate': chunk.sampleRate,
+                    'channels': chunk.channels
+                })
+            return chunks
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_get_audio(), self._loop)
+            return future.result(timeout=2.0)
+        except Exception as e:
+            logger.error(f"Error getting received audio: {e}")
+            return []
+    
+    def get_local_multiaddr(self) -> str:
+        """
+        Get local node's multiaddr for sharing with peers.
+        
+        Returns:
+            Multiaddr string (e.g., /ip4/192.168.1.100/tcp/9081/p2p/12D3KooW...)
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_get_multiaddr():
+            result = await self.service.getLocalMultiaddr()
+            return result.multiaddr
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_get_multiaddr(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error getting local multiaddr: {e}")
+            return ""
+    
+    def list_libp2p_peers(self) -> List[str]:
+        """
+        Get list of connected libp2p peers.
+        
+        Returns:
+            List of peer multiaddrs
+        """
+        if not self._connected:
+            raise RuntimeError("Not connected to Go node")
+        
+        async def _async_list_peers():
+            result = await self.service.listLibp2pPeers()
+            return list(result.peers)
+        
+        try:
+            future = asyncio.run_coroutine_threadsafe(_async_list_peers(), self._loop)
+            return future.result(timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error listing libp2p peers: {e}")
+            return []
+    
     def get_chat_history(self, peer_id: Optional[str] = None) -> List[Dict]:
         """
         Get chat history from the Go communication service.

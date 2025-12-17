@@ -1127,16 +1127,188 @@ main() {
                 echo -e "${BLUE}   DCDN DEMO - Distributed CDN System${NC}"
                 echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
                 echo ""
-                echo "Choose DCDN test type:"
-                echo "  1) Interactive Demo (local)"
-                echo "  2) Container Tests (virtual containers)"
-                echo "  3) Cross-Device Tests (assumes connection established)"
+                echo "Choose DCDN operation:"
+                echo "  1) Show My Multiaddr (for peer to connect)"
+                echo "  2) Connect to Peer (enter their multiaddr)"
+                echo "  3) Interactive Demo (local)"
+                echo "  4) Container Tests (virtual containers)"
+                echo "  5) Cross-Device Tests (requires active connection)"
                 echo "  q) Back to main menu"
                 echo ""
-                read -p "Select option (1-3/q): " dcdn_choice
+                read -p "Select option (1-5/q): " dcdn_choice
                 
                 case "$dcdn_choice" in
                     1)
+                        # Show My Multiaddr
+                        echo ""
+                        echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
+                        echo -e "${GREEN}   MY DCDN MULTIADDR${NC}"
+                        echo -e "${GREEN}════════════════════════════════════════════════════════════${NC}"
+                        echo ""
+                        
+                        # Get local IP
+                        local LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")
+                        
+                        # Start Go node temporarily to get peer ID if not already running
+                        if [ ! -f "$PROJECT_ROOT/go/bin/go-node" ]; then
+                            log_warning "Go node not built. Building..."
+                            build_go
+                        fi
+                        
+                        # Check if node is already running
+                        local NODE_RUNNING=false
+                        if pgrep -f "go-node" > /dev/null; then
+                            NODE_RUNNING=true
+                            log_info "Go node already running"
+                        else
+                            log_info "Starting temporary Go node to extract multiaddr..."
+                            
+                            # Set library path
+                            export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
+                            export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
+                            
+                            # Start node in background
+                            cd "$PROJECT_ROOT/go"
+                            ./bin/go-node -node-id=1 -capnp-addr=":8080" -libp2p=true -libp2p-port=9081 -local > /tmp/dcdn_node.log 2>&1 &
+                            local NODE_PID=$!
+                            sleep 3
+                        fi
+                        
+                        # Extract multiaddr from logs
+                        local LOG_FILE=""
+                        if [ -f "$HOME/.wgt/logs/network.log" ]; then
+                            LOG_FILE="$HOME/.wgt/logs/network.log"
+                        elif [ -f "/tmp/dcdn_node.log" ]; then
+                            LOG_FILE="/tmp/dcdn_node.log"
+                        fi
+                        
+                        local MULTIADDR=""
+                        local PEER_ID=""
+                        
+                        if [ -n "$LOG_FILE" ]; then
+                            # Try to extract full multiaddr
+                            MULTIADDR=$(grep -oE "/ip4/[0-9.]+/tcp/[0-9]+/p2p/[a-zA-Z0-9]+" "$LOG_FILE" 2>/dev/null | \
+                                       grep -v "127.0.0.1" | tail -1 || true)
+                            
+                            if [ -n "$MULTIADDR" ]; then
+                                PEER_ID=$(echo "$MULTIADDR" | grep -oP '/p2p/\K[a-zA-Z0-9]+' || true)
+                                # Replace 0.0.0.0 with actual local IP
+                                local extracted_ip=$(echo "$MULTIADDR" | grep -oP '/ip4/\K[0-9.]+' || true)
+                                if [ "$extracted_ip" = "0.0.0.0" ]; then
+                                    MULTIADDR=$(echo "$MULTIADDR" | sed "s|/ip4/0.0.0.0|/ip4/$LOCAL_IP|")
+                                fi
+                            else
+                                # Try to get just peer ID
+                                PEER_ID=$(grep -oP 'Node ID: \K[a-zA-Z0-9]+' "$LOG_FILE" 2>/dev/null | tail -1 || true)
+                                if [ -n "$PEER_ID" ]; then
+                                    MULTIADDR="/ip4/${LOCAL_IP}/tcp/9081/p2p/${PEER_ID}"
+                                fi
+                            fi
+                        fi
+                        
+                        # Display results
+                        echo "   Local IP:  ${LOCAL_IP}"
+                        echo "   DCDN Port: 9090 (default)"
+                        echo "   P2P Port:  9081"
+                        
+                        if [ -n "$PEER_ID" ]; then
+                            echo ""
+                            echo -e "${YELLOW}📋 SHARE THIS MULTIADDR WITH OTHER NODE:${NC}"
+                            echo ""
+                            echo -e "   ${CYAN}${MULTIADDR}${NC}"
+                            echo ""
+                            echo "   (Copy the full line above and paste it on the other node)"
+                        else
+                            echo ""
+                            echo -e "${YELLOW}⚠️  Could not extract peer ID${NC}"
+                            echo "   Manual multiaddr format: /ip4/${LOCAL_IP}/tcp/9081/p2p/<PEER_ID>"
+                            echo "   Start a Go node to get the peer ID"
+                        fi
+                        
+                        # Stop temporary node if we started it
+                        if [ "$NODE_RUNNING" = false ] && [ -n "$NODE_PID" ]; then
+                            log_info "Stopping temporary node..."
+                            kill $NODE_PID 2>/dev/null || true
+                            sleep 1
+                        fi
+                        
+                        echo ""
+                        read -p "Press Enter to continue..."
+                        ;;
+                    
+                    2)
+                        # Connect to Peer
+                        echo ""
+                        echo -e "${YELLOW}════════════════════════════════════════════════════════════${NC}"
+                        echo -e "${YELLOW}   CONNECT TO DCDN PEER${NC}"
+                        echo -e "${YELLOW}════════════════════════════════════════════════════════════${NC}"
+                        echo ""
+                        echo "Enter the peer's multiaddr (from their 'Show My Multiaddr'):"
+                        echo "Example: /ip4/192.168.1.100/tcp/9081/p2p/12D3KooW..."
+                        echo ""
+                        read -p "Peer Multiaddr: " PEER_MULTIADDR
+                        
+                        if [ -z "$PEER_MULTIADDR" ]; then
+                            log_error "No multiaddr provided"
+                            read -p "Press Enter to continue..."
+                            continue
+                        fi
+                        
+                        # Extract peer info
+                        local PEER_IP=$(echo "$PEER_MULTIADDR" | grep -oP '/ip4/\K[0-9.]+' || echo "")
+                        local PEER_PORT=$(echo "$PEER_MULTIADDR" | grep -oP '/tcp/\K[0-9]+' || echo "9081")
+                        local PEER_ID=$(echo "$PEER_MULTIADDR" | grep -oP '/p2p/\K[a-zA-Z0-9]+' || echo "")
+                        
+                        if [ -z "$PEER_IP" ]; then
+                            log_error "Could not parse IP from multiaddr"
+                            read -p "Press Enter to continue..."
+                            continue
+                        fi
+                        
+                        log_info "Connecting to DCDN peer at ${PEER_IP}:${PEER_PORT}..."
+                        
+                        # Start local node if not running
+                        if ! pgrep -f "go-node" > /dev/null; then
+                            log_info "Starting local Go node..."
+                            
+                            export LD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$LD_LIBRARY_PATH"
+                            export DYLD_LIBRARY_PATH="$PROJECT_ROOT/rust/target/release:$DYLD_LIBRARY_PATH"
+                            
+                            cd "$PROJECT_ROOT/go"
+                            ./bin/go-node -node-id=2 -capnp-addr=":8081" -libp2p=true -libp2p-port=9082 \
+                                         -peers="${PEER_MULTIADDR}" -local > /tmp/dcdn_client.log 2>&1 &
+                            local NODE_PID=$!
+                            sleep 3
+                            
+                            if kill -0 $NODE_PID 2>/dev/null; then
+                                log_success "✅ Connected to DCDN peer!"
+                                echo ""
+                                echo "   Peer IP:   ${PEER_IP}"
+                                echo "   Peer Port: ${PEER_PORT}"
+                                if [ -n "$PEER_ID" ]; then
+                                    echo "   Peer ID:   ${PEER_ID:0:20}..."
+                                fi
+                                echo ""
+                                echo "   Node PID:  ${NODE_PID}"
+                                echo "   Logs:      /tmp/dcdn_client.log"
+                                echo ""
+                                echo -e "${GREEN}Press Ctrl+C to disconnect${NC}"
+                                
+                                # Wait for user
+                                wait $NODE_PID 2>/dev/null || true
+                            else
+                                log_error "Failed to start node or connect to peer"
+                                cat /tmp/dcdn_client.log
+                            fi
+                        else
+                            log_warning "Go node already running. Use it to connect manually."
+                        fi
+                        
+                        echo ""
+                        read -p "Press Enter to continue..."
+                        ;;
+                    
+                    3)
                         echo ""
                         echo "Running interactive DCDN demo..."
                         echo "This demonstrates:"
@@ -1161,7 +1333,7 @@ main() {
                         fi
                         ;;
                     
-                    2)
+                    4)
                         echo ""
                         echo "Running DCDN Container Tests..."
                         echo ""
@@ -1229,7 +1401,7 @@ EOF
                         fi
                         ;;
                     
-                    3)
+                    5)
                         echo ""
                         echo "Running DCDN Cross-Device Tests..."
                         echo ""

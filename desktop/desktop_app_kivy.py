@@ -31,9 +31,10 @@ import hashlib
 import os
 import traceback
 import secrets
+import re
+import uuid
 from typing import Optional, Any
 from datetime import datetime
-import re
 
 # Add Python module to path
 PROJECT_ROOT = Path(__file__).parent.parent  # Go up to WGT/
@@ -44,6 +45,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "python" / "src"))
 DCDN_DEMO_TIMEOUT = 60  # seconds
 DCDN_TEST_TIMEOUT = 120  # seconds
 MAX_LOGGED_FAILURES = 5  # Max streaming failures to log individually
+MAX_LOG_SIZE = 10000  # Maximum log output size to read from subprocess
 
 # Streaming constants
 VIDEO_WIDTH = 640
@@ -552,44 +554,75 @@ class MainScreen(MDScreen):
         chat_label = MDLabel(text="Chat Messaging", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
         tab.inner_layout.add_widget(chat_label)
         
+        # IP Display Row
+        ip_row = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
+        ip_row.add_widget(MDRaisedButton(
+            text="Show My IP",
+            size_hint_x=0.25,
+            on_release=lambda x: app_ref.show_my_ip(),
+            md_bg_color=(0.2, 0.6, 0.2, 1)  # Green color for visibility
+        ))
+        ip_row.add_widget(MDLabel(
+            text="← Share this IP with the other node",
+            size_hint_x=0.75
+        ))
+        tab.inner_layout.add_widget(ip_row)
+        
         chat_input_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.chat_peer_ip = MDTextField(
-            hint_text="Peer IP address",
+            hint_text="Peer IP address (from their 'Show My IP')",
             mode="rectangle",
-            size_hint_x=0.4
+            size_hint_x=0.5
         )
         chat_input_layout.add_widget(self.chat_peer_ip)
-        self.chat_message = MDTextField(
-            hint_text="Message to send",
-            mode="rectangle",
-            size_hint_x=0.4
-        )
-        chat_input_layout.add_widget(self.chat_message)
         chat_input_layout.add_widget(MDRaisedButton(
-            text="Start Chat",
-            size_hint_x=0.2,
+            text="Start Chat Session",
+            size_hint_x=0.25,
             on_release=lambda x: app_ref.start_chat()
+        ))
+        chat_input_layout.add_widget(MDRaisedButton(
+            text="Stop Chat",
+            size_hint_x=0.25,
+            on_release=lambda x: app_ref.stop_chat()
         ))
         tab.inner_layout.add_widget(chat_input_layout)
         
-        chat_button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
-        chat_button_layout.add_widget(MDRaisedButton(
+        # Message sending row
+        msg_row = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
+        self.chat_message = MDTextField(
+            hint_text="Type your message here...",
+            mode="rectangle",
+            size_hint_x=0.7
+        )
+        msg_row.add_widget(self.chat_message)
+        msg_row.add_widget(MDRaisedButton(
             text="Send Message",
+            size_hint_x=0.3,
             on_release=lambda x: app_ref.send_chat_message()
         ))
-        chat_button_layout.add_widget(MDRaisedButton(
-            text="Stop Chat",
-            on_release=lambda x: app_ref.stop_chat()
-        ))
-        tab.inner_layout.add_widget(chat_button_layout)
+        tab.inner_layout.add_widget(msg_row)
         
         # Video Section
         video_label = MDLabel(text="Video Call", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
         tab.inner_layout.add_widget(video_label)
         
+        # IP Display Row for Video
+        video_ip_row = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
+        video_ip_row.add_widget(MDRaisedButton(
+            text="Show My IP",
+            size_hint_x=0.25,
+            on_release=lambda x: app_ref.show_my_ip(),
+            md_bg_color=(0.2, 0.6, 0.2, 1)
+        ))
+        video_ip_row.add_widget(MDLabel(
+            text="← Share this IP with the other node",
+            size_hint_x=0.75
+        ))
+        tab.inner_layout.add_widget(video_ip_row)
+        
         video_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.video_peer_ip = MDTextField(
-            hint_text="Peer IP address",
+            hint_text="Peer IP address (from their 'Show My IP')",
             mode="rectangle",
             size_hint_x=0.5
         )
@@ -610,9 +643,23 @@ class MainScreen(MDScreen):
         voice_label = MDLabel(text="Voice Call", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
         tab.inner_layout.add_widget(voice_label)
         
+        # IP Display Row for Voice
+        voice_ip_row = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
+        voice_ip_row.add_widget(MDRaisedButton(
+            text="Show My IP",
+            size_hint_x=0.25,
+            on_release=lambda x: app_ref.show_my_ip(),
+            md_bg_color=(0.2, 0.6, 0.2, 1)
+        ))
+        voice_ip_row.add_widget(MDLabel(
+            text="← Share this IP with the other node",
+            size_hint_x=0.75
+        ))
+        tab.inner_layout.add_widget(voice_ip_row)
+        
         voice_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
         self.voice_peer_ip = MDTextField(
-            hint_text="Peer IP address",
+            hint_text="Peer IP address (from their 'Show My IP')",
             mode="rectangle",
             size_hint_x=0.5
         )
@@ -664,6 +711,41 @@ class MainScreen(MDScreen):
         # DCDN Info
         info_label = MDLabel(text="Distributed CDN System", font_style="H6", size_hint_y=None, height=dp(30), adaptive_height=True)
         tab.inner_layout.add_widget(info_label)
+        
+        # Connection Section
+        conn_label = MDLabel(text="P2P Connection Setup", font_style="Subtitle1", size_hint_y=None, height=dp(30), adaptive_height=True)
+        tab.inner_layout.add_widget(conn_label)
+        
+        conn_button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
+        conn_button_layout.add_widget(MDRaisedButton(
+            text="Show My Multiaddr",
+            size_hint_x=0.33,
+            on_release=lambda x: app_ref.show_dcdn_multiaddr(),
+            md_bg_color=(0.2, 0.6, 0.2, 1)  # Green
+        ))
+        conn_button_layout.add_widget(MDRaisedButton(
+            text="Connect to Peer",
+            size_hint_x=0.33,
+            on_release=lambda x: app_ref.connect_dcdn_peer(),
+            md_bg_color=(0.2, 0.4, 0.8, 1)  # Blue
+        ))
+        conn_button_layout.add_widget(MDRaisedButton(
+            text="Show My IP",
+            size_hint_x=0.34,
+            on_release=lambda x: app_ref.show_my_ip(),
+            md_bg_color=(0.2, 0.6, 0.2, 1)  # Green
+        ))
+        tab.inner_layout.add_widget(conn_button_layout)
+        
+        # Peer Multiaddr Input
+        peer_input_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(60), spacing=dp(10))
+        self.dcdn_peer_multiaddr = MDTextField(
+            hint_text="Paste peer's multiaddr here (from their 'Show My Multiaddr')",
+            mode="rectangle",
+            size_hint_x=1.0
+        )
+        peer_input_layout.add_widget(self.dcdn_peer_multiaddr)
+        tab.inner_layout.add_widget(peer_input_layout)
         
         # Basic DCDN Buttons
         button_layout = MDBoxLayout(orientation='horizontal', size_hint_y=None, height=dp(50), spacing=dp(10))
@@ -2292,12 +2374,18 @@ class PangeaDesktopApp(MDApp):
                         # Set chat state
                         self.chat_active = True
                         self.chat_peer_addr = peer_addr
+                        self.chat_session_id = f"chat-{uuid.uuid4().hex[:12]}"  # Unique session ID
+                        
+                        # Start message receiving loop
+                        Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
+                        self._start_chat_receiver()
+                        return  # Exit this thread, receiver runs separately
                     else:
                         output += "❌ Failed to connect to peer\n"
                         output += f"\n⚠️  Connection to {peer_ip}:9999 failed\n"
                         output += "\n⚠️  IMPORTANT: Both devices must have chat service running!\n"
                         output += "\nSetup Steps:\n"
-                        output += "  1. On BOTH devices: Click 'Start Chat'\n"
+                        output += "  1. On BOTH devices: Click 'Start Chat Session'\n"
                         output += "  2. Device A: Enter Device B's IP and click button\n"
                         output += "  3. Device B: Enter Device A's IP and click button\n"
                         output += "  4. Both should connect successfully\n"
@@ -2325,6 +2413,50 @@ class PangeaDesktopApp(MDApp):
                 Clock.schedule_once(lambda dt: self._update_comm_output(error_msg), 0)
         
         threading.Thread(target=chat_thread, daemon=True).start()
+    
+    def _start_chat_receiver(self):
+        """Start a background thread to receive chat messages."""
+        def receiver_thread():
+            try:
+                self.log_message("🔔 Starting message receiver...")
+                last_message_count = 0
+                
+                while self.chat_active:
+                    try:
+                        # Poll for new messages every second
+                        if hasattr(self, 'chat_session_id'):
+                            messages = self.go_client.receive_chat_messages(self.chat_session_id)
+                            
+                            # Display new messages
+                            if messages and len(messages) > last_message_count:
+                                new_messages = messages[last_message_count:]
+                                for msg in new_messages:
+                                    msg_text = msg.get('message', b'').decode('utf-8', errors='replace')
+                                    from_peer = msg.get('from', 'Unknown')
+                                    
+                                    # Append to chat output
+                                    display_text = f"Peer ({from_peer}): {msg_text}\n\n"
+                                    current_output = self.main_screen.comm_output.output_label.text
+                                    Clock.schedule_once(
+                                        lambda dt, txt=display_text, curr=current_output: 
+                                        self._update_comm_output(curr + txt), 0
+                                    )
+                                    
+                                    # Also log to console
+                                    self.log_message(f"📨 Received: {msg_text}")
+                                
+                                last_message_count = len(messages)
+                    except Exception as e:
+                        self.log_message(f"⚠️  Error receiving messages: {str(e)}")
+                    
+                    # Sleep before next poll
+                    time.sleep(1)
+                
+                self.log_message("🔔 Message receiver stopped")
+            except Exception as e:
+                self.log_message(f"❌ Receiver error: {str(e)}")
+        
+        threading.Thread(target=receiver_thread, daemon=True).start()
     
     def send_chat_message(self):
         """Send a chat message via Go streaming service."""
@@ -2372,15 +2504,27 @@ class PangeaDesktopApp(MDApp):
             return
         
         self.log_message("🛑 Stopping chat...")
+        
+        # Stop the receiver loop first
         self.chat_active = False
+        if hasattr(self, 'chat_session_id'):
+            delattr(self, 'chat_session_id')
+        if hasattr(self, 'chat_peer_addr'):
+            delattr(self, 'chat_peer_addr')
         
         def stop_thread():
             try:
+                # Give receiver time to stop
+                time.sleep(1)
+                
                 success = self.go_client.stop_streaming()
                 
                 output = "=== Chat Session Ended ===\n\n"
                 if success:
                     output += "✅ Chat service stopped\n"
+                    output += "✅ Message receiver stopped\n"
+                else:
+                    output += "⚠️  Chat service may already be stopped\n"
                 
                 Clock.schedule_once(lambda dt: self._update_comm_output(output), 0)
                 self.log_message("✅ Chat stopped")
@@ -2435,6 +2579,10 @@ class PangeaDesktopApp(MDApp):
                         # Show notification
                         Clock.schedule_once(lambda dt, pa=peer_addr: self.show_notification(f"📹 Video call connected: {pa}", 5, (0.2, 0.8, 0.2, 0.9)), 0)
                         self.streaming_active = True
+                        self.video_peer_addr = peer_addr
+                        
+                        # Start video receiver loop
+                        Clock.schedule_once(lambda dt: self._start_video_receiver(), 0)
                     else:
                         output += "❌ Failed to connect to peer\n"
                         output += f"\n⚠️  Connection to {peer_ip}:9996 failed\n"
@@ -2545,6 +2693,10 @@ class PangeaDesktopApp(MDApp):
                         # Show notification
                         Clock.schedule_once(lambda dt, pa=peer_addr: self.show_notification(f"🎤 Voice call connected: {pa}", 5, (0.2, 0.8, 0.2, 0.9)), 0)
                         self.streaming_active = True
+                        self.voice_peer_addr = peer_addr
+                        
+                        # Start audio receiver loop
+                        Clock.schedule_once(lambda dt: self._start_audio_receiver(), 0)
                     else:
                         output += "❌ Failed to connect to peer\n"
                         output += f"\n⚠️  Connection to {peer_ip}:9998 failed\n"
@@ -3015,6 +3167,224 @@ class PangeaDesktopApp(MDApp):
         
         threading.Thread(target=dcdn_info_thread, daemon=True).start()
     
+    def show_dcdn_multiaddr(self):
+        """Display this node's DCDN multiaddr for peer to connect."""
+        self.log_message("🌐 Getting DCDN multiaddr...")
+        
+        def show_multiaddr_thread():
+            try:
+                output = "=== MY DCDN MULTIADDR ===\n\n"
+                
+                # Get local IP
+                local_ip = self._detect_local_ip()
+                output += f"Local IP: {local_ip}\n"
+                output += f"DCDN Port: 9090 (default)\n"
+                output += f"P2P Port: 9081 (default)\n\n"
+                
+                # Try to get multiaddr from connected Go node first
+                multiaddr = ""
+                if self.connected and self.go_client:
+                    try:
+                        multiaddr = self.go_client.get_local_multiaddr()
+                        if multiaddr:
+                            output += "✅ Retrieved from connected Go node\n\n"
+                    except Exception as e:
+                        self.log_message(f"⚠️  Could not get multiaddr from Go node: {str(e)}")
+                
+                if not multiaddr:
+                    # Fallback: Start temporary node to get multiaddr
+                    output += "⚠️  Go node not connected - starting temporary node...\n\n"
+                    
+                    project_root = PROJECT_ROOT
+                    go_dir = project_root / "go"
+                    
+                    if not (go_dir / "bin" / "go-node").exists():
+                        output += "❌ Go node not built. Please build first.\n"
+                        Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                        return
+                    
+                    # Set library paths
+                    env = os.environ.copy()
+                    rust_lib = str(project_root / "rust" / "target" / "release")
+                    env["LD_LIBRARY_PATH"] = f"{rust_lib}:{env.get('LD_LIBRARY_PATH', '')}"
+                    env["DYLD_LIBRARY_PATH"] = f"{rust_lib}:{env.get('DYLD_LIBRARY_PATH', '')}"
+                    
+                    # Start node temporarily
+                    proc = subprocess.Popen(
+                        [str(go_dir / "bin" / "go-node"), 
+                         "-node-id=1", "-capnp-addr=:8080", 
+                         "-libp2p=true", "-libp2p-port=9081", "-local"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=False,
+                        cwd=str(go_dir),
+                        env=env
+                    )
+                    
+                    # Wait for node to start and extract multiaddr
+                    time.sleep(3)
+                    
+                    # Try to read logs
+                    log_output = b""
+                    try:
+                        proc.stdout.flush()
+                        while True:
+                            line = proc.stdout.readline()
+                            if not line:
+                                break
+                            log_output += line
+                            if len(log_output) > MAX_LOG_SIZE:
+                                break
+                    except:
+                        pass
+                    
+                    # Kill the temporary node
+                    proc.terminate()
+                    time.sleep(1)
+                    if proc.poll() is None:
+                        proc.kill()
+                    
+                    # Parse logs for multiaddr
+                    log_str = log_output.decode('utf-8', errors='replace')
+                    
+                    # Check for full multiaddr in logs
+                    multiaddr_match = re.search(r'/ip4/[0-9.]+/tcp/\d+/p2p/[a-zA-Z0-9]+', log_str)
+                    if multiaddr_match:
+                        multiaddr = multiaddr_match.group(0)
+                        # Replace 0.0.0.0 or 127.0.0.1 with actual local IP
+                        multiaddr = re.sub(r'/ip4/(0\.0\.0\.0|127\.0\.0\.1)', f'/ip4/{local_ip}', multiaddr)
+                    else:
+                        # Try to extract just peer ID
+                        peer_id_match = re.search(r'Node ID: ([a-zA-Z0-9]+)', log_str)
+                        if peer_id_match:
+                            peer_id = peer_id_match.group(1)
+                            multiaddr = f"/ip4/{local_ip}/tcp/9081/p2p/{peer_id}"
+                
+                if multiaddr:
+                    output += "✅ SHARE THIS MULTIADDR WITH THE OTHER NODE:\n\n"
+                    output += f"  {multiaddr}\n\n"
+                    output += "(Copy the full line above)\n\n"
+                    output += "The other node should:\n"
+                    output += "  1. Click 'Connect to Peer'\n"
+                    output += "  2. Paste this multiaddr\n"
+                    output += "  3. They will connect to you!\n"
+                else:
+                    output += "⚠️  Could not extract multiaddr\n\n"
+                    output += f"Manual multiaddr format:\n"
+                    output += f"  /ip4/{local_ip}/tcp/9081/p2p/<PEER_ID>\n\n"
+                    output += "Connect to a Go node first for automatic multiaddr retrieval.\n"
+                
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                self.log_message("✅ Multiaddr displayed")
+            except Exception as e:
+                error_msg = f"❌ Error getting multiaddr: {str(e)}\n"
+                error_msg += f"Traceback: {traceback.format_exc()}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+        
+        threading.Thread(target=show_multiaddr_thread, daemon=True).start()
+    
+    def connect_dcdn_peer(self):
+        """Connect to a DCDN peer using their multiaddr."""
+        peer_multiaddr = self.main_screen.dcdn_peer_multiaddr.text.strip()
+        
+        if not peer_multiaddr:
+            self.show_warning("No Multiaddr", "Please enter the peer's multiaddr in the text field")
+            return
+        
+        self.log_message(f"🔗 Connecting to DCDN peer: {peer_multiaddr[:50]}...")
+        
+        def connect_thread():
+            try:
+                output = "=== CONNECTING TO DCDN PEER ===\n\n"
+                output += f"Peer Multiaddr: {peer_multiaddr}\n\n"
+                
+                # Parse multiaddr
+                peer_ip = re.search(r'/ip4/([0-9.]+)', peer_multiaddr)
+                peer_port = re.search(r'/tcp/(\d+)', peer_multiaddr)
+                peer_id = re.search(r'/p2p/([a-zA-Z0-9]+)', peer_multiaddr)
+                
+                if not peer_ip:
+                    output += "❌ Could not parse IP from multiaddr\n"
+                    Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                    return
+                
+                peer_ip = peer_ip.group(1)
+                peer_port = peer_port.group(1) if peer_port else "9081"
+                peer_id = peer_id.group(1) if peer_id else ""
+                
+                output += f"Peer IP: {peer_ip}\n"
+                output += f"Peer Port: {peer_port}\n"
+                if peer_id:
+                    output += f"Peer ID: {peer_id[:20]}...\n"
+                output += "\n"
+                
+                # Check if Go node is running
+                if not self.connected or not self.go_client:
+                    output += "Starting local Go node to connect...\n\n"
+                    
+                    # Start local Go node with peer connection
+                    project_root = PROJECT_ROOT
+                    go_dir = project_root / "go"
+                    
+                    if not (go_dir / "bin" / "go-node").exists():
+                        output += "❌ Go node not built. Please build first.\n"
+                        Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                        return
+                    
+                    # Set library paths
+                    env = os.environ.copy()
+                    rust_lib = str(project_root / "rust" / "target" / "release")
+                    env["LD_LIBRARY_PATH"] = f"{rust_lib}:{env.get('LD_LIBRARY_PATH', '')}"
+                    env["DYLD_LIBRARY_PATH"] = f"{rust_lib}:{env.get('DYLD_LIBRARY_PATH', '')}"
+                    
+                    # Start node with peer connection
+                    proc = subprocess.Popen(
+                        [str(go_dir / "bin" / "go-node"),
+                         "-node-id=2", "-capnp-addr=:8081",
+                         "-libp2p=true", "-libp2p-port=9082",
+                         f"-peers={peer_multiaddr}", "-local"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=False,
+                        cwd=str(go_dir),
+                        env=env
+                    )
+                    
+                    time.sleep(3)
+                    
+                    # Check if connected
+                    if proc.poll() is None:
+                        output += "✅ Node started and attempting connection...\n\n"
+                        output += "Connection details:\n"
+                        output += f"  Peer IP: {peer_ip}\n"
+                        output += f"  Peer Port: {peer_port}\n"
+                        output += "\n"
+                        output += "🎉 Connection in progress!\n"
+                        output += "\nNode is running in background.\n"
+                        output += "You can now use DCDN features.\n"
+                    else:
+                        output += "❌ Node failed to start\n"
+                        # Try to get error output
+                        err_out = proc.stdout.read().decode('utf-8', errors='replace')
+                        if err_out:
+                            output += f"\nError output:\n{err_out[:500]}\n"
+                else:
+                    output += "✅ Using existing Go node connection\n\n"
+                    # Try to connect to peer via Go client if method exists
+                    output += "Note: Manual peer connection through existing node\n"
+                    output += "Use CLI commands to connect if needed.\n"
+                
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(output), 0)
+                self.log_message("✅ Connection initiated")
+            except Exception as e:
+                error_msg = f"❌ Error connecting to peer: {str(e)}\n"
+                error_msg += f"Traceback: {traceback.format_exc()}"
+                self.log_message(error_msg)
+                Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
+        
+        threading.Thread(target=connect_thread, daemon=True).start()
+    
     def test_dcdn(self):
         """Run DCDN tests."""
         self.log_message("🧪 Running DCDN tests...")
@@ -3338,6 +3708,139 @@ class PangeaDesktopApp(MDApp):
                 Clock.schedule_once(lambda dt: self._update_dcdn_output(error_msg), 0)
         
         threading.Thread(target=test_video_thread, daemon=True).start()
+    
+    def _start_video_receiver(self):
+        """Start a background thread to receive and display video frames."""
+        def receiver_thread():
+            try:
+                self.log_message("📺 Starting video receiver...")
+                
+                # Try to import cv2 for display
+                try:
+                    import cv2
+                    import numpy as np
+                    cv2_available = True
+                except ImportError:
+                    cv2_available = False
+                    self.log_message("⚠️  OpenCV not available - cannot display video")
+                    return
+                
+                window_name = "Incoming Video - Pangea Net"
+                cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+                cv2.resizeWindow(window_name, VIDEO_WIDTH, VIDEO_HEIGHT)
+                
+                frame_count = 0
+                last_frame_id = -1
+                
+                while self.streaming_active:
+                    try:
+                        # Poll for new frames
+                        frames = self.go_client.get_received_frames(max_frames=5)
+                        
+                        if frames:
+                            # Display the most recent frame
+                            latest_frame = frames[-1]
+                            frame_id = latest_frame['frameId']
+                            
+                            # Only display if it's a new frame
+                            if frame_id > last_frame_id:
+                                # Decode JPEG data
+                                jpeg_data = latest_frame['data']
+                                nparr = np.frombuffer(jpeg_data, np.uint8)
+                                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                                
+                                if frame is not None:
+                                    # Display frame
+                                    cv2.imshow(window_name, frame)
+                                    
+                                    frame_count += 1
+                                    last_frame_id = frame_id
+                                    
+                                    if frame_count % 30 == 0:  # Log every second at 30fps
+                                        self.log_message(f"📺 Received {frame_count} frames")
+                        
+                        # Check for window close
+                        if cv2.waitKey(1) & 0xFF == ord('q'):
+                            self.log_message("Video window closed by user")
+                            break
+                        
+                        if cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) < 1:
+                            self.log_message("Video window closed")
+                            break
+                    
+                    except Exception as e:
+                        self.log_message(f"⚠️  Error receiving frame: {str(e)}")
+                    
+                    # Sleep briefly to avoid busy waiting (target ~30fps check rate)
+                    time.sleep(0.033)
+                
+                # Cleanup
+                cv2.destroyWindow(window_name)
+                self.log_message("📺 Video receiver stopped")
+                
+            except Exception as e:
+                self.log_message(f"❌ Video receiver error: {str(e)}\n{traceback.format_exc()}")
+        
+        threading.Thread(target=receiver_thread, daemon=True).start()
+    
+    def _start_audio_receiver(self):
+        """Start a background thread to receive and play audio chunks."""
+        def receiver_thread():
+            try:
+                self.log_message("🔊 Starting audio receiver...")
+                
+                # Try to import pyaudio for playback
+                try:
+                    import pyaudio
+                    pyaudio_available = True
+                except ImportError:
+                    pyaudio_available = False
+                    self.log_message("⚠️  PyAudio not available - cannot play audio")
+                    return
+                
+                # Initialize PyAudio
+                p = pyaudio.PyAudio()
+                stream = p.open(
+                    format=pyaudio.paInt16,
+                    channels=AUDIO_CHANNELS,
+                    rate=AUDIO_SAMPLE_RATE,
+                    output=True,
+                    frames_per_buffer=AUDIO_CHUNK_SIZE
+                )
+                
+                chunk_count = 0
+                
+                while self.streaming_active:
+                    try:
+                        # Poll for new audio chunks
+                        chunks = self.go_client.get_received_audio(max_chunks=10)
+                        
+                        if chunks:
+                            # Play each chunk
+                            for chunk in chunks:
+                                audio_data = chunk['data']
+                                stream.write(audio_data)
+                                chunk_count += 1
+                            
+                            if chunk_count % 50 == 0:  # Log every ~second
+                                self.log_message(f"🔊 Played {chunk_count} audio chunks")
+                    
+                    except Exception as e:
+                        self.log_message(f"⚠️  Error receiving audio: {str(e)}")
+                    
+                    # Sleep briefly
+                    time.sleep(0.02)
+                
+                # Cleanup
+                stream.stop_stream()
+                stream.close()
+                p.terminate()
+                self.log_message("🔊 Audio receiver stopped")
+                
+            except Exception as e:
+                self.log_message(f"❌ Audio receiver error: {str(e)}\n{traceback.format_exc()}")
+        
+        threading.Thread(target=receiver_thread, daemon=True).start()
     
     # ==========================================================================
     # Utility Methods
