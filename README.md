@@ -504,3 +504,20 @@ For detailed status of each component and feature, see [VERSION.md](docs/VERSION
 ---
 
 *Last Updated: 2025-12-07*
+
+
+## License
+
+This project is licensed under the **GNU Affero General Public License v3.0** (AGPL-3.0).
+
+### What this means:
+- ✅ You can fork, modify, and build upon this code
+- ✅ Any improvements/modifications must remain open-source under AGPL-3.0
+- ⚠️ **Commercial use requires explicit permission from the author**
+- ⚠️ If you deploy this as a service, you must provide access to your modified source code
+
+### Commercial License
+For commercial use, proprietary deployment, or SaaS offerings, contact [your-email@example.com] for a commercial license agreement.
+
+For more details, see the [LICENSE](./LICENSE) file or visit https://www.gnu.org/licenses/agpl-3.0.en.html.
+
