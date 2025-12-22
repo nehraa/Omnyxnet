@@ -39,6 +39,42 @@ from datetime import datetime
 PROJECT_ROOT = Path(__file__).resolve().parent.parent  # Go up to WGT/
 sys.path.insert(0, str(PROJECT_ROOT / "python"))
 sys.path.insert(0, str(PROJECT_ROOT / "python" / "src"))
+# Kivy imports
+from kivy.clock import Clock  # noqa: E402
+from kivy.uix.scrollview import ScrollView  # noqa: E402
+from kivy.metrics import dp  # noqa: E402
+from kivy.core.window import Window  # noqa: E402
+
+# KivyMD imports
+try:
+    from kivymd.app import MDApp
+    from kivymd.uix.screen import MDScreen
+    from kivymd.uix.button import MDRaisedButton, MDFlatButton
+    from kivymd.uix.textfield import MDTextField
+    from kivymd.uix.label import MDLabel
+    from kivymd.uix.tab import MDTabs, MDTabsBase
+    from kivymd.uix.toolbar import MDTopAppBar
+    from kivymd.uix.boxlayout import MDBoxLayout
+    from kivymd.uix.card import MDCard
+    from kivymd.uix.dialog import MDDialog
+    from kivymd.uix.filemanager import MDFileManager
+    from kivymd.uix.selectioncontrol import MDSwitch
+
+    KIVYMD_AVAILABLE = True
+except ImportError as e:
+    print(f"KivyMD not available: {e}", file=sys.stderr)
+    print("Install with: pip install kivymd", file=sys.stderr)
+    KIVYMD_AVAILABLE = False
+    sys.exit(1)
+
+# Set minimum window size for usability (apply if Window is available)
+try:
+    Window.minimum_width = 1024
+    Window.minimum_height = 768
+    Window.size = (1200, 900)
+except Exception:
+    # If Window isn't available in the current environment, ignore.
+    pass
 
 # Constants for timeouts and output limits
 DCDN_DEMO_TIMEOUT = 60  # seconds
@@ -65,40 +101,6 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
-
-# Kivy imports
-from kivy.clock import Clock
-from kivy.uix.scrollview import ScrollView
-from kivy.metrics import dp
-from kivy.core.window import Window
-
-# Set minimum window size for usability
-Window.minimum_width = 1024
-Window.minimum_height = 768
-Window.size = (1200, 900)
-
-# KivyMD imports
-try:
-    from kivymd.app import MDApp
-    from kivymd.uix.screen import MDScreen
-    from kivymd.uix.button import MDRaisedButton, MDFlatButton
-    from kivymd.uix.textfield import MDTextField
-    from kivymd.uix.label import MDLabel
-    from kivymd.uix.tab import MDTabs, MDTabsBase
-    from kivymd.uix.toolbar import MDTopAppBar
-    from kivymd.uix.boxlayout import MDBoxLayout
-    from kivymd.uix.card import MDCard
-    from kivymd.uix.scrollview import MDScrollView
-    from kivymd.uix.dialog import MDDialog
-    from kivymd.uix.filemanager import MDFileManager
-    from kivymd.uix.selectioncontrol import MDSwitch
-
-    KIVYMD_AVAILABLE = True
-except ImportError as e:
-    logger.error(f"KivyMD not available: {e}")
-    logger.error("Install with: pip install kivymd")
-    KIVYMD_AVAILABLE = False
-    sys.exit(1)
 
 # Try to import Cap'n Proto client
 try:
@@ -1268,8 +1270,8 @@ class PangeaDesktopApp(MDApp):
 
                         # Log all output for debugging
                         Clock.schedule_once(
-                            lambda dt, l=line: self.log_message(
-                                f"[Go-{pipe_name}] {l}"
+                            lambda dt, line_text=line: self.log_message(
+                                f"[Go-{pipe_name}] {line_text}"
                             ),
                             0,
                         )
@@ -1277,7 +1279,10 @@ class PangeaDesktopApp(MDApp):
                         # Check for errors
                         if "error" in line.lower() or "failed" in line.lower():
                             Clock.schedule_once(
-                                lambda dt, l=line: self.log_message(f"⚠️  {l}"), 0
+                                lambda dt, line_text=line: self.log_message(
+                                    f"⚠️  {line_text}"
+                                ),
+                                0,
                             )
 
                         # Look for multiaddr patterns like /ip4/1.2.3.4/tcp/PORT/p2p/PEERID
@@ -1315,7 +1320,7 @@ class PangeaDesktopApp(MDApp):
                     )
 
             # Initialize storage and start threads
-            self.local_multiaddrs = set()
+            self.local_multiaddrs: set[str] = set()
             if self.go_process.stdout:
                 threading.Thread(
                     target=reader, args=(self.go_process.stdout, "stdout"), daemon=True
@@ -1392,8 +1397,10 @@ class PangeaDesktopApp(MDApp):
                     Clock.schedule_once(
                         lambda dt: self.on_connect_failed(host, port), 0
                     )
-            except Exception:
-                Clock.schedule_once(lambda dt: self.on_connect_error(str(e)), 0)
+            except Exception as e:
+                Clock.schedule_once(
+                    lambda dt, exc=e: self.on_connect_error(str(exc)), 0
+                )
 
         threading.Thread(target=connect_thread, daemon=True).start()
 
@@ -3805,7 +3812,7 @@ class PangeaDesktopApp(MDApp):
                             log_output += line
                             if len(log_output) > MAX_LOG_SIZE:
                                 break
-                    except:
+                    except Exception:
                         pass
 
                     # Kill the temporary node
@@ -4343,9 +4350,7 @@ class PangeaDesktopApp(MDApp):
                     import cv2
                     import numpy as np
 
-                    cv2_available = True
                 except ImportError:
-                    cv2_available = False
                     self.log_message("⚠️  OpenCV not available - cannot display video")
                     return
 
@@ -4424,9 +4429,7 @@ class PangeaDesktopApp(MDApp):
                 try:
                     import pyaudio
 
-                    pyaudio_available = True
                 except ImportError:
-                    pyaudio_available = False
                     self.log_message("⚠️  PyAudio not available - cannot play audio")
                     return
 

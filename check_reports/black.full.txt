@@ -1,0 +1,10 @@
+reformatted /Users/abhinavnehra/WGT/python/src/ai/__init__.py
+reformatted /Users/abhinavnehra/WGT/python/src/ai/translation_pipeline.py
+reformatted /Users/abhinavnehra/WGT/python/src/compute/client.py
+reformatted /Users/abhinavnehra/WGT/tools/load-testing/load_test.py
+reformatted /Users/abhinavnehra/WGT/python/src/ai/federated_learning.py
+reformatted /Users/abhinavnehra/WGT/demo/server.py
+reformatted /Users/abhinavnehra/WGT/python/src/client/go_client.py
+
+All done! ✨ 🍰 ✨
+7 files reformatted, 50 files left unchanged.

@@ -81,7 +81,10 @@ class ComputeClient:
     """
 
     def __init__(
-        self, host: str = "localhost", port: int = 8080, schema_path: str = None
+        self,
+        host: str = "localhost",
+        port: int = 8080,
+        schema_path: Optional[str] = None,
     ):
         """Initialize the compute client.
 
@@ -94,7 +97,7 @@ class ComputeClient:
         self.port = port
         self.schema_path = schema_path
         self._connected = False
-        self._go_client = None
+        self._go_client: Optional[Any] = None
         self._jobs: Dict[str, Any] = {}
 
     def connect(self) -> bool:
@@ -167,7 +170,10 @@ class ComputeClient:
         }
 
         # Submit to Go orchestrator via RPC
-        success, error_msg = self._go_client.submit_compute_job(
+        go_client = self._go_client
+        assert go_client is not None
+
+        success, error_msg = go_client.submit_compute_job(
             job_id=job_id,
             input_data=input_data,
             split_strategy=manifest.get("splitStrategy", "fixed"),
@@ -246,7 +252,10 @@ class ComputeClient:
             raise KeyError(f"Job {job_id} not found")
 
         # Try to get status from Go orchestrator
-        status_dict = self._go_client.get_compute_job_status(job_id)
+        go_client = self._go_client
+        assert go_client is not None
+
+        status_dict = go_client.get_compute_job_status(job_id)
 
         if status_dict:
             # Map Go status string to TaskStatus enum
@@ -308,7 +317,10 @@ class ComputeClient:
             raise KeyError(f"Job {job_id} not found")
 
         # Try to get result from Go orchestrator first
-        result_data, error_msg, worker_node = self._go_client.get_compute_job_result(
+        go_client = self._go_client
+        assert go_client is not None
+
+        result_data, error_msg, worker_node = go_client.get_compute_job_result(
             job_id, timeout_ms=int(timeout * 1000)
         )
 
@@ -349,7 +361,10 @@ class ComputeClient:
             raise ConnectionError("Not connected to compute service")
 
         # Try to cancel via Go orchestrator
-        cancelled = self._go_client.cancel_compute_job(job_id)
+        go_client = self._go_client
+        assert go_client is not None
+
+        cancelled = go_client.cancel_compute_job(job_id)
 
         if cancelled:
             if job_id in self._jobs:
@@ -375,7 +390,10 @@ class ComputeClient:
             raise ConnectionError("Not connected to compute service")
 
         # Query capacity from Go node
-        capacity = self._go_client.get_compute_capacity()
+        go_client = self._go_client
+        assert go_client is not None
+
+        capacity = go_client.get_compute_capacity()
 
         if capacity:
             return ComputeCapacity(

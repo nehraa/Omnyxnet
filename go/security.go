@@ -35,10 +35,10 @@ type ProxyConfigData struct {
 
 // EncryptionConfigData holds encryption configuration
 type EncryptionConfigData struct {
-	EncryptionType      string // "asymmetric", "symmetric", "none"
-	KeyExchangeAlgo     string // "rsa", "ecc", "dh"
-	SymmetricAlgo       string // "aes256", "chacha20"
-	EnableSignatures    bool
+	EncryptionType   string // "asymmetric", "symmetric", "none"
+	KeyExchangeAlgo  string // "rsa", "ecc", "dh"
+	SymmetricAlgo    string // "aes256", "chacha20"
+	EnableSignatures bool
 }
 
 // RSAKeyPair represents an RSA key pair for asymmetric encryption
@@ -61,13 +61,13 @@ type ChatSessionData struct {
 
 // EphemeralChatMessageData represents a chat message
 type EphemeralChatMessageData struct {
-	FromPeer      string
-	ToPeer        string
-	Message       []byte
-	Timestamp     int64
-	MessageID     string
+	FromPeer       string
+	ToPeer         string
+	Message        []byte
+	Timestamp      int64
+	MessageID      string
 	EncryptionType string
-	Signature     []byte
+	Signature      []byte
 }
 
 // NewSecurityManager creates a new security manager
@@ -92,15 +92,15 @@ func NewSecurityManager() *SecurityManager {
 func (sm *SecurityManager) SetProxyConfig(config *ProxyConfigData) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	sm.proxyConfig = config
-	log.Printf("Proxy config updated: enabled=%v, type=%s, host=%s:%d", 
+	log.Printf("Proxy config updated: enabled=%v, type=%s, host=%s:%d",
 		config.Enabled, config.ProxyType, config.ProxyHost, config.ProxyPort)
-	
+
 	// Note: Actual proxy integration with libp2p would happen here
 	// This requires configuring libp2p transport options
 	// For full implementation, see: https://github.com/libp2p/go-libp2p/examples
-	
+
 	return nil
 }
 
@@ -115,11 +115,11 @@ func (sm *SecurityManager) GetProxyConfig() *ProxyConfigData {
 func (sm *SecurityManager) SetEncryptionConfig(config *EncryptionConfigData) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	sm.encryptionConfig = config
-	log.Printf("Encryption config updated: type=%s, key_exchange=%s, symmetric=%s", 
+	log.Printf("Encryption config updated: type=%s, key_exchange=%s, symmetric=%s",
 		config.EncryptionType, config.KeyExchangeAlgo, config.SymmetricAlgo)
-	
+
 	return nil
 }
 
@@ -137,17 +137,17 @@ func (sm *SecurityManager) GenerateRSAKeyPair(keyID string) (*RSAKeyPair, error)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate RSA key: %w", err)
 	}
-	
+
 	keyPair := &RSAKeyPair{
 		PrivateKey: privateKey,
 		PublicKey:  &privateKey.PublicKey,
 		Created:    time.Now(),
 	}
-	
+
 	sm.mu.Lock()
 	sm.keyPairs[keyID] = keyPair
 	sm.mu.Unlock()
-	
+
 	log.Printf("Generated RSA key pair: %s", keyID)
 	return keyPair, nil
 }
@@ -157,21 +157,21 @@ func (sm *SecurityManager) ExportPublicKey(keyID string) ([]byte, error) {
 	sm.mu.RLock()
 	keyPair, exists := sm.keyPairs[keyID]
 	sm.mu.RUnlock()
-	
+
 	if !exists {
 		return nil, fmt.Errorf("key pair not found: %s", keyID)
 	}
-	
+
 	publicKeyBytes, err := x509.MarshalPKIXPublicKey(keyPair.PublicKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal public key: %w", err)
 	}
-	
+
 	publicKeyPEM := pem.EncodeToMemory(&pem.Block{
 		Type:  "RSA PUBLIC KEY",
 		Bytes: publicKeyBytes,
 	})
-	
+
 	return publicKeyPEM, nil
 }
 
@@ -181,26 +181,26 @@ func (sm *SecurityManager) ImportPublicKey(keyID string, publicKeyPEM []byte) er
 	if block == nil {
 		return fmt.Errorf("failed to decode PEM block")
 	}
-	
+
 	publicKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		return fmt.Errorf("failed to parse public key: %w", err)
 	}
-	
+
 	rsaPublicKey, ok := publicKey.(*rsa.PublicKey)
 	if !ok {
 		return fmt.Errorf("not an RSA public key")
 	}
-	
+
 	keyPair := &RSAKeyPair{
 		PublicKey: rsaPublicKey,
 		Created:   time.Now(),
 	}
-	
+
 	sm.mu.Lock()
 	sm.keyPairs[keyID] = keyPair
 	sm.mu.Unlock()
-	
+
 	log.Printf("Imported public key: %s", keyID)
 	return nil
 }
@@ -210,16 +210,16 @@ func (sm *SecurityManager) EncryptWithPublicKey(keyID string, plaintext []byte) 
 	sm.mu.RLock()
 	keyPair, exists := sm.keyPairs[keyID]
 	sm.mu.RUnlock()
-	
+
 	if !exists || keyPair.PublicKey == nil {
 		return nil, fmt.Errorf("public key not found: %s", keyID)
 	}
-	
+
 	ciphertext, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, keyPair.PublicKey, plaintext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("encryption failed: %w", err)
 	}
-	
+
 	return ciphertext, nil
 }
 
@@ -228,16 +228,16 @@ func (sm *SecurityManager) DecryptWithPrivateKey(keyID string, ciphertext []byte
 	sm.mu.RLock()
 	keyPair, exists := sm.keyPairs[keyID]
 	sm.mu.RUnlock()
-	
+
 	if !exists || keyPair.PrivateKey == nil {
 		return nil, fmt.Errorf("private key not found: %s", keyID)
 	}
-	
+
 	plaintext, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, keyPair.PrivateKey, ciphertext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("decryption failed: %w", err)
 	}
-	
+
 	return plaintext, nil
 }
 
@@ -246,17 +246,17 @@ func (sm *SecurityManager) SignMessage(keyID string, message []byte) ([]byte, er
 	sm.mu.RLock()
 	keyPair, exists := sm.keyPairs[keyID]
 	sm.mu.RUnlock()
-	
+
 	if !exists || keyPair.PrivateKey == nil {
 		return nil, fmt.Errorf("private key not found: %s", keyID)
 	}
-	
+
 	hashed := sha256.Sum256(message)
 	signature, err := rsa.SignPKCS1v15(rand.Reader, keyPair.PrivateKey, crypto.SHA256, hashed[:])
 	if err != nil {
 		return nil, fmt.Errorf("signing failed: %w", err)
 	}
-	
+
 	return signature, nil
 }
 
@@ -265,17 +265,17 @@ func (sm *SecurityManager) VerifySignature(keyID string, message, signature []by
 	sm.mu.RLock()
 	keyPair, exists := sm.keyPairs[keyID]
 	sm.mu.RUnlock()
-	
+
 	if !exists || keyPair.PublicKey == nil {
 		return fmt.Errorf("public key not found: %s", keyID)
 	}
-	
+
 	hashed := sha256.Sum256(message)
 	err := rsa.VerifyPKCS1v15(keyPair.PublicKey, crypto.SHA256, hashed[:], signature)
 	if err != nil {
 		return fmt.Errorf("signature verification failed: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -288,11 +288,11 @@ func (sm *SecurityManager) CreateChatSession(sessionID, peerAddr string, encConf
 		Established:      time.Now(),
 		MessageQueue:     make([]*EphemeralChatMessageData, 0),
 	}
-	
+
 	sm.mu.Lock()
 	sm.chatSessions[sessionID] = session
 	sm.mu.Unlock()
-	
+
 	log.Printf("Created chat session: %s with peer: %s", sessionID, peerAddr)
 	return session, nil
 }
@@ -302,11 +302,11 @@ func (sm *SecurityManager) GetChatSession(sessionID string) (*ChatSessionData, e
 	sm.mu.RLock()
 	session, exists := sm.chatSessions[sessionID]
 	sm.mu.RUnlock()
-	
+
 	if !exists {
 		return nil, fmt.Errorf("chat session not found: %s", sessionID)
 	}
-	
+
 	return session, nil
 }
 
@@ -314,15 +314,15 @@ func (sm *SecurityManager) GetChatSession(sessionID string) (*ChatSessionData, e
 func (sm *SecurityManager) AddChatMessage(sessionID string, message *EphemeralChatMessageData) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	session, exists := sm.chatSessions[sessionID]
 	if !exists {
 		return fmt.Errorf("chat session not found: %s", sessionID)
 	}
-	
+
 	session.MessageQueue = append(session.MessageQueue, message)
 	log.Printf("Added message to session %s: %s", sessionID, message.MessageID)
-	
+
 	return nil
 }
 
@@ -330,17 +330,17 @@ func (sm *SecurityManager) AddChatMessage(sessionID string, message *EphemeralCh
 func (sm *SecurityManager) GetChatMessages(sessionID string) ([]*EphemeralChatMessageData, error) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	session, exists := sm.chatSessions[sessionID]
 	if !exists {
 		return nil, fmt.Errorf("chat session not found: %s", sessionID)
 	}
-	
+
 	// Return copy of messages and clear queue
 	messages := make([]*EphemeralChatMessageData, len(session.MessageQueue))
 	copy(messages, session.MessageQueue)
 	session.MessageQueue = make([]*EphemeralChatMessageData, 0)
-	
+
 	return messages, nil
 }
 
@@ -348,10 +348,10 @@ func (sm *SecurityManager) GetChatMessages(sessionID string) ([]*EphemeralChatMe
 func (sm *SecurityManager) CloseChatSession(sessionID string) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	
+
 	delete(sm.chatSessions, sessionID)
 	log.Printf("Closed chat session: %s", sessionID)
-	
+
 	return nil
 }
 
@@ -365,20 +365,20 @@ func (sm *SecurityManager) KeyExchange(ctx context.Context, peerAddr string) ([]
 			return nil, fmt.Errorf("failed to generate key pair: %w", err)
 		}
 	}
-	
+
 	// Export public key
 	publicKeyPEM, err := sm.ExportPublicKey("default")
 	if err != nil {
 		return nil, fmt.Errorf("failed to export public key: %w", err)
 	}
-	
+
 	log.Printf("Performing key exchange with peer: %s", peerAddr)
-	
+
 	// In a full implementation, this would:
 	// 1. Send our public key to the peer
 	// 2. Receive peer's public key
 	// 3. Optionally generate and exchange a symmetric session key
 	// 4. Verify signatures if enabled
-	
+
 	return publicKeyPEM, nil
 }

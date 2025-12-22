@@ -1,5 +1,5 @@
 //! Type definitions for the Distributed Compute System
-//! 
+//!
 //! This module contains all the core types used throughout the compute engine.
 
 use serde::{Deserialize, Serialize};
@@ -31,7 +31,7 @@ impl Default for ComputeConfig {
         Self {
             max_memory_mb: 256,
             max_cpu_cycles: 1_000_000_000, // 1 billion cycles
-            max_execution_time_ms: 30_000,  // 30 seconds
+            max_execution_time_ms: 30_000, // 30 seconds
             enable_wasi: false,
             verification_mode: VerificationMode::Hash,
             worker_threads: num_cpus::get().max(1),
@@ -150,21 +150,21 @@ impl JobManifest {
             wasm_module,
             input_data,
             split_strategy: SplitStrategy::default(),
-            min_chunk_size: 65536,       // 64 KB
-            max_chunk_size: 1048576,     // 1 MB
+            min_chunk_size: 65536,   // 64 KB
+            max_chunk_size: 1048576, // 1 MB
             verification_mode: VerificationMode::default(),
-            timeout_secs: 300,           // 5 minutes
+            timeout_secs: 300, // 5 minutes
             retry_count: 3,
-            priority: 5,                 // Medium priority
-            redundancy: 1,               // No redundancy
+            priority: 5,   // Medium priority
+            redundancy: 1, // No redundancy
         }
     }
-    
+
     /// Calculate estimated complexity score
     pub fn complexity_score(&self) -> f64 {
         let data_size = self.input_data.len() as f64;
         let module_size = self.wasm_module.len() as f64;
-        
+
         // Simple heuristic: larger data and module = more complex
         (data_size * 0.8 + module_size * 0.2) / 1_000_000.0
     }
@@ -280,21 +280,19 @@ pub struct ComputeCapacity {
 impl ComputeCapacity {
     /// Probe the system for compute capacity
     pub fn probe() -> Self {
-        use sysinfo::{System, SystemExt, CpuExt};
-        
+        use sysinfo::{CpuExt, System, SystemExt};
+
         let mut sys = System::new_all();
         sys.refresh_all();
-        
+
         let cpu_cores = sys.cpus().len() as u32;
         let ram_mb = sys.total_memory() / (1024 * 1024);
         let disk_mb = 0; // Would need to check specific path
-        
+
         // Calculate current load from CPU usage
-        let current_load: f32 = sys.cpus()
-            .iter()
-            .map(|cpu| cpu.cpu_usage())
-            .sum::<f32>() / (cpu_cores as f32 * 100.0);
-        
+        let current_load: f32 =
+            sys.cpus().iter().map(|cpu| cpu.cpu_usage()).sum::<f32>() / (cpu_cores as f32 * 100.0);
+
         Self {
             cpu_cores,
             ram_mb,
@@ -303,15 +301,15 @@ impl ComputeCapacity {
             bandwidth_mbps: 100.0, // Default estimate
         }
     }
-    
+
     /// Calculate available capacity score (0.0 to 1.0)
     pub fn available_score(&self) -> f32 {
         let cpu_score = 1.0 - self.current_load;
         let ram_score = (self.ram_mb as f32 / 8192.0).min(1.0); // Normalize to 8GB
-        
+
         cpu_score * 0.6 + ram_score * 0.4
     }
-    
+
     /// Check if node can accept work with given requirements
     pub fn can_accept(&self, required_ram_mb: u64, _complexity: f64) -> bool {
         self.current_load < 0.9 && self.ram_mb >= required_ram_mb
@@ -329,28 +327,28 @@ impl Default for ComputeCapacity {
 pub enum ComputeError {
     #[error("WASM module loading failed: {0}")]
     WasmLoadError(String),
-    
+
     #[error("WASM execution failed: {0}")]
     WasmExecutionError(String),
-    
+
     #[error("Resource limit exceeded: {0}")]
     ResourceLimitExceeded(String),
-    
+
     #[error("Verification failed: {0}")]
     VerificationFailed(String),
-    
+
     #[error("Serialization error: {0}")]
     SerializationError(String),
-    
+
     #[error("Task timeout after {0}ms")]
     Timeout(u64),
-    
+
     #[error("Task cancelled")]
     Cancelled,
-    
+
     #[error("Invalid input: {0}")]
     InvalidInput(String),
-    
+
     #[error("Internal error: {0}")]
     Internal(String),
 }

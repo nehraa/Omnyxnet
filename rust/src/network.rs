@@ -1,14 +1,14 @@
-use anyhow::{Result, Context};
-use quinn::{Endpoint, ServerConfig, ClientConfig, Connection};
-use rustls::pki_types::{CertificateDer, PrivateKeyDer};
-use std::sync::Arc;
-use std::net::SocketAddr;
-use std::collections::HashMap;
-use tokio::sync::{RwLock, mpsc};
-use tracing::{info, warn, debug};
+use anyhow::{Context, Result};
 use bytes::Bytes;
+use quinn::{ClientConfig, Connection, Endpoint, ServerConfig};
+use rustls::pki_types::{CertificateDer, PrivateKeyDer};
+use std::collections::HashMap;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::sync::{mpsc, RwLock};
+use tracing::{debug, info, warn};
 
-use crate::types::{PeerAddress, ConnectionQuality};
+use crate::types::{ConnectionQuality, PeerAddress};
 
 /// QUIC-based P2P network node
 pub struct QuicNode {
@@ -23,10 +23,10 @@ impl QuicNode {
     /// Create a new QUIC node
     pub async fn new(node_id: u32, bind_addr: SocketAddr) -> Result<Self> {
         let (cert, key) = generate_self_signed_cert()?;
-        
+
         let server_config = configure_server(cert.clone(), key)?;
         let endpoint = Endpoint::server(server_config, bind_addr)?;
-        
+
         info!("QUIC node {} listening on {}", node_id, bind_addr);
 
         let (message_tx, _message_rx) = mpsc::unbounded_channel();
@@ -49,14 +49,19 @@ impl QuicNode {
         info!("Connecting to peer {} at {}", peer.peer_id, addr);
 
         let client_config = configure_client()?;
-        let connecting = self.endpoint.connect_with(client_config, addr, "localhost")?;
-        
+        let connecting = self
+            .endpoint
+            .connect_with(client_config, addr, "localhost")?;
+
         let start = std::time::Instant::now();
         let conn = connecting.await.context("Failed to connect to peer")?;
         let latency = start.elapsed().as_millis() as f32;
 
         // Store connection
-        self.connections.write().await.insert(peer.peer_id, conn.clone());
+        self.connections
+            .write()
+            .await
+            .insert(peer.peer_id, conn.clone());
 
         let quality = ConnectionQuality {
             latency_ms: latency,
@@ -64,20 +69,25 @@ impl QuicNode {
             packet_loss: 0.0,
         };
 
-        self.quality_metrics.write().await.insert(peer.peer_id, quality.clone());
+        self.quality_metrics
+            .write()
+            .await
+            .insert(peer.peer_id, quality.clone());
 
         // Start ping task for this connection
         self.start_ping_task(peer.peer_id, conn);
 
-        info!("Connected to peer {} with {}ms latency", peer.peer_id, latency);
+        info!(
+            "Connected to peer {} with {}ms latency",
+            peer.peer_id, latency
+        );
         Ok(quality)
     }
 
     /// Send a message to a peer
     pub async fn send_message(&self, peer_id: u32, data: Bytes) -> Result<()> {
         let connections = self.connections.read().await;
-        let conn = connections.get(&peer_id)
-            .context("Peer not connected")?;
+        let conn = connections.get(&peer_id).context("Peer not connected")?;
 
         let mut send_stream = conn.open_uni().await?;
         send_stream.write_all(&data).await?;
@@ -110,7 +120,7 @@ impl QuicNode {
     /// Start background ping task for latency measurement
     fn start_ping_task(&self, peer_id: u32, conn: Connection) {
         let quality_metrics = self.quality_metrics.clone();
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
             let mut last_latency = 0.0f32;
@@ -124,7 +134,7 @@ impl QuicNode {
                     Ok(mut stream) => {
                         if stream.write_all(b"PING").await.is_ok() && stream.finish().is_ok() {
                             let latency = start.elapsed().as_millis() as f32;
-                            
+
                             // Calculate jitter
                             let jitter = if last_latency > 0.0 {
                                 (latency - last_latency).abs()
@@ -156,7 +166,7 @@ impl QuicNode {
         while let Some(conn) = self.endpoint.accept().await {
             let connecting = conn.await?;
             info!("Accepted connection from {:?}", connecting.remote_address());
-            
+
             // TODO: Implement peer ID exchange and register connection
             // For now, we just accept the connection
         }
@@ -173,12 +183,15 @@ fn generate_self_signed_cert() -> Result<(CertificateDer<'static>, PrivateKeyDer
 }
 
 /// Configure QUIC server
-fn configure_server(cert: CertificateDer<'static>, key: PrivateKeyDer<'static>) -> Result<ServerConfig> {
+fn configure_server(
+    cert: CertificateDer<'static>,
+    key: PrivateKeyDer<'static>,
+) -> Result<ServerConfig> {
     let mut server_config = ServerConfig::with_single_cert(vec![cert], key)?;
-    
+
     let transport_config = Arc::get_mut(&mut server_config.transport)
         .context("Failed to get mutable transport config")?;
-    
+
     transport_config.max_concurrent_uni_streams(1000u32.into());
     transport_config.max_idle_timeout(Some(std::time::Duration::from_secs(60).try_into()?));
 
@@ -193,7 +206,7 @@ fn configure_client() -> Result<ClientConfig> {
         .with_no_client_auth();
 
     let mut client_config = ClientConfig::new(Arc::new(
-        quinn::crypto::rustls::QuicClientConfig::try_from(crypto)?
+        quinn::crypto::rustls::QuicClientConfig::try_from(crypto)?,
     ));
 
     // Configure transport

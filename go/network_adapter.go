@@ -53,11 +53,11 @@ func NewLibP2PAdapter(node *LibP2PPangeaNode, store *NodeStore) *LibP2PAdapter {
 func (a *LibP2PAdapter) getPeerUint32ID(peerIDStr string) uint32 {
 	a.peerIDMu.Lock()
 	defer a.peerIDMu.Unlock()
-	
+
 	if id, exists := a.peerIDToUint32[peerIDStr]; exists {
 		return id
 	}
-	
+
 	// Create new mapping
 	id := a.nextPeerID
 	a.nextPeerID++
@@ -70,7 +70,7 @@ func (a *LibP2PAdapter) getPeerUint32ID(peerIDStr string) uint32 {
 func (a *LibP2PAdapter) getLibp2pPeerID(id uint32) (string, bool) {
 	a.peerIDMu.RLock()
 	defer a.peerIDMu.RUnlock()
-	
+
 	peerIDStr, exists := a.uint32ToPeerID[id]
 	return peerIDStr, exists
 }
@@ -102,12 +102,12 @@ func (a *LibP2PAdapter) SendMessage(peerID uint32, data []byte) error {
 	if !exists {
 		return fmt.Errorf("peer %d not found in mapping", peerID)
 	}
-	
+
 	pid, err := peer.Decode(peerIDStr)
 	if err != nil {
 		return fmt.Errorf("invalid peer ID: %w", err)
 	}
-	
+
 	stream, err := a.node.host.NewStream(a.node.ctx, pid, PangeaRPCProtocol)
 	if err != nil {
 		return err
@@ -150,12 +150,12 @@ func (a *LibP2PAdapter) FetchShard(peerID uint32, shardIndex uint32) ([]byte, er
 	if !exists {
 		return nil, fmt.Errorf("peer %d not found in mapping", peerID)
 	}
-	
+
 	pid, err := peer.Decode(peerIDStr)
 	if err != nil {
 		return nil, fmt.Errorf("invalid peer ID: %w", err)
 	}
-	
+
 	stream, err := a.node.host.NewStream(a.node.ctx, pid, PangeaRPCProtocol)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open stream: %w", err)

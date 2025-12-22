@@ -10,8 +10,7 @@
 ///
 /// Usage:
 ///   cargo run --example voice_streaming_demo --release
-
-use pangea_ces::{StreamConfig, StreamingSession, StreamPacket};
+use pangea_ces::{StreamConfig, StreamPacket, StreamingSession};
 use std::f32::consts::PI;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,9 +21,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 1: Create streaming session with voice configuration
     println!("1. Creating streaming session with voice configuration...");
     let config = StreamConfig::voice();
-    println!("   - Sample Rate: {} Hz", config.audio_config.as_ref().unwrap().sample_rate);
-    println!("   - Bitrate: {} bps", config.audio_config.as_ref().unwrap().bitrate);
-    println!("   - Frame Duration: {} ms", config.audio_config.as_ref().unwrap().frame_duration_ms);
+    println!(
+        "   - Sample Rate: {} Hz",
+        config.audio_config.as_ref().unwrap().sample_rate
+    );
+    println!(
+        "   - Bitrate: {} bps",
+        config.audio_config.as_ref().unwrap().bitrate
+    );
+    println!(
+        "   - Frame Duration: {} ms",
+        config.audio_config.as_ref().unwrap().frame_duration_ms
+    );
     println!("   - Max Packet Size: {} bytes", config.max_packet_size);
     println!("   - Buffer Size: {} packets\n", config.buffer_size);
 
@@ -39,30 +47,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("3. Generating test audio (440 Hz sine wave)...");
     let audio_config = session.config().audio_config.as_ref().unwrap();
     let frame_size = audio_config.frame_size();
-    
+
     println!("   - Frame size: {} samples", frame_size);
-    
-    const TEST_FREQUENCY: f32 = 440.0;  // A4 note
+
+    const TEST_FREQUENCY: f32 = 440.0; // A4 note
     const SAMPLE_RATE: f32 = 48000.0;
-    
+
     let pcm_samples: Vec<i16> = (0..frame_size)
         .map(|i| {
             let t = i as f32 / SAMPLE_RATE;
             (32767.0 * (2.0 * PI * TEST_FREQUENCY * t).sin()) as i16
         })
         .collect();
-    
+
     println!("   ✓ Generated {} PCM samples\n", pcm_samples.len());
 
     // Step 4: Encode audio to stream packet
     println!("4. Encoding audio to stream packet...");
     let packet = sender.encode_audio(&pcm_samples)?;
-    
+
     println!("   - Sequence: {}", packet.sequence);
     println!("   - Timestamp: {}", packet.timestamp);
     println!("   - Payload size: {} bytes", packet.payload.len());
-    println!("   - Compression ratio: {:.2}x", 
-             (pcm_samples.len() * 2) as f32 / packet.payload.len() as f32);
+    println!(
+        "   - Compression ratio: {:.2}x",
+        (pcm_samples.len() * 2) as f32 / packet.payload.len() as f32
+    );
     println!("   ✓ Audio encoded\n");
 
     // Step 5: Serialize packet for transmission
@@ -80,7 +90,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 7: Deserialize received packet (simulating receiver)
     println!("7. Deserializing received packet...");
     let received_packet = StreamPacket::from_bytes(&serialized)?;
-    
+
     println!("   - Sequence: {}", received_packet.sequence);
     println!("   - Timestamp: {}", received_packet.timestamp);
     println!("   - Payload size: {} bytes", received_packet.payload.len());
@@ -90,24 +100,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("8. Encoding multiple frames (sequence demo)...");
     for i in 0..5 {
         let packet = sender.encode_audio(&pcm_samples)?;
-        println!("   - Frame {}: Sequence {}, {} bytes", 
-                 i + 1, packet.sequence, packet.payload.len());
+        println!(
+            "   - Frame {}: Sequence {}, {} bytes",
+            i + 1,
+            packet.sequence,
+            packet.payload.len()
+        );
     }
     println!("   ✓ Multiple frames encoded with sequential numbers\n");
 
     // Step 9: Demonstrate bitrate adjustment
     println!("9. Demonstrating dynamic bitrate adjustment...");
-    
+
     println!("   Setting bitrate to 16 kbps (low bandwidth)...");
     sender.set_bitrate(16000)?;
     let low_bitrate_packet = sender.encode_audio(&pcm_samples)?;
-    println!("   - Encoded size: {} bytes", low_bitrate_packet.payload.len());
-    
+    println!(
+        "   - Encoded size: {} bytes",
+        low_bitrate_packet.payload.len()
+    );
+
     println!("   Setting bitrate to 64 kbps (high quality)...");
     sender.set_bitrate(64000)?;
     let high_bitrate_packet = sender.encode_audio(&pcm_samples)?;
-    println!("   - Encoded size: {} bytes", high_bitrate_packet.payload.len());
-    
+    println!(
+        "   - Encoded size: {} bytes",
+        high_bitrate_packet.payload.len()
+    );
+
     println!("   ✓ Bitrate adjustment working\n");
 
     // Summary

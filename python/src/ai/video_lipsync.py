@@ -14,7 +14,7 @@ Target: <150-200ms latency for real-time video
 import torch
 import numpy as np
 import logging
-from typing import Optional, Dict, Tuple, List
+from typing import Optional, Dict, Tuple, List, Any
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -355,8 +355,13 @@ class VideoLipsync:
 
         # Step 3: Generate lip-synced frames
         logger.debug("Step 3: Generating lip-synced frames...")
+        # Filter out frames where no face was detected to satisfy the lipsync API
+        face_detections_clean: List[Dict[Any, Any]] = [
+            f for f in face_detections if f is not None
+        ]
+
         synced_frames = self.lipsync_model.sync_lips(
-            video_frames, audio_features, face_detections
+            video_frames, audio_features, face_detections_clean
         )
 
         logger.info(f"Lipsync processing complete: {len(synced_frames)} frames")

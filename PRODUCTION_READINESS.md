@@ -119,9 +119,6 @@ docker run --rm --network host ghcr.io/<org>/omnyxnet:tag pytest tests/smoke -q
 ```
 
 Next actions (pick one)
-- I can start by running linters and tests inside a container locally and report results.
-- I can add a `Dockerfile.dev` and `docker/docker-compose.test.yml` (if missing) to make tests reproducible.
-- I can scaffold CI workflows that run the containerized checks on every PR.
 
 If you want me to start executing steps, tell me which of the three options above to run first.
 
@@ -129,11 +126,9 @@ If you want me to start executing steps, tell me which of the three options abov
 
 ### Repo hygiene (completed)
 
-- Actions performed:
   - Added `Dockerfile.dev` at the repository root to provide a reproducible dev/test image.
   - Added `docker/docker-compose.test.yml` to standardize integration/test compose flows.
 
-- How to use the artifacts:
   - Build the dev image locally:
     ```bash
     docker build -t omnyxnet:dev -f Dockerfile.dev .
@@ -152,28 +147,22 @@ If you want me to start executing steps, tell me which of the three options abov
     ```
 
 Files added:
-- `Dockerfile.dev`
-- `docker/docker-compose.test.yml`
 
 ### Static analysis & formatting (checks run)
 
-- Actions performed:
   - Ran `ruff check .`, `black --check .`, and `mypy` inside the `omnyxnet:dev` container.
 
-- Summary of findings:
   - `ruff` reported 256 issues across the codebase; 177 are fixable with `ruff --fix`.
   - Common `ruff` problems: extraneous `f` prefix on print/f-string literals, unused imports, unused local variables, bare `except:` usages, ambiguous short names.
   - `black` would reformat 55 files (style differences detected).
   - `mypy` reported a blocking error: "Duplicate module named 'main'" (conflicting paths: `services/python-ai-client/app/main.py` and `python/main.py`). This requires adjusting module layout or `mypy` config.
 
-- Commands to reproduce locally (containerized):
   ```bash
   docker build -t omnyxnet:dev -f Dockerfile.dev .
   docker run --rm -u testuser -v "$PWD":/app -w /app omnyxnet:dev bash -lc \
     "python -m pip install --user ruff black mypy pytest >/dev/null 2>&1 && python -m ruff check . || true && python -m black --check . || true && python -m mypy --ignore-missing-imports . || true"
   ```
 
-- Recommended next actions to address findings:
   1. Auto-fix style & many lint issues:
      - `ruff --fix .` then `python -m black .` to apply formatting and safe fixes.
   2. Manually inspect and fix remaining `ruff` issues (unused variables/imports, bare `except`, logic gaps).
@@ -183,22 +172,36 @@ Files added:
      - Configuring `mypy` with `--exclude` or `--explicit-package-bases`.
   4. Re-run the checks inside the container until clean.
 
-- Status: checks executed; fixes required (see recommended next actions).
  - Status: auto-fixes applied (see repo commit). Remaining issues listed below.
 
 ### Auto-fix results
 
-- Actions taken:
   - Ran `ruff --fix .` and `black .` and committed the changes in branch `copilot/rebase-fixes-2025-12-22`.
   - Commit message: "style: apply ruff --fix and black formatting" (58 files changed).
 
-- Remaining issues after auto-fix:
   - `ruff`/format auto-fixes addressed 177 fixable issues; 78 lint/type issues remain that require manual attention (unused imports/variables, bare `except`, ambiguous names, undefined variables, and duplicate definitions in CLI).
   - `mypy` still reports a blocking error: duplicate module named `main` (`services/python-ai-client/app/main.py` and `python/main.py`).
 
-- Recommended manual fixes (next):
   1. Resolve duplicate `main` modules by renaming or introducing packages (`__init__.py`) or adjusting `mypy` config.
   2. For each remaining `ruff` issue, fix code as appropriate (remove unused imports/variables, avoid bare `except`, fix undefined names like `e`).
   3. Re-run `mypy` and targeted unit tests inside the container.
+
+## Fixed
+
+- **desktop/desktop_app_kivy.py**: Fixed multiple `ruff` issues and import-order problems.
+  - Actions taken:
+    - Consolidated and placed Kivy and KivyMD imports (guarded) to avoid module-level import ordering issues flagged by `ruff`.
+    - Removed duplicate import blocks and unused `MDScrollView` import.
+    - Renamed ambiguous lambda variable `l` to `line_text` to avoid `E741`.
+    - Captured exceptions where referenced (changed `except Exception:` to `except Exception as e:` and passed the exception into scheduled callbacks) to fix undefined `e` use.
+    - Replaced a bare `except:` with `except Exception:` where safe.
+  - Verification: Re-ran `ruff` on the file; all checks passed for this file. Output saved to `check_reports/ruff.desktop_desktop_app_kivy.txt`.
+
+- **python/src/communication/live_video_udp.py**: Fixed syntax, bare-except, and queue handling.
+  - Actions taken:
+    - Added `Full` to `from queue import ...` and replaced bare `except:` usages around `put_nowait` with `except Full:` to handle full queues explicitly.
+    - Simplified nested except blocks to catch `Exception` where appropriate and avoid unreachable handlers.
+  - Verification: Corrected syntax and exception handling so linters can run; output to `check_reports/ruff.live_video_udp.txt` should reflect the new status after re-run.
+
 
 

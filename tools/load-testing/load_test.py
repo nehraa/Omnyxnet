@@ -9,7 +9,7 @@ import statistics
 import concurrent.futures
 import sys
 import json
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any, Optional
 from pathlib import Path
 import argparse
 
@@ -30,8 +30,8 @@ class LoadTester:
             nodes: List of (host, port) tuples for Go nodes
         """
         self.nodes = nodes
-        self.clients = []
-        self.results = {
+        self.clients: List[Any] = []
+        self.results: Dict[str, Any] = {
             "connection_tests": [],
             "latency_tests": [],
             "throughput_tests": [],
@@ -58,7 +58,7 @@ class LoadTester:
         """Test basic connectivity to all nodes."""
         print("\n🔗 Testing basic connectivity...")
 
-        results = {
+        results: Dict[str, Any] = {
             "total_nodes": len(self.nodes),
             "connected_nodes": len(self.clients),
             "connection_success_rate": (
@@ -100,7 +100,10 @@ class LoadTester:
         """Test latency across all connections."""
         print(f"\n⏱️  Testing latency ({iterations} iterations per node)...")
 
-        results = {"iterations_per_node": iterations, "node_latencies": []}
+        results: Dict[str, Any] = {
+            "iterations_per_node": iterations,
+            "node_latencies": [],
+        }
 
         for client in self.clients:
             latencies = []
@@ -147,7 +150,7 @@ class LoadTester:
             f"\n🚀 Testing concurrent load ({concurrent_requests} concurrent requests for {duration_seconds}s)..."
         )
 
-        results = {
+        results: Dict[str, Any] = {
             "concurrent_requests": concurrent_requests,
             "duration_seconds": duration_seconds,
             "node_results": [],
@@ -245,7 +248,10 @@ class LoadTester:
         """Test network stress limits."""
         print(f"\n💥 Testing stress limits (up to {max_connections} connections)...")
 
-        results = {"max_connections_tested": max_connections, "connection_results": []}
+        results: Dict[str, Any] = {
+            "max_connections_tested": max_connections,
+            "connection_results": [],
+        }
 
         # Test increasing numbers of connections
         connection_counts = [1, 5, 10, 25, 50, 100, 200, 500]
@@ -268,12 +274,12 @@ class LoadTester:
                     client = GoNodeClient(host, port)
                     conn_start = time.time()
                     if client.connect():
-                        nodes = client.get_all_nodes()
+                        client.get_all_nodes()
                         response_time = time.time() - conn_start
                         client.disconnect()
                         return True, response_time
                     return False, 0
-                except:
+                except Exception:
                     return False, 0
 
             # Create connection pool
@@ -295,7 +301,7 @@ class LoadTester:
                         if success:
                             successful_connections += 1
                             total_response_time += response_time
-                    except:
+                    except Exception:
                         pass
 
             test_duration = time.time() - start_time
@@ -390,7 +396,7 @@ class LoadTester:
 
         return self.results
 
-    def save_results(self, filename: str = None):
+    def save_results(self, filename: Optional[str] = None):
         """Save test results to JSON file."""
         if filename is None:
             timestamp = int(time.time())

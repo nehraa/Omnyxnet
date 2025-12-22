@@ -166,8 +166,8 @@ impl ChunkStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bytes::Bytes;
     use crate::dcdn::types::{PeerId, Signature};
+    use bytes::Bytes;
 
     fn create_test_chunk(id: u64, data: Vec<u8>) -> ChunkData {
         ChunkData {

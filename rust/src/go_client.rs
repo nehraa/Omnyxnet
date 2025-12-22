@@ -16,7 +16,7 @@ pub struct GoClient {
 
 impl GoClient {
     pub fn new(addr: SocketAddr) -> Self {
-        Self { 
+        Self {
             addr,
             client: RwLock::new(None),
         }
@@ -25,18 +25,18 @@ impl GoClient {
     /// Connect to Go node
     pub async fn connect(&self) -> Result<()> {
         info!("Connecting to Go node at {}", self.addr);
-        
+
         // Connect to Go Cap'n Proto server
         let stream = TcpStream::connect(self.addr)
             .await
             .context("Failed to connect to Go node")?;
-        
+
         use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
-        
+
         let (reader, writer) = tokio::io::split(stream);
         let reader = reader.compat();
         let writer = writer.compat_write();
-        
+
         // Set up RPC system
         let rpc_network = Box::new(twoparty::VatNetwork::new(
             reader,
@@ -44,56 +44,68 @@ impl GoClient {
             rpc_twoparty_capnp::Side::Client,
             Default::default(),
         ));
-        
+
         let mut rpc_system = RpcSystem::new(rpc_network, None);
         let client: node_service::Client = rpc_system.bootstrap(rpc_twoparty_capnp::Side::Server);
-        
+
         // Spawn RPC system in background using spawn_local for non-Send futures
         tokio::task::spawn_local(async move {
             if let Err(e) = rpc_system.await {
                 error!("RPC system error: {}", e);
             }
         });
-        
+
         *self.client.write().unwrap() = Some(client);
         info!("Connected to Go node successfully");
-        
+
         Ok(())
     }
 
     /// Send data to Go node for transport
     pub async fn send_data(&self, peer_id: u32, data: Vec<u8>) -> Result<bool> {
-        let client = self.client.read().unwrap().as_ref()
+        let client = self
+            .client
+            .read()
+            .unwrap()
+            .as_ref()
             .context("Not connected to Go node. Call connect() first")?
             .clone();
-        
-        info!("Sending {} bytes to Go node for peer {}", data.len(), peer_id);
-        
+
+        info!(
+            "Sending {} bytes to Go node for peer {}",
+            data.len(),
+            peer_id
+        );
+
         let mut request = client.send_message_request();
         {
             let mut msg = request.get().get_msg()?;
             msg.set_to_peer_id(peer_id);
             msg.set_data(&data);
         }
-        
+
         let response = request.send().promise.await?;
         let success = response.get()?.get_success();
-        
+
         Ok(success)
     }
 
     /// Get connection quality for a peer
     pub async fn get_connection_quality(&self, peer_id: u32) -> Result<(f32, f32, f32)> {
-        let client = self.client.read().unwrap().as_ref()
+        let client = self
+            .client
+            .read()
+            .unwrap()
+            .as_ref()
             .context("Not connected to Go node")?
             .clone();
-        
+
         let mut request = client.get_connection_quality_request();
         request.get().set_peer_id(peer_id);
-        
+
         let response = request.send().promise.await?;
         let quality = response.get()?.get_quality()?;
-        
+
         Ok((
             quality.get_latency_ms(),
             quality.get_jitter_ms(),
@@ -103,12 +115,16 @@ impl GoClient {
 
     /// Connect to a peer via Go node
     pub async fn connect_peer(&self, host: &str, port: u16) -> Result<(bool, f32, f32, f32)> {
-        let client = self.client.read().unwrap().as_ref()
+        let client = self
+            .client
+            .read()
+            .unwrap()
+            .as_ref()
             .context("Not connected to Go node")?
             .clone();
-        
+
         info!("Connecting to peer {}:{} via Go node", host, port);
-        
+
         let mut request = client.connect_to_peer_request();
         {
             let mut peer = request.get().get_peer()?;
@@ -116,11 +132,11 @@ impl GoClient {
             peer.set_host(host);
             peer.set_port(port);
         }
-        
+
         let response = request.send().promise.await?;
         let result = response.get()?;
         let success = result.get_success();
-        
+
         if success {
             let quality = result.get_quality()?;
             Ok((
@@ -136,49 +152,61 @@ impl GoClient {
 
     /// Disconnect from a peer
     pub async fn disconnect_peer(&self, peer_id: u32) -> Result<bool> {
-        let client = self.client.read().unwrap().as_ref()
+        let client = self
+            .client
+            .read()
+            .unwrap()
+            .as_ref()
             .context("Not connected to Go node")?
             .clone();
-        
+
         let mut request = client.disconnect_peer_request();
         request.get().set_peer_id(peer_id);
-        
+
         let response = request.send().promise.await?;
         let success = response.get()?.get_success();
-        
+
         Ok(success)
     }
 
     /// Get list of connected peers
     pub async fn get_connected_peers(&self) -> Result<Vec<u32>> {
-        let client = self.client.read().unwrap().as_ref()
+        let client = self
+            .client
+            .read()
+            .unwrap()
+            .as_ref()
             .context("Not connected to Go node")?
             .clone();
-        
+
         let request = client.get_connected_peers_request();
         let response = request.send().promise.await?;
         let peers_list = response.get()?.get_peers()?;
-        
+
         let mut peers = Vec::new();
         for i in 0..peers_list.len() {
             peers.push(peers_list.get(i));
         }
-        
+
         Ok(peers)
     }
 
     /// Get a specific node by ID
     pub async fn get_node(&self, node_id: u32) -> Result<Option<(u32, u32, f32, f32)>> {
-        let client = self.client.read().unwrap().as_ref()
+        let client = self
+            .client
+            .read()
+            .unwrap()
+            .as_ref()
             .context("Not connected to Go node")?
             .clone();
-        
+
         let mut request = client.get_node_request();
         request.get().get_query()?.set_node_id(node_id);
-        
+
         let response = request.send().promise.await?;
         let node = response.get()?.get_node()?;
-        
+
         Ok(Some((
             node.get_id(),
             node.get_status(),
@@ -189,14 +217,18 @@ impl GoClient {
 
     /// Get all nodes
     pub async fn get_all_nodes(&self) -> Result<Vec<(u32, u32, f32, f32)>> {
-        let client = self.client.read().unwrap().as_ref()
+        let client = self
+            .client
+            .read()
+            .unwrap()
+            .as_ref()
             .context("Not connected to Go node")?
             .clone();
-        
+
         let request = client.get_all_nodes_request();
         let response = request.send().promise.await?;
         let node_list = response.get()?.get_nodes()?.get_nodes()?;
-        
+
         let mut nodes = Vec::new();
         for i in 0..node_list.len() {
             let node = node_list.get(i);
@@ -207,16 +239,25 @@ impl GoClient {
                 node.get_threat_score(),
             ));
         }
-        
+
         Ok(nodes)
     }
 
     /// Update node threat score (called by AI/prediction)
-    pub async fn update_node(&self, node_id: u32, latency_ms: f32, threat_score: f32) -> Result<bool> {
-        let client = self.client.read().unwrap().as_ref()
+    pub async fn update_node(
+        &self,
+        node_id: u32,
+        latency_ms: f32,
+        threat_score: f32,
+    ) -> Result<bool> {
+        let client = self
+            .client
+            .read()
+            .unwrap()
+            .as_ref()
             .context("Not connected to Go node")?
             .clone();
-        
+
         let mut request = client.update_node_request();
         {
             let mut update = request.get().get_update()?;
@@ -224,10 +265,10 @@ impl GoClient {
             update.set_latency_ms(latency_ms);
             update.set_threat_score(threat_score);
         }
-        
+
         let response = request.send().promise.await?;
         let success = response.get()?.get_success();
-        
+
         Ok(success)
     }
 

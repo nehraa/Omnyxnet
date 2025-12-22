@@ -1,7 +1,7 @@
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tracing::{info, debug, warn};
-use serde::{Serialize, Deserialize};
+use tracing::{debug, info, warn};
 
 use crate::cache::{Cache, FileManifest};
 use crate::dht::DhtNode;
@@ -64,13 +64,13 @@ impl LookupService {
     /// Lookup a file by hash
     pub async fn lookup_file(&self, file_hash: &str) -> Result<Option<LookupResult>> {
         info!("Looking up file: {}", file_hash);
-        
+
         // First check local cache
         if let Some(manifest) = self.cache.get_manifest(file_hash).await {
             debug!("Found file in local cache");
             return self.check_availability(manifest).await.map(Some);
         }
-        
+
         // Then check DHT
         if let Some(manifest) = self.lookup_in_dht(file_hash).await? {
             debug!("Found file via DHT lookup");
@@ -78,7 +78,7 @@ impl LookupService {
             self.cache.put_manifest(manifest.clone()).await?;
             return self.check_availability(manifest).await.map(Some);
         }
-        
+
         warn!("File not found: {}", file_hash);
         Ok(None)
     }
@@ -86,7 +86,7 @@ impl LookupService {
     /// Discover files available in the network
     pub async fn discover_files(&self) -> Result<Vec<DiscoveryResult>> {
         let mut results = Vec::new();
-        
+
         // Get all locally cached manifests
         let local_manifests = self.cache.list_manifests().await;
         for manifest in local_manifests {
@@ -96,12 +96,12 @@ impl LookupService {
                 source: DiscoverySource::LocalCache,
             });
         }
-        
+
         // Query DHT for additional files
         if let Some(dht_results) = self.discover_from_dht().await? {
             results.extend(dht_results);
         }
-        
+
         info!("Discovered {} files", results.len());
         Ok(results)
     }
@@ -124,13 +124,17 @@ impl LookupService {
     pub async fn search_files(&self, pattern: &str) -> Result<Vec<FileManifest>> {
         let all_manifests = self.cache.list_manifests().await;
         let pattern_lower = pattern.to_lowercase();
-        
+
         let matches: Vec<FileManifest> = all_manifests
             .into_iter()
             .filter(|m| m.file_name.to_lowercase().contains(&pattern_lower))
             .collect();
-        
-        info!("Search for '{}' returned {} results", pattern, matches.len());
+
+        info!(
+            "Search for '{}' returned {} results",
+            pattern,
+            matches.len()
+        );
         Ok(matches)
     }
 
@@ -138,23 +142,23 @@ impl LookupService {
     async fn lookup_in_dht(&self, file_hash: &str) -> Result<Option<FileManifest>> {
         if let Some(dht) = &self.dht {
             debug!("Querying DHT for file: {}", file_hash);
-            
+
             // Query DHT for providers
             let mut dht_guard = dht.write().await;
             // Convert file hash to bytes
             let file_hash_bytes = file_hash.as_bytes().to_vec();
             let _ = dht_guard.find_providers(file_hash_bytes);
-            
+
             // TODO: Query providers for manifest
             // For now, return None - full implementation would involve:
             // 1. Wait for DHT event with provider list
             // 2. Connect to providers
             // 3. Request manifest
             // 4. Verify and return
-            
+
             return Ok(None);
         }
-        
+
         Ok(None)
     }
 
@@ -162,16 +166,16 @@ impl LookupService {
     async fn discover_from_dht(&self) -> Result<Option<Vec<DiscoveryResult>>> {
         if let Some(_dht) = &self.dht {
             debug!("Discovering files from DHT");
-            
+
             // This is a placeholder - actual implementation would:
             // 1. Perform DHT walk to find provider records
             // 2. Collect unique file hashes
             // 3. Return discovery results
-            
+
             // For now, return empty result
             return Ok(Some(Vec::new()));
         }
-        
+
         Ok(None)
     }
 
@@ -179,7 +183,7 @@ impl LookupService {
     async fn check_availability(&self, manifest: FileManifest) -> Result<LookupResult> {
         let mut peer_availability = Vec::new();
         let mut available_count = 0;
-        
+
         for (shard_index, peer_id) in &manifest.shard_locations {
             // Check if peer is in our store and online
             let is_online = if let Some(node) = self.store.get_node(*peer_id).await {
@@ -187,11 +191,11 @@ impl LookupService {
             } else {
                 false
             };
-            
+
             if is_online {
                 available_count += 1;
             }
-            
+
             peer_availability.push(PeerAvailability {
                 shard_index: *shard_index,
                 peer_id: *peer_id,
@@ -199,17 +203,17 @@ impl LookupService {
                 last_seen: None, // TODO: Track last seen time
             });
         }
-        
+
         // A file is complete if we have enough shards to reconstruct
         // For now, consider it complete if all shards are available
         // In a real system with Reed-Solomon, we'd need K out of N shards
         let is_complete = available_count >= manifest.shard_count;
-        
+
         debug!(
             "File {} availability: {}/{} shards, complete: {}",
             manifest.file_hash, available_count, manifest.shard_count, is_complete
         );
-        
+
         Ok(LookupResult {
             manifest,
             available_shards: available_count,
@@ -235,7 +239,7 @@ impl LookupService {
         if let Some(manifest) = self.cache.get_manifest(file_hash).await {
             return Ok(Some(manifest));
         }
-        
+
         // Then check DHT
         self.lookup_in_dht(file_hash).await
     }
@@ -244,7 +248,7 @@ impl LookupService {
     pub async fn register_file(&self, manifest: &FileManifest) -> Result<()> {
         // First, cache it locally
         self.cache.put_manifest(manifest.clone()).await?;
-        
+
         // Then publish to DHT if available
         if let Some(dht) = &self.dht {
             info!("Registering file in DHT: {}", manifest.file_hash);
@@ -254,7 +258,7 @@ impl LookupService {
             let value = serde_json::to_vec(manifest)?;
             dht_guard.put_record(key, value)?;
         }
-        
+
         Ok(())
     }
 
@@ -262,14 +266,14 @@ impl LookupService {
     pub async fn unregister_file(&self, file_hash: &str) -> Result<bool> {
         // Remove from cache
         let removed = self.cache.remove_manifest(file_hash).await?;
-        
+
         // TODO: Remove from DHT (DHT doesn't have a direct remove API)
         // In practice, provider records expire automatically
-        
+
         if removed {
             info!("Unregistered file: {}", file_hash);
         }
-        
+
         Ok(removed)
     }
 }
@@ -278,8 +282,8 @@ impl LookupService {
 mod tests {
     use super::*;
     use crate::cache::FileManifest;
-    use tempfile::tempdir;
     use chrono::Utc;
+    use tempfile::tempdir;
 
     #[tokio::test]
     async fn test_lookup_cached_file() {
@@ -287,7 +291,7 @@ mod tests {
         let cache = Arc::new(Cache::new(temp_dir.path(), 100, 10 * 1024 * 1024).unwrap());
         let store = Arc::new(NodeStore::new());
         let lookup = LookupService::new(cache.clone(), None, store);
-        
+
         // Add a manifest to cache
         let manifest = FileManifest {
             file_hash: "test_hash".to_string(),
@@ -299,9 +303,9 @@ mod tests {
             timestamp: Utc::now().timestamp(),
             ttl: 3600,
         };
-        
+
         cache.put_manifest(manifest.clone()).await.unwrap();
-        
+
         // Lookup should find it
         let result = lookup.lookup_file("test_hash").await.unwrap();
         assert!(result.is_some());
@@ -314,7 +318,7 @@ mod tests {
         let cache = Arc::new(Cache::new(temp_dir.path(), 100, 10 * 1024 * 1024).unwrap());
         let store = Arc::new(NodeStore::new());
         let lookup = LookupService::new(cache.clone(), None, store);
-        
+
         // Add some manifests
         for i in 0..5 {
             let manifest = FileManifest {
@@ -329,11 +333,11 @@ mod tests {
             };
             cache.put_manifest(manifest).await.unwrap();
         }
-        
+
         // Search for documents
         let results = lookup.search_files("document").await.unwrap();
         assert_eq!(results.len(), 5);
-        
+
         // Search for specific document
         let results = lookup.search_files("document_3").await.unwrap();
         assert_eq!(results.len(), 1);

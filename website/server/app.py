@@ -10,7 +10,7 @@ import json
 import os
 import re
 from datetime import datetime
-import requests
+import requests  # type: ignore
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for frontend requests

@@ -1,0 +1,5 @@
+error: unexpected argument '--fix' found
+
+Usage: ruff [OPTIONS] <COMMAND>
+
+For more information, try '--help'.

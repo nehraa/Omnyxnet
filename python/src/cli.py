@@ -16,13 +16,16 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.client.go_client import GoNodeClient
 from src.utils.paths import get_go_schema_path
 
-# Conditional AI imports - torch may not be installed
-try:
-    from src.ai.predictor import ThreatPredictor
+from typing import Any, Optional
 
+# Conditional AI imports - torch may not be installed
+ThreatPredictor: Optional[Any] = None
+try:
+    from src.ai.predictor import ThreatPredictor as _ThreatPredictor
+
+    ThreatPredictor = _ThreatPredictor
     _AI_AVAILABLE = True
 except ImportError:
-    ThreatPredictor = None
     _AI_AVAILABLE = False
 
 # Setup logging
@@ -46,7 +49,7 @@ def cli():
     pass
 
 
-@cli.command()
+@cli.command(name="connect-peer")
 @click.option("--host", default="localhost", help="Go node host")
 @click.option("--port", default=8080, help="Go node RPC port")
 @click.option(
@@ -102,7 +105,7 @@ def list_nodes(host, port, schema):
 @click.argument("peer_id", type=int)
 @click.argument("peer_host")
 @click.argument("peer_port", type=int)
-def connect_peer(host, port, schema, peer_id, peer_host, peer_port):
+def connect_peer_node(host, port, schema, peer_id, peer_host, peer_port):
     """Connect to a new peer via Go node."""
     schema_path = schema or get_go_schema_path()
     client = GoNodeClient(host, port, schema_path)
@@ -245,7 +248,7 @@ def streaming():
     pass
 
 
-@streaming.command()
+@streaming.command(name="start")
 @click.option("--host", default="localhost", help="Go node host")
 @click.option("--port", default=8080, help="Go node RPC port")
 @click.option("--stream-port", default=9996, type=int, help="Streaming port")
@@ -259,7 +262,7 @@ def streaming():
 @click.option("--peer-host", default="", help="Peer host to connect to")
 @click.option("--peer-port", default=9996, type=int, help="Peer streaming port")
 @click.option("--schema", default=None, help="Path to schema.capnp")
-def start(host, port, stream_port, stream_type, peer_host, peer_port, schema):
+def streaming_start(host, port, stream_port, stream_type, peer_host, peer_port, schema):
     """
     Start streaming service.
 
@@ -299,11 +302,11 @@ def start(host, port, stream_port, stream_type, peer_host, peer_port, schema):
     client.disconnect()
 
 
-@streaming.command()
+@streaming.command(name="stop")
 @click.option("--host", default="localhost", help="Go node host")
 @click.option("--port", default=8080, help="Go node RPC port")
 @click.option("--schema", default=None, help="Path to schema.capnp")
-def stop(host, port, schema):
+def streaming_stop(host, port, schema):
     """Stop streaming service."""
     schema_path = schema or get_go_schema_path()
     client = GoNodeClient(host, port, schema_path)
@@ -320,11 +323,11 @@ def stop(host, port, schema):
     client.disconnect()
 
 
-@streaming.command()
+@streaming.command(name="stats")
 @click.option("--host", default="localhost", help="Go node host")
 @click.option("--port", default=8080, help="Go node RPC port")
 @click.option("--schema", default=None, help="Path to schema.capnp")
-def stats(host, port, schema):
+def streaming_stats(host, port, schema):
     """Show streaming statistics."""
     schema_path = schema or get_go_schema_path()
     client = GoNodeClient(host, port, schema_path)
@@ -346,13 +349,13 @@ def stats(host, port, schema):
     client.disconnect()
 
 
-@streaming.command()
+@streaming.command(name="connect-peer")
 @click.option("--host", default="localhost", help="Go node host")
 @click.option("--port", default=8080, help="Go node RPC port")
 @click.argument("peer_host")
 @click.argument("peer_port", type=int)
 @click.option("--schema", default=None, help="Path to schema.capnp")
-def connect_peer(host, port, peer_host, peer_port, schema):
+def streaming_connect_peer(host, port, peer_host, peer_port, schema):
     """Connect to a streaming peer."""
     schema_path = schema or get_go_schema_path()
     client = GoNodeClient(host, port, schema_path)
@@ -486,7 +489,7 @@ def chat():
 @click.option("--schema", default=None, help="Path to schema.capnp")
 @click.argument("peer_id")
 @click.argument("message")
-def send(host, port, schema, peer_id, message):
+def chat_send(host, port, schema, peer_id, message):
     """
     Send a chat message to a peer.
 
@@ -638,13 +641,13 @@ def voice():
     pass
 
 
-@voice.command()
+@voice.command(name="start")
 @click.option("--host", default="localhost", help="Go node host")
 @click.option("--port", default=8080, help="Go node RPC port")
 @click.option("--peer-host", default="", help="Peer host to connect to")
 @click.option("--peer-port", default=0, type=int, help="Peer port")
 @click.option("--schema", default=None, help="Path to schema.capnp")
-def start(host, port, peer_host, peer_port, schema):
+def voice_start(host, port, peer_host, peer_port, schema):
     """
     Start voice streaming.
 
@@ -675,11 +678,11 @@ def start(host, port, peer_host, peer_port, schema):
     client.disconnect()
 
 
-@voice.command()
+@voice.command(name="stop")
 @click.option("--host", default="localhost", help="Go node host")
 @click.option("--port", default=8080, help="Go node RPC port")
 @click.option("--schema", default=None, help="Path to schema.capnp")
-def stop(host, port, schema):
+def voice_stop(host, port, schema):
     """Stop voice streaming."""
     schema_path = schema or get_go_schema_path()
     client = GoNodeClient(host, port, schema_path)
@@ -696,11 +699,11 @@ def stop(host, port, schema):
     client.disconnect()
 
 
-@voice.command()
+@voice.command(name="stats")
 @click.option("--host", default="localhost", help="Go node host")
 @click.option("--port", default=8080, help="Go node RPC port")
 @click.option("--schema", default=None, help="Path to schema.capnp")
-def stats(host, port, schema):
+def voice_stats(host, port, schema):
     """Show voice streaming statistics."""
     schema_path = schema or get_go_schema_path()
     client = GoNodeClient(host, port, schema_path)
@@ -741,13 +744,13 @@ def video():
     pass
 
 
-@video.command()
+@video.command(name="start")
 @click.option("--host", default="localhost", help="Go node host")
 @click.option("--port", default=8080, help="Go node RPC port")
 @click.option("--peer-host", default="", help="Peer host to connect to")
 @click.option("--peer-port", default=0, type=int, help="Peer port")
 @click.option("--schema", default=None, help="Path to schema.capnp")
-def start(host, port, peer_host, peer_port, schema):
+def video_start(host, port, peer_host, peer_port, schema):
     """
     Start video streaming.
 
@@ -778,11 +781,11 @@ def start(host, port, peer_host, peer_port, schema):
     client.disconnect()
 
 
-@video.command()
+@video.command(name="stop")
 @click.option("--host", default="localhost", help="Go node host")
 @click.option("--port", default=8080, help="Go node RPC port")
 @click.option("--schema", default=None, help="Path to schema.capnp")
-def stop(host, port, schema):
+def video_stop(host, port, schema):
     """Stop video streaming."""
     schema_path = schema or get_go_schema_path()
     client = GoNodeClient(host, port, schema_path)
@@ -799,11 +802,11 @@ def stop(host, port, schema):
     client.disconnect()
 
 
-@video.command()
+@video.command(name="stats")
 @click.option("--host", default="localhost", help="Go node host")
 @click.option("--port", default=8080, help="Go node RPC port")
 @click.option("--schema", default=None, help="Path to schema.capnp")
-def stats(host, port, schema):
+def video_stats(host, port, schema):
     """Show video streaming statistics."""
     schema_path = schema or get_go_schema_path()
     client = GoNodeClient(host, port, schema_path)
@@ -1300,9 +1303,11 @@ def matrix_multiply(
             )
             return result
 
+        from typing import Dict, Tuple, Any
+
         @Job.merge
         def merge(results: List[bytes]) -> bytes:
-            blocks = {}
+            blocks: Dict[Tuple[int, int], List[List[Any]]] = {}
             max_i = 0
             max_j = 0
 
@@ -1729,7 +1734,7 @@ def manual_connect(host, port, peer_address):
 @click.option("--port", default=8080, help="Go node RPC port")
 @click.argument("peer_id", default=2, type=int)
 @click.option("--message", "-m", default="Hello from CLI!", help="Message to send")
-def send(host, port, peer_id, message):
+def test_send(host, port, peer_id, message):
     """
     Send a test message to a peer.
 
@@ -1889,8 +1894,8 @@ def info():
     click.echo("")
 
 
-@dcdn.command()
-def test():
+@dcdn.command(name="test")
+def dcdn_test():
     """
     Run DCDN unit tests.
 

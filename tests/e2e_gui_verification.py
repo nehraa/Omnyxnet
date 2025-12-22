@@ -30,7 +30,7 @@ print()
 # Test 1: Verify imports
 print("Test 1: Verifying module imports...")
 try:
-    from client.go_client import GoNodeClient
+    from client.go_client import GoNodeClient  # noqa: F401
 
     print("  ✅ GoNodeClient imported successfully")
 except ImportError as e:

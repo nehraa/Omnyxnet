@@ -266,7 +266,7 @@ class StreamingTestSuite:
 
             frame_start = time.time()
             result = await self.run_ces_processing(chunk_data, "video")
-            frame_latency = (time.time() - frame_start) * 1000
+            (time.time() - frame_start) * 1000
 
             if result:
                 total_processed += len(chunk_data)
@@ -339,7 +339,7 @@ class StreamingTestSuite:
                                     compressed_size = int(part.split("=")[1])
                                 elif part.startswith("latency_ms="):
                                     latency_ms = float(part.split("=")[1])
-                        except:
+                        except Exception:
                             pass
 
                 return {
@@ -566,7 +566,7 @@ class StreamingTestSuite:
 if __name__ == "__main__":
     # Install required packages if not available
     try:
-        import numpy
+        import numpy  # noqa: F401
         import wave
     except ImportError:
         print("📦 Installing required packages...")

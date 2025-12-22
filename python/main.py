@@ -10,7 +10,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 SRC_DIR = SCRIPT_DIR / "src"
 sys.path.insert(0, str(SRC_DIR))
 
-from cli import cli
+from cli import cli  # noqa: E402
 
 if __name__ == "__main__":
     cli()

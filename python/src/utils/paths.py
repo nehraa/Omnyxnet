@@ -4,9 +4,10 @@ Handles cross-directory imports and absolute paths.
 """
 
 from pathlib import Path
+from typing import Optional
 
 
-def find_project_root(start_path: Path = None) -> Path:
+def find_project_root(start_path: Optional[Path] = None) -> Path:
     """
     Find the project root directory (WGT/).
 

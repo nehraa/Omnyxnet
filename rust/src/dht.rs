@@ -1,11 +1,13 @@
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use libp2p::{
+    identify,
     kad::{self, store::MemoryStore, Mode, Record, RecordKey},
-    swarm::{NetworkBehaviour, SwarmEvent, Swarm},
-    identify, noise, ping, tcp, PeerId, Multiaddr,
+    noise, ping,
+    swarm::{NetworkBehaviour, Swarm, SwarmEvent},
+    tcp, Multiaddr, PeerId,
 };
 use std::time::Duration;
-use tracing::{info, warn, debug};
+use tracing::{debug, info, warn};
 
 #[derive(NetworkBehaviour)]
 pub struct PangeaBehaviour {
@@ -34,7 +36,7 @@ impl DhtNode {
         let protocol_id = libp2p::StreamProtocol::new("/pangea/kad/1.0.0");
         let mut kad_config = kad::Config::new(protocol_id);
         kad_config.set_query_timeout(Duration::from_secs(60));
-        
+
         let store = MemoryStore::new(peer_id);
         let mut kad = kad::Behaviour::with_config(peer_id, store, kad_config);
 
@@ -55,7 +57,11 @@ impl DhtNode {
         // Create ping protocol
         let ping = ping::Behaviour::new(ping::Config::new());
 
-        let behaviour = PangeaBehaviour { kad, identify, ping };
+        let behaviour = PangeaBehaviour {
+            kad,
+            identify,
+            ping,
+        };
 
         // Build the swarm
         let swarm = libp2p::SwarmBuilder::with_existing_identity(local_key)
@@ -102,7 +108,10 @@ impl DhtNode {
             expires: None,
         };
 
-        self.swarm.behaviour_mut().kad.put_record(record, kad::Quorum::One)
+        self.swarm
+            .behaviour_mut()
+            .kad
+            .put_record(record, kad::Quorum::One)
             .context("Failed to put record")?;
 
         debug!("Put record with key: {:?}", key);
@@ -128,7 +137,10 @@ impl DhtNode {
     /// Start providing a file (announce that this node has a shard)
     pub fn start_providing(&mut self, file_hash: Vec<u8>) -> Result<()> {
         let key = RecordKey::new(&file_hash);
-        self.swarm.behaviour_mut().kad.start_providing(key)
+        self.swarm
+            .behaviour_mut()
+            .kad
+            .start_providing(key)
             .context("Failed to start providing")?;
         info!("Started providing file");
         Ok(())

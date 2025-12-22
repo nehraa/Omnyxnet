@@ -33,10 +33,11 @@ import numpy as np
 import sys
 import time
 from queue import Queue, Empty
+from typing import Any
 
 # Global queues for frames
-received_frames = Queue(maxsize=30)
-local_frames = Queue(maxsize=30)
+received_frames: Queue[Any] = Queue(maxsize=30)
+local_frames: Queue[Any] = Queue(maxsize=30)
 running = True
 
 
@@ -160,7 +161,7 @@ def receiver_thread(sock):
 
             try:
                 length = struct.unpack(">I", header)[0]
-            except:
+            except Exception:
                 print("[Receiver] Invalid header")
                 break
 
@@ -177,7 +178,7 @@ def receiver_thread(sock):
                     sock.settimeout(0.1)
                     sock.recv(min(length, 65536))
                     sock.settimeout(1.0)
-                except:
+                except Exception:
                     pass
                 continue
 
@@ -236,12 +237,12 @@ def receiver_thread(sock):
                     # Put in queue (drop if full to avoid lag)
                     try:
                         received_frames.put_nowait(frame)
-                    except:
+                    except Exception:
                         # Queue full, drop oldest frame
                         try:
                             received_frames.get_nowait()
                             received_frames.put_nowait(frame)
-                        except:
+                        except Exception:
                             pass
 
                     # Print stats every 100 frames
@@ -334,11 +335,11 @@ def sender_thread(sock):
                         interpolation=cv2.INTER_AREA,
                     )
                 local_frames.put_nowait(display_frame)
-            except:
+            except Exception:
                 try:
                     local_frames.get_nowait()
                     local_frames.put_nowait(display_frame)
-                except:
+                except Exception:
                     pass
 
             # Resize frame for sending if needed (important for high-quality cameras)
@@ -509,12 +510,12 @@ def main():
         cv2.destroyAllWindows()
         try:
             sock.close()
-        except:
+        except Exception:
             pass
         if server:
             try:
                 server.close()
-            except:
+            except Exception:
                 pass
         print("🎥 Video call ended")
 

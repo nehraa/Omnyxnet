@@ -56,7 +56,10 @@ def generate_test_video(
     print(f"Duration: {duration}s, FPS: {fps}, Resolution: {width}x{height}")
 
     # Define video codec and create VideoWriter
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    # Some OpenCV type stubs lack `VideoWriter_fourcc`; mypy may report
+    # `Module has no attribute "VideoWriter_fourcc"`. Silence that
+    # false-positive here while keeping runtime behavior intact.
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # type: ignore[attr-defined]
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     if not out.isOpened():

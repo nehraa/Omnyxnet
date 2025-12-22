@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 use tokio::time::{interval, sleep};
-use tracing::{debug, info, warn, error};
+use tracing::{debug, error, info, warn};
 
 use crate::cache::{Cache, FileManifest};
 use crate::ces::CesPipeline;
@@ -54,10 +54,10 @@ pub struct AutoHealer {
     ces: Arc<CesPipeline>,
     go_client: Arc<GoClient>,
     store: Arc<NodeStore>,
-    
+
     /// Track files being healed
     healing_status: Arc<RwLock<HashMap<String, HealingStatus>>>,
-    
+
     /// Statistics
     stats: Arc<RwLock<HealStats>>,
 }
@@ -110,7 +110,7 @@ impl AutoHealer {
 
         loop {
             check_interval.tick().await;
-            
+
             if let Err(e) = self.run_healing_cycle().await {
                 error!("Healing cycle failed: {}", e);
             }
@@ -123,7 +123,7 @@ impl AutoHealer {
 
         // Get all manifests from cache
         let manifests = self.cache.get_all_manifests().await?;
-        
+
         {
             let mut stats = self.stats.write().await;
             stats.files_monitored = manifests.len();
@@ -135,7 +135,7 @@ impl AutoHealer {
             if let Err(e) = self.check_and_heal_file(&manifest).await {
                 warn!("Failed to heal file {}: {}", manifest.file_hash, e);
             }
-            
+
             // Small delay between files to avoid overwhelming the network
             sleep(Duration::from_millis(100)).await;
         }
@@ -147,13 +147,16 @@ impl AutoHealer {
     /// Check and heal a specific file
     async fn check_and_heal_file(&self, manifest: &FileManifest) -> Result<()> {
         let file_hash = &manifest.file_hash;
-        
+
         // Count available shards
         let available_count = self.count_available_shards(manifest).await?;
-        
+
         debug!(
             "File {}: {} available shards (min: {}, target: {})",
-            file_hash, available_count, self.config.min_shard_copies, self.config.target_shard_copies
+            file_hash,
+            available_count,
+            self.config.min_shard_copies,
+            self.config.target_shard_copies
         );
 
         // Check if healing is needed
@@ -172,20 +175,22 @@ impl AutoHealer {
 
         // Update healing status
         let mut status_map = self.healing_status.write().await;
-        let status = status_map.entry(file_hash.clone()).or_insert_with(|| HealingStatus {
-            file_hash: file_hash.clone(),
-            current_copies: available_count,
-            needed_copies: self.config.target_shard_copies - available_count,
-            last_heal_attempt: None,
-            heal_failures: 0,
-        });
+        let status = status_map
+            .entry(file_hash.clone())
+            .or_insert_with(|| HealingStatus {
+                file_hash: file_hash.clone(),
+                current_copies: available_count,
+                needed_copies: self.config.target_shard_copies - available_count,
+                last_heal_attempt: None,
+                heal_failures: 0,
+            });
 
         // Check if we should attempt healing (avoid too frequent attempts)
         if let Some(last_attempt) = status.last_heal_attempt {
             let elapsed = std::time::SystemTime::now()
                 .duration_since(last_attempt)
                 .unwrap_or(Duration::from_secs(0));
-            
+
             // Exponential backoff: wait longer after each failure
             let backoff_secs = 60 * (1 << status.heal_failures.min(5));
             if elapsed < Duration::from_secs(backoff_secs) {
@@ -199,7 +204,7 @@ impl AutoHealer {
 
         // Attempt to heal
         info!("🔧 Attempting to heal file {}", file_hash);
-        
+
         {
             let mut stats = self.stats.write().await;
             stats.heals_attempted += 1;
@@ -207,12 +212,15 @@ impl AutoHealer {
 
         match self.perform_healing(manifest).await {
             Ok(recovered) => {
-                info!("✅ Successfully healed file {}, recovered {} shards", file_hash, recovered);
-                
+                info!(
+                    "✅ Successfully healed file {}, recovered {} shards",
+                    file_hash, recovered
+                );
+
                 let mut stats = self.stats.write().await;
                 stats.heals_succeeded += 1;
                 stats.shards_recovered += recovered as u64;
-                
+
                 // Reset failure count
                 if let Some(status) = self.healing_status.write().await.get_mut(file_hash) {
                     status.heal_failures = 0;
@@ -220,10 +228,10 @@ impl AutoHealer {
             }
             Err(e) => {
                 warn!("❌ Failed to heal file {}: {}", file_hash, e);
-                
+
                 let mut stats = self.stats.write().await;
                 stats.heals_failed += 1;
-                
+
                 // Increment failure count
                 if let Some(status) = self.healing_status.write().await.get_mut(file_hash) {
                     status.heal_failures += 1;
@@ -319,12 +327,7 @@ impl AutoHealer {
 
     /// Get healing status for all files
     pub async fn get_healing_status(&self) -> Vec<HealingStatus> {
-        self.healing_status
-            .read()
-            .await
-            .values()
-            .cloned()
-            .collect()
+        self.healing_status.read().await.values().cloned().collect()
     }
 }
 

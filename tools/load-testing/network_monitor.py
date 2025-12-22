@@ -8,7 +8,7 @@ import time
 import json
 import statistics
 from datetime import datetime
-from typing import List
+from typing import List, Optional, Any
 import sys
 from pathlib import Path
 
@@ -23,7 +23,7 @@ class NetworkMonitor:
 
     def __init__(self, nodes: List[tuple]):
         self.nodes = nodes
-        self.clients = []
+        self.clients: List[Any] = []
         self.monitoring = False
         self.metrics = {
             "timestamps": [],
@@ -93,7 +93,7 @@ class NetworkMonitor:
                             self.metrics["node_metrics"][node_key]["latencies"].append(
                                 quality["latencyMs"]
                             )
-                except:
+                except Exception:
                     pass
 
             except Exception as e:
@@ -169,7 +169,9 @@ class NetworkMonitor:
         print("=" * 50)
 
         # Network-wide analysis
-        latencies = [l for l in self.metrics["network_metrics"]["avg_latency"] if l > 0]
+        latencies = [
+            lat for lat in self.metrics["network_metrics"]["avg_latency"] if lat > 0
+        ]
         error_rates = self.metrics["network_metrics"]["error_rate"]
 
         if latencies:
@@ -216,7 +218,7 @@ class NetworkMonitor:
                     start = time.time()
                     client.get_all_nodes()
                     return time.time() - start
-                except:
+                except Exception:
                     return -1
 
             # Run for 10 seconds at this load
@@ -242,7 +244,7 @@ class NetworkMonitor:
                             if response_time > 0:
                                 successful_requests += 1
                                 response_times.append(response_time)
-                        except:
+                        except Exception:
                             pass
 
                     time.sleep(1.0 / load)  # Control rate
@@ -281,7 +283,7 @@ class NetworkMonitor:
 
         return results
 
-    def save_metrics(self, filename: str = None):
+    def save_metrics(self, filename: Optional[str] = None):
         """Save collected metrics to file."""
         if filename is None:
             timestamp = int(time.time())

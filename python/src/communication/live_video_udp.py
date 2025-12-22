@@ -29,11 +29,12 @@ import numpy as np
 import sys
 import time
 import socket
-from queue import Queue, Empty
+from queue import Queue, Empty, Full
+from typing import Any
 
 # Global state
-received_frames = Queue(maxsize=30)
-local_frames = Queue(maxsize=30)
+received_frames: Queue[Any] = Queue(maxsize=30)
+local_frames: Queue[Any] = Queue(maxsize=30)
 running = True
 
 # UDP settings
@@ -182,11 +183,11 @@ async def receiver_task(sock, peer_addr=None):
                             frame_count += 1
                             try:
                                 received_frames.put_nowait(frame)
-                            except:
+                            except Full:
                                 try:
                                     received_frames.get_nowait()
                                     received_frames.put_nowait(frame)
-                                except:
+                                except Exception:
                                     pass
 
                             if frame_count % 100 == 0:
@@ -278,11 +279,11 @@ async def sender_task(sock, peer_addr):
                         display_frame, (int(w * scale), int(h * scale))
                     )
                 local_frames.put_nowait(display_frame)
-            except:
+            except Full:
                 try:
                     local_frames.get_nowait()
                     local_frames.put_nowait(display_frame)
-                except:
+                except Exception:
                     pass
 
             # Resize for sending if needed
@@ -377,6 +378,8 @@ async def display_frames():
                 recv_frame = received_frames.get_nowait()
                 cv2.imshow("Peer Video (UDP)", recv_frame)
             except Empty:
+                pass
+            except Exception:
                 pass
 
             key = cv2.waitKey(1) & 0xFF

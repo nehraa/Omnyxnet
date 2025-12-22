@@ -2,11 +2,11 @@ use anyhow::Result;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
-use tracing::{info, error};
+use tracing::{error, info};
 
-use crate::store::NodeStore;
 use crate::network::QuicNode;
-use crate::types::{Node, PeerAddress, ConnectionQuality};
+use crate::store::NodeStore;
+use crate::types::{ConnectionQuality, Node, PeerAddress};
 
 /// RPC server using Cap'n Proto
 pub struct RpcServer {
@@ -33,10 +33,10 @@ impl RpcServer {
             match listener.accept().await {
                 Ok((stream, addr)) => {
                     info!("RPC connection from {}", addr);
-                    
+
                     let store = self.store.clone();
                     let network = self.network.clone();
-                    
+
                     // Spawn on the current task using tokio::task::spawn_local
                     // Or handle inline for simplicity
                     tokio::task::spawn_local(async move {
@@ -61,13 +61,12 @@ async fn handle_rpc_connection(
 ) -> Result<()> {
     use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
     use tokio_util::compat::{TokioAsyncReadCompatExt, TokioAsyncWriteCompatExt};
-    
 
     // Set up Cap'n Proto RPC with compat layer
     let (reader, writer) = tokio::io::split(stream);
     let reader = reader.compat();
     let writer = writer.compat_write();
-    
+
     let rpc_network = Box::new(twoparty::VatNetwork::new(
         reader,
         writer,
@@ -77,11 +76,11 @@ async fn handle_rpc_connection(
 
     // Create service implementation
     let _service_impl = NodeServiceImpl::new(store, network);
-    
+
     // TODO: Bootstrap with actual service implementation
     // For now, this is a placeholder that accepts connections
     let rpc_system = RpcSystem::new(rpc_network, None);
-    
+
     info!("RPC system initialized");
 
     // Run the RPC system
@@ -113,10 +112,17 @@ impl NodeServiceImpl {
     }
 
     /// Update node
-    pub async fn update_node(&self, node_id: u32, latency_ms: f32, threat_score: f32) -> Result<bool> {
+    pub async fn update_node(
+        &self,
+        node_id: u32,
+        latency_ms: f32,
+        threat_score: f32,
+    ) -> Result<bool> {
         if let Some(_node) = self.store.get_node(node_id).await {
             self.store.update_latency(node_id, latency_ms).await?;
-            self.store.update_threat_score(node_id, threat_score).await?;
+            self.store
+                .update_threat_score(node_id, threat_score)
+                .await?;
             Ok(true)
         } else {
             Ok(false)

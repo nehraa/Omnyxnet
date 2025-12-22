@@ -27,7 +27,7 @@ import struct
 import argparse
 import time
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Optional, Dict
 
 # Add parent directories for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -134,7 +134,7 @@ def matrix_multiply_block(a: list, b: list) -> list:
     return result
 
 
-def generate_random_matrix(rows: int, cols: int, seed: int = None) -> list:
+def generate_random_matrix(rows: int, cols: int, seed: Optional[int] = None) -> list:
     """Generate a random matrix."""
     import random
 
@@ -272,7 +272,7 @@ def distributed_matrix_multiply():
         Sum blocks that contribute to the same output position.
         """
         # First pass: determine output matrix dimensions
-        blocks = {}
+        blocks: Dict[Tuple[int, int], List[List[float]]] = {}
         max_i = 0
         max_j = 0
 
@@ -310,8 +310,8 @@ def distributed_matrix_multiply():
 
 def compute_from_file(
     file_a: str,
-    file_b: str = None,
-    output_file: str = None,
+    file_b: Optional[str] = None,
+    output_file: Optional[str] = None,
     host: str = "localhost",
     port: int = 8080,
     connect: bool = False,

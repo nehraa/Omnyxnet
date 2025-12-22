@@ -30,8 +30,8 @@ type nodeServiceServer struct {
 	computeManager   *compute.Manager
 	cesPipeline      *CESPipeline // Shared CES pipeline for consistent encryption
 	configManager    *ConfigManager
-	securityManager  *SecurityManager  // Mandate 3: Security & encryption
-	mlCoordinator    *MLCoordinator    // Mandate 3: ML coordination
+	securityManager  *SecurityManager // Mandate 3: Security & encryption
+	mlCoordinator    *MLCoordinator   // Mandate 3: ML coordination
 }
 
 // NewNodeServiceServer creates a new NodeService server
@@ -65,8 +65,8 @@ func NewNodeServiceServerWithConfig(store *NodeStore, network NetworkAdapter, sh
 		computeManager:  manager,
 		cesPipeline:     cesPipeline,
 		configManager:   configMgr,
-		securityManager: NewSecurityManager(),  // Mandate 3
-		mlCoordinator:   NewMLCoordinator(),    // Mandate 3
+		securityManager: NewSecurityManager(), // Mandate 3
+		mlCoordinator:   NewMLCoordinator(),   // Mandate 3
 	}
 }
 
@@ -1403,7 +1403,7 @@ func (s *nodeServiceServer) GetMdnsDiscovered(ctx context.Context, call NodeServ
 	// For now, return connected peers as they were likely discovered via mDNS
 	// In a full implementation, we'd track specifically which peers came from mDNS
 	connectedPeers := s.network.GetConnectedPeers()
-	
+
 	peers, err := results.NewPeers(int32(len(connectedPeers)))
 	if err != nil {
 		return err
@@ -1412,14 +1412,14 @@ func (s *nodeServiceServer) GetMdnsDiscovered(ctx context.Context, call NodeServ
 	for i, peerID := range connectedPeers {
 		peer := peers.At(i)
 		peer.SetPeerId(fmt.Sprintf("%d", peerID))
-		
+
 		// Set multiaddrs (placeholder - would need actual peer info)
 		addrs, err := peer.NewMultiaddrs(1)
 		if err != nil {
 			continue
 		}
 		addrs.Set(0, fmt.Sprintf("/ip4/127.0.0.1/tcp/9090/p2p/%d", peerID))
-		
+
 		// Set discovery timestamp
 		peer.SetDiscoveredAt(time.Now().Unix())
 	}

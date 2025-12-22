@@ -35,15 +35,14 @@ func CleanupPort(addr string) error {
 	if err := CheckPortAvailable(addr); err == nil {
 		return nil // Port is already free
 	}
-	
+
 	// Try to connect to see if something is listening
 	conn, err := net.DialTimeout("tcp", addr, 100*time.Millisecond)
 	if err == nil {
 		conn.Close()
 		return fmt.Errorf("port %s is in use by another process", addr)
 	}
-	
+
 	// Port might be in TIME_WAIT state, wait a bit
 	return WaitForPort(addr, 2*time.Second)
 }
-

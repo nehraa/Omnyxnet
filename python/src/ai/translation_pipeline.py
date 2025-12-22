@@ -16,7 +16,7 @@ Follows existing patterns:
 import torch
 import numpy as np
 import logging
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple, Any
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -266,7 +266,9 @@ class TTSModule:
         self.device = DeviceManager.get_device(config.use_gpu)
         self.model = None
         self.vocoder = None
-        self.voice_embeddings = {}  # Store voice embeddings for cloning
+        self.voice_embeddings: Dict[str, np.ndarray] = (
+            {}
+        )  # Store voice embeddings for cloning
 
         logger.info(f"TTS module initialized on {self.device}")
 
@@ -374,7 +376,7 @@ class TranslationPipeline:
 
         # Pipeline state
         self.models_loaded = False
-        self.voice_profiles = {}
+        self.voice_profiles: Dict[str, Any] = {}
 
         logger.info("Translation pipeline initialized")
 

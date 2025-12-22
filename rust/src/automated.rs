@@ -1,5 +1,5 @@
 /// Automated high-level file operations
-/// 
+///
 /// This module provides simple, one-function interfaces for uploading and downloading files
 /// that handle all the complexity internally:
 /// - DHT integration for peer discovery
@@ -7,20 +7,19 @@
 /// - Manifest management
 /// - Cache integration
 /// - Error recovery
-
-use anyhow::{Result, Context, bail};
+use anyhow::{bail, Context, Result};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tracing::{info, debug, warn};
+use tracing::{debug, info, warn};
 
-use crate::ces::CesPipeline;
-use crate::go_client::GoClient;
 use crate::cache::Cache;
-use crate::lookup::LookupService;
+use crate::ces::CesPipeline;
 use crate::dht::DhtNode;
+use crate::download::DownloadProtocol;
+use crate::go_client::GoClient;
+use crate::lookup::LookupService;
 use crate::store::NodeStore;
 use crate::upload::UploadProtocol;
-use crate::download::DownloadProtocol;
 
 /// Reserved node ID for the local node (not included in peer discovery)
 const LOCAL_NODE_ID: u32 = 0;
@@ -48,7 +47,7 @@ impl AutomatedUploader {
     ) -> Self {
         let upload = Arc::new(UploadProtocol::with_cache(ces, go_client, cache.clone()));
         let lookup = Arc::new(LookupService::new(cache, dht.clone(), store.clone()));
-        
+
         Self {
             upload,
             lookup,
@@ -58,7 +57,7 @@ impl AutomatedUploader {
     }
 
     /// Upload a file with full automation
-    /// 
+    ///
     /// This function:
     /// 1. Validates the file path
     /// 2. Discovers available peers via DHT
@@ -69,52 +68,63 @@ impl AutomatedUploader {
     /// 7. Returns file hash and manifest
     pub async fn upload(&self, file_path: impl AsRef<Path>) -> Result<UploadResult> {
         let file_path = file_path.as_ref();
-        
+
         // 1. Validate file
         info!("🚀 Starting automated upload: {:?}", file_path);
-        
+
         if !file_path.exists() {
             bail!("File not found: {:?}", file_path);
         }
-        
+
         if !file_path.is_file() {
             bail!("Path is not a file: {:?}", file_path);
         }
-        
+
         let metadata = tokio::fs::metadata(file_path).await?;
         let file_size = metadata.len();
-        info!("📁 File size: {} bytes ({:.2} MB)", file_size, file_size as f64 / BYTES_PER_MB);
-        
+        info!(
+            "📁 File size: {} bytes ({:.2} MB)",
+            file_size,
+            file_size as f64 / BYTES_PER_MB
+        );
+
         // 2. Discover available peers
         info!("🔍 Discovering available peers...");
         let target_peers = self.discover_target_peers().await?;
-        
+
         if target_peers.is_empty() {
             bail!("No available peers found. Start at least one other node.");
         }
-        
-        info!("✅ Found {} available peer(s): {:?}", target_peers.len(), target_peers);
-        
+
+        info!(
+            "✅ Found {} available peer(s): {:?}",
+            target_peers.len(),
+            target_peers
+        );
+
         // 3. Upload file
         info!("📤 Uploading file and distributing shards...");
-        let manifest_json = self.upload.upload_file(file_path, target_peers).await
+        let manifest_json = self
+            .upload
+            .upload_file(file_path, target_peers)
+            .await
             .context("Upload failed")?;
-        
+
         // Parse manifest to get file hash
         let manifest: crate::cache::FileManifest = serde_json::from_str(&manifest_json)?;
         let file_hash = manifest.file_hash.clone();
-        
+
         // 4. Register in DHT
         if self.dht.is_some() {
             info!("📡 Registering file in DHT...");
             self.lookup.register_file(&manifest).await?;
         }
-        
+
         info!("✅ Upload complete!");
         info!("🔑 File hash: {}", file_hash);
         info!("📦 Shards created: {}", manifest.shard_count);
         info!("📍 Shard locations: {:?}", manifest.shard_locations);
-        
+
         Ok(UploadResult {
             file_hash,
             manifest_json,
@@ -126,7 +136,7 @@ impl AutomatedUploader {
     /// Discover target peers for upload
     async fn discover_target_peers(&self) -> Result<Vec<u32>> {
         let mut peers = Vec::new();
-        
+
         // Get all active nodes from store
         let nodes = self.store.get_all_nodes().await;
         for node in nodes {
@@ -135,7 +145,7 @@ impl AutomatedUploader {
                 peers.push(node.id);
             }
         }
-        
+
         // DHT peer discovery: Currently we rely on the NodeStore for peer tracking.
         // The DHT is used for file registration and lookup (see lookup.rs) but not
         // for discovering arbitrary peers. Peers are discovered through the node store
@@ -143,7 +153,7 @@ impl AutomatedUploader {
         if self.dht.is_some() {
             debug!("DHT available for file operations");
         }
-        
+
         Ok(peers)
     }
 }
@@ -175,15 +185,12 @@ impl AutomatedDownloader {
     ) -> Self {
         let download = Arc::new(DownloadProtocol::with_cache(ces, go_client, cache.clone()));
         let lookup = Arc::new(LookupService::new(cache, dht, store));
-        
-        Self {
-            download,
-            lookup,
-        }
+
+        Self { download, lookup }
     }
 
     /// Download a file with full automation
-    /// 
+    ///
     /// This function:
     /// 1. Looks up file in cache and DHT
     /// 2. Discovers all peers with shards
@@ -191,44 +198,57 @@ impl AutomatedDownloader {
     /// 4. Reconstructs the file
     /// 5. Writes to output path
     /// 6. Returns download stats
-    pub async fn download(&self, file_hash: &str, output_path: impl AsRef<Path>) -> Result<DownloadResult> {
+    pub async fn download(
+        &self,
+        file_hash: &str,
+        output_path: impl AsRef<Path>,
+    ) -> Result<DownloadResult> {
         let output_path = output_path.as_ref();
-        
+
         info!("🚀 Starting automated download");
         info!("🔑 File hash: {}", file_hash);
         info!("💾 Output path: {:?}", output_path);
-        
+
         // 1. Lookup file
         info!("🔍 Looking up file in cache and DHT...");
-        let lookup_result = self.lookup.lookup_file(file_hash).await?
+        let lookup_result = self
+            .lookup
+            .lookup_file(file_hash)
+            .await?
             .context("File not found in cache or DHT")?;
-        
+
         if !lookup_result.is_complete {
-            warn!("⚠️  File may not be fully reconstructible. Available shards: {}/{}",
-                  lookup_result.available_shards, lookup_result.manifest.shard_count);
+            warn!(
+                "⚠️  File may not be fully reconstructible. Available shards: {}/{}",
+                lookup_result.available_shards, lookup_result.manifest.shard_count
+            );
         }
-        
+
         info!("✅ Found file: {}", lookup_result.manifest.file_name);
         info!("📊 File size: {} bytes", lookup_result.manifest.file_size);
-        info!("📦 Shards: {}/{} available", 
-              lookup_result.available_shards, 
-              lookup_result.manifest.shard_count);
-        
+        info!(
+            "📦 Shards: {}/{} available",
+            lookup_result.available_shards, lookup_result.manifest.shard_count
+        );
+
         // 2. Prepare shard locations
         let shard_locations = lookup_result.manifest.shard_locations.clone();
-        info!("📍 Fetching shards from {} location(s)...", shard_locations.len());
-        
+        info!(
+            "📍 Fetching shards from {} location(s)...",
+            shard_locations.len()
+        );
+
         // 3. Download and reconstruct
         info!("📥 Downloading shards and reconstructing file...");
-        let bytes_written = self.download.download_file_with_hash(
-            output_path,
-            shard_locations,
-            Some(file_hash),
-        ).await.context("Download failed")?;
-        
+        let bytes_written = self
+            .download
+            .download_file_with_hash(output_path, shard_locations, Some(file_hash))
+            .await
+            .context("Download failed")?;
+
         info!("✅ Download complete!");
         info!("💾 Bytes written: {}", bytes_written);
-        
+
         Ok(DownloadResult {
             file_hash: file_hash.to_string(),
             file_name: lookup_result.manifest.file_name,
@@ -242,12 +262,12 @@ impl AutomatedDownloader {
     pub async fn list_files(&self) -> Result<Vec<FileInfo>> {
         info!("📋 Listing all available files...");
         let manifests = self.lookup.list_cached_files().await?;
-        
+
         let mut files = Vec::new();
         for manifest in manifests {
             // Check availability
             let is_available = self.lookup.verify_file(&manifest.file_hash).await?;
-            
+
             files.push(FileInfo {
                 file_hash: manifest.file_hash,
                 file_name: manifest.file_name,
@@ -257,7 +277,7 @@ impl AutomatedDownloader {
                 timestamp: manifest.timestamp,
             });
         }
-        
+
         info!("📊 Found {} file(s)", files.len());
         Ok(files)
     }
@@ -266,11 +286,11 @@ impl AutomatedDownloader {
     pub async fn search(&self, pattern: &str) -> Result<Vec<FileInfo>> {
         info!("🔍 Searching files matching: '{}'", pattern);
         let manifests = self.lookup.search_files(pattern).await?;
-        
+
         let mut files = Vec::new();
         for manifest in manifests {
             let is_available = self.lookup.verify_file(&manifest.file_hash).await?;
-            
+
             files.push(FileInfo {
                 file_hash: manifest.file_hash,
                 file_name: manifest.file_name,
@@ -280,7 +300,7 @@ impl AutomatedDownloader {
                 timestamp: manifest.timestamp,
             });
         }
-        
+
         info!("📊 Found {} matching file(s)", files.len());
         Ok(files)
     }
@@ -288,7 +308,7 @@ impl AutomatedDownloader {
     /// Get file info without downloading
     pub async fn get_info(&self, file_hash: &str) -> Result<Option<FileInfo>> {
         let lookup_result = self.lookup.lookup_file(file_hash).await?;
-        
+
         if let Some(result) = lookup_result {
             Ok(Some(FileInfo {
                 file_hash: result.manifest.file_hash,
@@ -328,8 +348,8 @@ pub struct FileInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::CesConfig;
     use crate::capabilities::HardwareCaps;
+    use crate::types::CesConfig;
 
     #[tokio::test]
     async fn test_automated_uploader_creation() {
@@ -342,8 +362,14 @@ mod tests {
         let go_client = Arc::new(GoClient::new(go_addr));
         let cache = Arc::new(Cache::new("/tmp/test_cache", 1000, 100 * 1024 * 1024).unwrap());
         let store = Arc::new(NodeStore::new());
-        
-        let _uploader = AutomatedUploader::new(ces.clone(), go_client.clone(), cache.clone(), store.clone(), None);
+
+        let _uploader = AutomatedUploader::new(
+            ces.clone(),
+            go_client.clone(),
+            cache.clone(),
+            store.clone(),
+            None,
+        );
         assert!(true); // Uploader created successfully
     }
 
@@ -358,7 +384,7 @@ mod tests {
         let go_client = Arc::new(GoClient::new(go_addr));
         let cache = Arc::new(Cache::new("/tmp/test_cache", 1000, 100 * 1024 * 1024).unwrap());
         let store = Arc::new(NodeStore::new());
-        
+
         let _downloader = AutomatedDownloader::new(ces, go_client, cache, store, None);
         assert!(true); // Downloader created successfully
     }

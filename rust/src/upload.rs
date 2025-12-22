@@ -1,13 +1,13 @@
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
+use chrono;
+use sha2::{Digest, Sha256};
 use std::path::Path;
 use std::sync::Arc;
-use tracing::{info, debug};
-use sha2::{Sha256, Digest};
-use chrono;
+use tracing::{debug, info};
 
+use crate::cache::{Cache, FileManifest};
 use crate::ces::CesPipeline;
 use crate::go_client::GoClient;
-use crate::cache::{Cache, FileManifest};
 
 /// Upload protocol - handles file uploads with CES pipeline
 pub struct UploadProtocol {
@@ -18,8 +18,8 @@ pub struct UploadProtocol {
 
 impl UploadProtocol {
     pub fn new(ces: Arc<CesPipeline>, go_client: Arc<GoClient>) -> Self {
-        Self { 
-            ces, 
+        Self {
+            ces,
             go_client,
             cache: None,
         }
@@ -39,7 +39,8 @@ impl UploadProtocol {
         info!("Starting upload: {:?}", file_path);
 
         // 1. Read file
-        let data = tokio::fs::read(file_path).await
+        let data = tokio::fs::read(file_path)
+            .await
             .context("Failed to read file")?;
         let file_size = data.len();
         info!("Read {} bytes from file", file_size);
@@ -57,20 +58,26 @@ impl UploadProtocol {
         let mut shard_locations = Vec::new();
         for (i, shard) in shards.iter().enumerate() {
             let peer_id = target_peers[i % target_peers.len()];
-            
-            debug!("Sending shard {} ({} bytes) to peer {}", i, shard.len(), peer_id);
+
+            debug!(
+                "Sending shard {} ({} bytes) to peer {}",
+                i,
+                shard.len(),
+                peer_id
+            );
             self.go_client.send_data(peer_id, shard.clone()).await?;
-            
+
             // Cache the shard locally if caching is enabled
             if let Some(cache) = &self.cache {
                 cache.put_shard(&file_hash, i, shard.clone()).await?;
             }
-            
+
             shard_locations.push((i, peer_id));
         }
 
         // 5. Create and cache manifest
-        let file_name = file_path.file_name()
+        let file_name = file_path
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("unknown")
             .to_string();
@@ -98,7 +105,11 @@ impl UploadProtocol {
     }
 
     /// Upload raw data
-    pub async fn upload_data(&self, data: &[u8], target_peers: Vec<u32>) -> Result<Vec<(usize, u32)>> {
+    pub async fn upload_data(
+        &self,
+        data: &[u8],
+        target_peers: Vec<u32>,
+    ) -> Result<Vec<(usize, u32)>> {
         info!("Starting data upload: {} bytes", data.len());
 
         // Process through CES pipeline
@@ -132,7 +143,7 @@ mod tests {
             .parse()
             .expect("Hard-coded Go addr 127.0.0.1:8080 must be a valid SocketAddr");
         let go_client = Arc::new(GoClient::new(go_addr));
-        
+
         let upload = UploadProtocol::new(ces, go_client);
         assert!(true); // Protocol created successfully
     }

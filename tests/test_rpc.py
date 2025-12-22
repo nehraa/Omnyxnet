@@ -14,14 +14,16 @@ SCHEMA_PATH = PROJECT_ROOT / "go" / "schema" / "schema.capnp"
 
 sys.path.insert(0, str(PYTHON_DIR))
 
-try:
-    import capnp
-    from src.client.go_client import GoNodeClient
-except ImportError as e:
-    print(f"❌ Import error: {e}")
+import importlib.util  # noqa: E402
+
+# Ensure `capnp` is available (capnp is optional for tests that require it)
+if importlib.util.find_spec("capnp") is None:
+    print("❌ Import error: capnp not installed")
     print("   Install dependencies: pip install -r python/requirements.txt")
     print(f"   Python path: {sys.path}")
     sys.exit(1)
+
+from src.client.go_client import GoNodeClient  # noqa: E402
 
 
 def test_connection():

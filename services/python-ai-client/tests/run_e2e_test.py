@@ -18,7 +18,7 @@ TEST_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = TEST_DIR.parent.parent
 sys.path.insert(0, str(PROJECT_DIR))
 
-from app.training_core import TrainingEngine
+from app.training_core import TrainingEngine  # noqa: E402
 
 # Configure logging for tests
 logging.basicConfig(

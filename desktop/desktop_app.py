@@ -851,7 +851,7 @@ class PangeaDesktopApp:
 def main():
     """Main entry point."""
     root = tk.Tk()
-    app = PangeaDesktopApp(root)
+    PangeaDesktopApp(root)
     root.mainloop()
 
 

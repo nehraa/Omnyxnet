@@ -13,8 +13,8 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP_DIR))
 
-from app.training_core import TrainingEngine
-from app.observability import ObservabilityManager, setup_metrics
+from app.training_core import TrainingEngine  # noqa: E402
+from app.observability import ObservabilityManager, setup_metrics  # noqa: E402
 
 # Configure logging
 logging.basicConfig(

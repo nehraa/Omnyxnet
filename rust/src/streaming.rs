@@ -15,12 +15,11 @@
 /// - Modularity: Separate concerns for audio, video, and transport
 /// - Low latency: Optimized for real-time communication
 /// - Resilience: Handles packet loss gracefully
-
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
-use crate::codecs::{AudioConfig, AudioEncoder, AudioDecoder};
+use crate::codecs::{AudioConfig, AudioDecoder, AudioEncoder};
 
 /// Stream type identifier
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -105,62 +104,63 @@ impl StreamPacket {
         // Simple serialization format:
         // [8 bytes: sequence][8 bytes: timestamp][1 byte: stream_type]
         // [4 bytes: payload_len][payload][4 bytes: fec_len][fec_data]
-        
+
         let mut buffer = Vec::new();
         buffer.extend_from_slice(&self.sequence.to_be_bytes());
         buffer.extend_from_slice(&self.timestamp.to_be_bytes());
-        
+
         let stream_type_byte = match self.stream_type {
             StreamType::Audio => 0u8,
             StreamType::Video => 1u8,
             StreamType::AudioVideo => 2u8,
         };
         buffer.push(stream_type_byte);
-        
+
         buffer.extend_from_slice(&(self.payload.len() as u32).to_be_bytes());
         buffer.extend_from_slice(&self.payload);
-        
+
         if let Some(fec) = &self.fec_data {
             buffer.extend_from_slice(&(fec.len() as u32).to_be_bytes());
             buffer.extend_from_slice(fec);
         } else {
             buffer.extend_from_slice(&0u32.to_be_bytes());
         }
-        
+
         Ok(buffer)
     }
-    
+
     /// Deserialize packet from bytes
     pub fn from_bytes(data: &[u8]) -> Result<Self> {
         if data.len() < 21 {
             anyhow::bail!("Packet too small: {} bytes", data.len());
         }
-        
+
         let sequence = u64::from_be_bytes(data[0..8].try_into()?);
         let timestamp = u64::from_be_bytes(data[8..16].try_into()?);
-        
+
         let stream_type = match data[16] {
             0 => StreamType::Audio,
             1 => StreamType::Video,
             2 => StreamType::AudioVideo,
             _ => anyhow::bail!("Invalid stream type: {}", data[16]),
         };
-        
+
         let payload_len = u32::from_be_bytes(data[17..21].try_into()?) as usize;
         if data.len() < 21 + payload_len + 4 {
             anyhow::bail!("Incomplete packet data");
         }
-        
+
         let payload = data[21..21 + payload_len].to_vec();
         let fec_len_start = 21 + payload_len;
-        let fec_len = u32::from_be_bytes(data[fec_len_start..fec_len_start + 4].try_into()?) as usize;
-        
+        let fec_len =
+            u32::from_be_bytes(data[fec_len_start..fec_len_start + 4].try_into()?) as usize;
+
         let fec_data = if fec_len > 0 {
             Some(data[fec_len_start + 4..fec_len_start + 4 + fec_len].to_vec())
         } else {
             None
         };
-        
+
         Ok(StreamPacket {
             sequence,
             timestamp,
@@ -182,13 +182,18 @@ pub struct AudioStreamSender {
 impl AudioStreamSender {
     /// Create a new audio stream sender
     pub fn new(config: StreamConfig, peer_id: u32) -> Result<Self> {
-        let audio_config = config.audio_config.clone()
+        let audio_config = config
+            .audio_config
+            .clone()
             .context("Audio config required for audio stream")?;
-        
+
         let encoder = AudioEncoder::new(audio_config)?;
-        
-        info!("Created audio stream sender for peer {} with config: {:?}", peer_id, config);
-        
+
+        info!(
+            "Created audio stream sender for peer {} with config: {:?}",
+            peer_id, config
+        );
+
         Ok(Self {
             encoder,
             sequence: 0,
@@ -196,20 +201,22 @@ impl AudioStreamSender {
             peer_id,
         })
     }
-    
+
     /// Encode audio frame
-    /// 
+    ///
     /// # Arguments
     /// * `pcm_samples` - Raw PCM audio samples (16-bit signed integers)
-    /// 
+    ///
     /// Returns the encoded packet ready for transmission via the network layer
     pub fn encode_audio(&mut self, pcm_samples: &[i16]) -> Result<StreamPacket> {
         // Encode audio to Opus
-        let encoded = self.encoder.encode(pcm_samples)
+        let encoded = self
+            .encoder
+            .encode(pcm_samples)
             .context("Failed to encode audio")?;
-        
+
         let encoded_len = encoded.len();
-        
+
         // Create stream packet
         let packet = StreamPacket {
             sequence: self.sequence,
@@ -220,20 +227,22 @@ impl AudioStreamSender {
             payload: encoded,
             fec_data: None, // TODO: Add FEC if enabled
         };
-        
+
         self.sequence += 1;
-        
-        debug!("Encoded audio packet {} ({} bytes)", 
-               packet.sequence, encoded_len);
-        
+
+        debug!(
+            "Encoded audio packet {} ({} bytes)",
+            packet.sequence, encoded_len
+        );
+
         Ok(packet)
     }
-    
+
     /// Get the target peer ID
     pub fn peer_id(&self) -> u32 {
         self.peer_id
     }
-    
+
     /// Set encoder bitrate dynamically based on network conditions
     pub fn set_bitrate(&mut self, bitrate: i32) -> Result<()> {
         self.encoder.set_bitrate(bitrate)
@@ -251,13 +260,15 @@ pub struct AudioStreamReceiver {
 impl AudioStreamReceiver {
     /// Create a new audio stream receiver
     pub fn new(config: StreamConfig, packet_rx: mpsc::Receiver<StreamPacket>) -> Result<Self> {
-        let audio_config = config.audio_config.clone()
+        let audio_config = config
+            .audio_config
+            .clone()
             .context("Audio config required for audio stream")?;
-        
+
         let decoder = AudioDecoder::new(audio_config)?;
-        
+
         info!("Created audio stream receiver with config: {:?}", config);
-        
+
         Ok(Self {
             decoder,
             last_sequence: 0,
@@ -265,9 +276,9 @@ impl AudioStreamReceiver {
             packet_rx,
         })
     }
-    
+
     /// Receive and decode audio frame
-    /// 
+    ///
     /// Returns PCM samples or None if no packet available
     pub async fn receive_audio(&mut self) -> Result<Option<Vec<i16>>> {
         match self.packet_rx.recv().await {
@@ -275,25 +286,35 @@ impl AudioStreamReceiver {
                 // Check for packet loss
                 if packet.sequence > self.last_sequence + 1 {
                     let lost = packet.sequence - self.last_sequence - 1;
-                    warn!("Lost {} audio packets (seq {} -> {})", 
-                          lost, self.last_sequence, packet.sequence);
-                    
+                    warn!(
+                        "Lost {} audio packets (seq {} -> {})",
+                        lost, self.last_sequence, packet.sequence
+                    );
+
                     // Use Packet Loss Concealment for first lost packet
                     if lost == 1 {
                         let plc_samples = self.decoder.decode_plc()?;
-                        debug!("Generated {} PLC samples for lost packet", plc_samples.len());
+                        debug!(
+                            "Generated {} PLC samples for lost packet",
+                            plc_samples.len()
+                        );
                     }
                 }
-                
+
                 self.last_sequence = packet.sequence;
-                
+
                 // Decode audio
-                let pcm = self.decoder.decode(&packet.payload)
+                let pcm = self
+                    .decoder
+                    .decode(&packet.payload)
                     .context("Failed to decode audio packet")?;
-                
-                debug!("Received and decoded audio packet {} ({} samples)", 
-                       packet.sequence, pcm.len());
-                
+
+                debug!(
+                    "Received and decoded audio packet {} ({} samples)",
+                    packet.sequence,
+                    pcm.len()
+                );
+
                 Ok(Some(pcm))
             }
             None => Ok(None),
@@ -310,28 +331,26 @@ impl StreamingSession {
     /// Create a new streaming session
     pub fn new(config: StreamConfig) -> Self {
         info!("Created streaming session: {:?}", config);
-        
-        Self {
-            config,
-        }
+
+        Self { config }
     }
-    
+
     /// Create audio sender for this session
     pub fn create_audio_sender(&self, peer_id: u32) -> Result<AudioStreamSender> {
         AudioStreamSender::new(self.config.clone(), peer_id)
     }
-    
+
     /// Create audio receiver for this session
     pub fn create_audio_receiver(&self) -> Result<AudioStreamReceiver> {
         let (_packet_tx, packet_rx) = mpsc::channel(self.config.buffer_size);
-        
+
         // Note: In a real implementation, the network layer would feed packets
         // into packet_tx. For now, this is a placeholder that applications
         // can integrate with their network transport.
-        
+
         AudioStreamReceiver::new(self.config.clone(), packet_rx)
     }
-    
+
     /// Get session configuration
     pub fn config(&self) -> &StreamConfig {
         &self.config
@@ -350,7 +369,7 @@ pub struct StreamStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_stream_packet_serialization() -> Result<()> {
         let packet = StreamPacket {
@@ -360,19 +379,19 @@ mod tests {
             payload: vec![1, 2, 3, 4, 5],
             fec_data: Some(vec![6, 7, 8]),
         };
-        
+
         let bytes = packet.to_bytes()?;
         let decoded = StreamPacket::from_bytes(&bytes)?;
-        
+
         assert_eq!(packet.sequence, decoded.sequence);
         assert_eq!(packet.timestamp, decoded.timestamp);
         assert_eq!(packet.stream_type, decoded.stream_type);
         assert_eq!(packet.payload, decoded.payload);
         assert_eq!(packet.fec_data, decoded.fec_data);
-        
+
         Ok(())
     }
-    
+
     #[test]
     fn test_stream_config_defaults() {
         let config = StreamConfig::voice();

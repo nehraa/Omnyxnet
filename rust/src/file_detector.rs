@@ -26,13 +26,13 @@ impl FileType {
     /// Returns: compression level (0-9 for zstd, 0=no compression)
     pub fn recommended_compression_level(&self) -> i32 {
         match self {
-            FileType::Compressed => 0,  // Don't recompress
-            FileType::Image => 1,       // Light compression (often already compressed)
-            FileType::Video => 0,       // Don't compress (already compressed)
-            FileType::Audio => 1,       // Light compression (depends on format)
-            FileType::Text => 9,        // Maximum compression (very effective)
-            FileType::Binary => 6,      // Moderate compression
-            FileType::Unknown => 3,     // Default safe level
+            FileType::Compressed => 0, // Don't recompress
+            FileType::Image => 1,      // Light compression (often already compressed)
+            FileType::Video => 0,      // Don't compress (already compressed)
+            FileType::Audio => 1,      // Light compression (depends on format)
+            FileType::Text => 9,       // Maximum compression (very effective)
+            FileType::Binary => 6,     // Moderate compression
+            FileType::Unknown => 3,    // Default safe level
         }
     }
 
@@ -71,7 +71,7 @@ impl FileDetector {
     /// Detect file type from extension string
     pub fn detect_from_extension(ext: &str) -> FileType {
         let ext_lower = ext.to_lowercase();
-        
+
         // Compressed archives
         if matches!(
             ext_lower.as_str(),
@@ -107,9 +107,31 @@ impl FileDetector {
         // Text
         if matches!(
             ext_lower.as_str(),
-            "txt" | "log" | "json" | "xml" | "yaml" | "yml" | "toml" | "ini" | 
-            "md" | "rst" | "csv" | "tsv" | "html" | "htm" | "css" | "js" | 
-            "py" | "rs" | "go" | "c" | "cpp" | "h" | "java" | "sh" | "bash"
+            "txt"
+                | "log"
+                | "json"
+                | "xml"
+                | "yaml"
+                | "yml"
+                | "toml"
+                | "ini"
+                | "md"
+                | "rst"
+                | "csv"
+                | "tsv"
+                | "html"
+                | "htm"
+                | "css"
+                | "js"
+                | "py"
+                | "rs"
+                | "go"
+                | "c"
+                | "cpp"
+                | "h"
+                | "java"
+                | "sh"
+                | "bash"
         ) {
             return FileType::Text;
         }
@@ -146,14 +168,18 @@ impl FileDetector {
             // MP4/M4V: various, check 'ftyp'
             _ if data.len() >= 12 && &data[4..8] == b"ftyp" => FileType::Video,
             // AVI: 52 49 46 46 ... 41 56 49 20
-            [0x52, 0x49, 0x46, 0x46] if data.len() >= 12 && &data[8..12] == b"AVI " => FileType::Video,
+            [0x52, 0x49, 0x46, 0x46] if data.len() >= 12 && &data[8..12] == b"AVI " => {
+                FileType::Video
+            }
             // MP3: FF Fx where x is in range (MPEG audio frame sync)
             // Common values: FF FB (layer 3), FF F3 (layer 3), FF F2 (layer 3)
             [0xFF, b, ..] if *b >= 0xF0 && (*b & 0xE0) == 0xE0 => FileType::Audio,
             // FLAC: 66 4C 61 43
             [0x66, 0x4C, 0x61, 0x43] => FileType::Audio,
             // WAV: 52 49 46 46 ... 57 41 56 45
-            [0x52, 0x49, 0x46, 0x46] if data.len() >= 12 && &data[8..12] == b"WAVE" => FileType::Audio,
+            [0x52, 0x49, 0x46, 0x46] if data.len() >= 12 && &data[8..12] == b"WAVE" => {
+                FileType::Audio
+            }
             // ELF executable: 7F 45 4C 46
             [0x7F, 0x45, 0x4C, 0x46] => FileType::Binary,
             // Windows PE: 4D 5A
@@ -173,14 +199,14 @@ impl FileDetector {
     fn is_likely_text(data: &[u8]) -> bool {
         let sample_size = data.len().min(512);
         let sample = &data[0..sample_size];
-        
+
         let mut printable_count = 0;
         for &byte in sample {
             if byte.is_ascii_graphic() || byte.is_ascii_whitespace() {
                 printable_count += 1;
             }
         }
-        
+
         // If more than 90% is printable ASCII, likely text
         printable_count as f64 / sample_size as f64 > 0.9
     }
@@ -210,7 +236,10 @@ mod tests {
 
     #[test]
     fn test_extension_detection() {
-        assert_eq!(FileDetector::detect_from_extension("zip"), FileType::Compressed);
+        assert_eq!(
+            FileDetector::detect_from_extension("zip"),
+            FileType::Compressed
+        );
         assert_eq!(FileDetector::detect_from_extension("jpg"), FileType::Image);
         assert_eq!(FileDetector::detect_from_extension("mp4"), FileType::Video);
         assert_eq!(FileDetector::detect_from_extension("mp3"), FileType::Audio);
@@ -222,11 +251,17 @@ mod tests {
     fn test_magic_bytes() {
         // ZIP
         let zip_data = vec![0x50, 0x4B, 0x03, 0x04, 0x00, 0x00];
-        assert_eq!(FileDetector::detect_from_content(&zip_data), FileType::Compressed);
+        assert_eq!(
+            FileDetector::detect_from_content(&zip_data),
+            FileType::Compressed
+        );
 
         // PNG
         let png_data = vec![0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A];
-        assert_eq!(FileDetector::detect_from_content(&png_data), FileType::Image);
+        assert_eq!(
+            FileDetector::detect_from_content(&png_data),
+            FileType::Image
+        );
 
         // Text (all printable ASCII)
         let text_data = b"Hello, World! This is a text file.";

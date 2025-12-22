@@ -89,7 +89,7 @@ impl P2PEngine {
     /// Calculate and update unchoke set based on tit-for-tat algorithm
     pub async fn update_unchoke_set(&self) -> Result<()> {
         let unchoke_set = self.calculate_unchoke_set().await;
-        
+
         let mut unchoked = self.unchoked_peers.write().await;
         *unchoked = unchoke_set;
 
@@ -99,17 +99,18 @@ impl P2PEngine {
     /// Calculate unchoke set using tit-for-tat algorithm
     async fn calculate_unchoke_set(&self) -> Vec<PeerId> {
         // Get all interested peers
-        let mut peer_scores: Vec<(PeerId, f32)> = self.peer_stats
+        let mut peer_scores: Vec<(PeerId, f32)> = self
+            .peer_stats
             .iter()
             .map(|entry| {
                 let peer_id = *entry.key();
                 let stats = entry.value();
-                
+
                 // Calculate score: weighted combination of upload/download and reliability
                 let uploaded = stats.uploaded_bytes as f32;
                 let downloaded = stats.downloaded_bytes as f32;
                 let reliability = stats.reliability_score;
-                
+
                 let score = (downloaded * 0.7 + uploaded * 0.3) * reliability;
                 (peer_id, score)
             })
@@ -180,7 +181,10 @@ impl P2PEngine {
         let count = unchoked.len().max(1);
         let bytes_per_peer = (self.config.max_upload_mbps * 1_000_000) / (count as u64);
 
-        unchoked.iter().map(|peer| (*peer, bytes_per_peer)).collect()
+        unchoked
+            .iter()
+            .map(|peer| (*peer, bytes_per_peer))
+            .collect()
     }
 }
 
@@ -204,7 +208,7 @@ mod tests {
     async fn test_p2p_engine_creation() {
         let config = P2PConfig::default();
         let engine = P2PEngine::new(config);
-        
+
         let unchoked = engine.get_unchoked_peers().await;
         assert_eq!(unchoked.len(), 0);
     }
@@ -228,7 +232,7 @@ mod tests {
         for i in 1..=10 {
             let peer_id = PeerId::new(i);
             engine.add_peer(peer_id);
-            
+
             // Simulate different amounts of data transfer
             let bytes = i * 1000;
             engine.update_downloaded(peer_id, bytes);
@@ -238,7 +242,7 @@ mod tests {
         engine.update_unchoke_set().await.unwrap();
 
         let unchoked = engine.get_unchoked_peers().await;
-        
+
         // Should have regular_unchoke_count + optimistic_unchoke_count peers
         assert!(unchoked.len() <= 5); // 4 regular + 1 optimistic
     }
@@ -258,7 +262,7 @@ mod tests {
         engine.update_unchoke_set().await.unwrap();
 
         let allocations = engine.get_bandwidth_allocation().await;
-        
+
         // Each peer should get an equal share
         for (_, bandwidth) in allocations {
             assert!(bandwidth > 0);

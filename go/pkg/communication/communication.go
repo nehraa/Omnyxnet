@@ -64,13 +64,13 @@ type VoiceChunk struct {
 
 // CommunicationService handles P2P communication for chat, voice, and video
 type CommunicationService struct {
-	host       host.Host
-	ctx        context.Context
-	cancel     context.CancelFunc
-	mu         sync.RWMutex
-	running    bool
-	dataDir    string
-	wg         sync.WaitGroup // Track goroutines for clean shutdown
+	host    host.Host
+	ctx     context.Context
+	cancel  context.CancelFunc
+	mu      sync.RWMutex
+	running bool
+	dataDir string
+	wg      sync.WaitGroup // Track goroutines for clean shutdown
 
 	// Callbacks
 	onChatMessage func(msg ChatMessage)
@@ -83,9 +83,9 @@ type CommunicationService struct {
 	historyMu       sync.RWMutex
 
 	// Debounced save mechanism (fixes race condition from review comment)
-	saveChan      chan struct{}
-	saveTimer     *time.Timer
-	saveTimerMu   sync.Mutex
+	saveChan    chan struct{}
+	saveTimer   *time.Timer
+	saveTimerMu sync.Mutex
 
 	// Connected peers for streaming
 	chatStreams  map[peer.ID]network.Stream

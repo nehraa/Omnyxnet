@@ -10,10 +10,10 @@ import (
 // NodeManager provides high-level node management functions
 // This is the main interface that Python will interact with
 type NodeManager struct {
-	store    NodeStore
-	network  NetworkManager
-	rpc      RPCServer
-	mu       sync.RWMutex
+	store   NodeStore
+	network NetworkManager
+	rpc     RPCServer
+	mu      sync.RWMutex
 }
 
 // NodeStore interface for node storage operations
@@ -70,15 +70,15 @@ func NewNodeManager(store NodeStore, network NetworkManager, rpc RPCServer) *Nod
 func (nm *NodeManager) StartNode(nodeID uint32, capnpPort string, p2pPort string) error {
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
-	
+
 	// Create the node in store
 	nm.store.CreateNode(nodeID)
-	
+
 	// Start RPC server
 	if err := nm.rpc.Start(capnpPort); err != nil {
 		return fmt.Errorf("failed to start RPC server: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -86,7 +86,7 @@ func (nm *NodeManager) StartNode(nodeID uint32, capnpPort string, p2pPort string
 func (nm *NodeManager) StopNode() error {
 	nm.mu.Lock()
 	defer nm.mu.Unlock()
-	
+
 	return nm.rpc.Stop()
 }
 
@@ -156,4 +156,3 @@ func (nm *NodeManager) DisconnectPeer(peerID uint32) error {
 func (nm *NodeManager) GetConnectedPeers() []uint32 {
 	return nm.network.GetConnectedPeers()
 }
-

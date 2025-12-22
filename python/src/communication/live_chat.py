@@ -34,7 +34,7 @@ def receive_messages(sock):
                 break
             print(f"\n📨 Peer: {data.decode('utf-8')}")
             print("You: ", end="", flush=True)
-        except:
+        except Exception:
             break
 
 

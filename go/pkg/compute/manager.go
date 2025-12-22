@@ -312,8 +312,8 @@ func probeCapacity() ComputeCapacity {
 		CPUCores:      uint32(numCPU),
 		RAMMB:         ramMB,
 		CurrentLoad:   float32(currentLoad),
-		DiskMB:        100000,       // Disk probing requires OS-specific code
-		BandwidthMbps: 100.0,        // Network probing requires active measurement
+		DiskMB:        100000, // Disk probing requires OS-specific code
+		BandwidthMbps: 100.0,  // Network probing requires active measurement
 	}
 }
 
@@ -529,24 +529,24 @@ func (m *Manager) processJob(jobID string) {
 // Bounds the calculation to prevent manipulation through oversized inputs
 func (m *Manager) calculateComplexity(manifest *JobManifest) float64 {
 	// Cap input sizes to prevent gaming the complexity calculation
-	const maxDataMB = 1024.0   // 1GB max for calculation
-	const maxWasmKB = 10240.0  // 10MB max WASM for calculation
-	
+	const maxDataMB = 1024.0  // 1GB max for calculation
+	const maxWasmKB = 10240.0 // 10MB max WASM for calculation
+
 	dataSize := float64(len(manifest.InputData))
 	wasmSize := float64(len(manifest.WASMModule))
-	
+
 	// Cap the values
 	dataMB := math.Min(dataSize/(1024.0*1024.0), maxDataMB)
 	wasmKB := math.Min(wasmSize/(64.0*1024.0), maxWasmKB/64.0)
-	
+
 	// Calculate bounded complexity
 	complexity := dataMB * (1.0 + wasmKB*0.1)
-	
+
 	// Ensure minimum complexity for non-trivial inputs
 	if len(manifest.InputData) > 0 && complexity < 0.001 {
 		complexity = 0.001
 	}
-	
+
 	return complexity
 }
 
@@ -714,7 +714,7 @@ func (m *Manager) executeChunkRemote(jobID string, chunkIndex uint32, manifest *
 			}
 			if !workerAvailable && len(workers) > 0 {
 				// Worker disconnected, select a new one
-				log.Printf("🔄 [COMPUTE] Worker %s disconnected, selecting new worker for chunk %d", 
+				log.Printf("🔄 [COMPUTE] Worker %s disconnected, selecting new worker for chunk %d",
 					truncateID(currentWorkerID, 12), chunkIndex)
 				currentWorkerID = workers[int(chunkIndex)%len(workers)]
 			}
@@ -742,9 +742,9 @@ func (m *Manager) executeChunkRemote(jobID string, chunkIndex uint32, manifest *
 		cancel()
 
 		if err != nil {
-			log.Printf("❌ [COMPUTE] Remote chunk %d failed on %s: %v (attempt %d)", 
+			log.Printf("❌ [COMPUTE] Remote chunk %d failed on %s: %v (attempt %d)",
 				chunkIndex, shortID, err, attempt+1)
-			
+
 			// Refresh worker list for next attempt
 			if delegator.HasWorkers() {
 				workers := delegator.GetAvailableWorkers()
@@ -754,7 +754,7 @@ func (m *Manager) executeChunkRemote(jobID string, chunkIndex uint32, manifest *
 					continue
 				}
 			}
-			
+
 			// No more workers available, fall back to local execution
 			log.Printf("🔄 [COMPUTE] No workers available, falling back to local execution for chunk %d", chunkIndex)
 			m.executeChunk(jobID, chunkIndex, manifest, data)
@@ -764,7 +764,7 @@ func (m *Manager) executeChunkRemote(jobID string, chunkIndex uint32, manifest *
 		if remoteResult.Status == TaskCompleted {
 			log.Printf("✅ [COMPUTE] Chunk %d completed by worker %s in %dms: %d bytes",
 				chunkIndex, shortID, remoteResult.ExecutionTimeMs, len(remoteResult.ResultData))
-			
+
 			result := remoteResult
 			result.WorkerID = currentWorkerID
 			result.ExecutionTimeMs = uint64(time.Since(start).Milliseconds())
@@ -778,9 +778,9 @@ func (m *Manager) executeChunkRemote(jobID string, chunkIndex uint32, manifest *
 			return
 		}
 
-		log.Printf("❌ [COMPUTE] Remote chunk %d returned failure: %s (attempt %d)", 
+		log.Printf("❌ [COMPUTE] Remote chunk %d returned failure: %s (attempt %d)",
 			chunkIndex, remoteResult.Error, attempt+1)
-		
+
 		// Try to get a different worker for retry
 		if delegator.HasWorkers() {
 			workers := delegator.GetAvailableWorkers()

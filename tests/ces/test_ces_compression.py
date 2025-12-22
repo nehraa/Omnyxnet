@@ -89,21 +89,21 @@ class CESCompressionTester:
                     if "Compressed size:" in line:
                         try:
                             compressed_size = int(line.split(":")[1].strip().split()[0])
-                        except:
+                        except Exception:
                             pass
                     elif "Compression ratio:" in line:
                         try:
                             compression_ratio = float(
                                 line.split(":")[1].strip().replace("x", "")
                             )
-                        except:
+                        except Exception:
                             pass
                     elif "Processing latency:" in line:
                         try:
                             latency_ms = float(
                                 line.split(":")[1].strip().replace("ms", "")
                             )
-                        except:
+                        except Exception:
                             pass
 
                 # Display results
@@ -253,7 +253,7 @@ class CESCompressionTester:
         for algo, stats in algo_stats.items():
             avg_ratio = sum(stats["ratios"]) / len(stats["ratios"])
             avg_latency = sum(stats["latencies"]) / len(stats["latencies"])
-            max_ratio = max(stats["ratios"])
+            max(stats["ratios"])
 
             # Determine best use case
             if algo == "Brotli":

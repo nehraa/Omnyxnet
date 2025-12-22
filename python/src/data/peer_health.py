@@ -204,4 +204,9 @@ class PeerHealthManager:
 
     def get_all_peers_info(self) -> List[Dict]:
         """Get information about all peers."""
-        return [self.get_peer_info(peer_id) for peer_id in self.peers.keys()]
+        infos: List[Dict] = []
+        for peer_id in self.peers.keys():
+            info = self.get_peer_info(peer_id)
+            if info is not None:
+                infos.append(info)
+        return infos

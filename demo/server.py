@@ -117,7 +117,9 @@ class DemoState:
         self.go_client: Optional[Any] = None  # Cap'n Proto client
         self.connected_to_go = False
 
-    def connect_to_go_node(self, host: str = None, port: int = None) -> bool:
+    def connect_to_go_node(
+        self, host: Optional[str] = None, port: Optional[int] = None
+    ) -> bool:
         """Attempt to connect to Go node via Cap'n Proto.
 
         Args:

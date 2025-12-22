@@ -246,11 +246,12 @@ class ResultVisualizer:
         Returns:
             Human-readable size string
         """
+        value = float(size)
         for unit in ["B", "KB", "MB", "GB", "TB"]:
-            if abs(size) < 1024:
-                return f"{size:.1f} {unit}"
-            size /= 1024
-        return f"{size:.1f} PB"
+            if abs(value) < 1024:
+                return f"{value:.1f} {unit}"
+            value /= 1024
+        return f"{value:.1f} PB"
 
     def print_result(self, result: bytes, max_display: int = 1000):
         """Print a result with optional truncation.

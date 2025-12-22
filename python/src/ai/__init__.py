@@ -11,17 +11,27 @@ Phase 2: Translation and Personalization
 - Federated learning for personalized serialization
 """
 
-# Conditional imports - torch may not be installed in minimal mode
-try:
-    from src.ai.cnn_model import ModelManager, LatencyPredictorCNN
-    from src.ai.predictor import ThreatPredictor
+from typing import Optional, Any
 
+# Fallback names for runtime
+ModelManager: Optional[Any] = None
+LatencyPredictorCNN: Optional[Any] = None
+ThreatPredictor: Optional[Any] = None
+
+# At runtime, attempt to import concrete classes; fall back to None when unavailable
+try:
+    from src.ai.cnn_model import (
+        ModelManager as _ModelManager,
+        LatencyPredictorCNN as _LatencyPredictorCNN,
+    )
+    from src.ai.predictor import ThreatPredictor as _ThreatPredictor
+
+    ModelManager = _ModelManager
+    LatencyPredictorCNN = _LatencyPredictorCNN
+    ThreatPredictor = _ThreatPredictor
     _AI_AVAILABLE = True
 except ImportError:
     # Torch not installed - AI features unavailable
-    ModelManager = None
-    LatencyPredictorCNN = None
-    ThreatPredictor = None
     _AI_AVAILABLE = False
 
 __all__ = ["ModelManager", "LatencyPredictorCNN", "ThreatPredictor", "_AI_AVAILABLE"]

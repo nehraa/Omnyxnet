@@ -69,7 +69,7 @@ def test_audio_processing_latency():
         ces_client = CESClient()
 
         # Measure processing latency
-        start_time = time.time()
+        time.time()
 
         # Upload audio file (this will trigger compression and processing)
         with open(wav_file, "rb") as f:
@@ -81,9 +81,7 @@ def test_audio_processing_latency():
 
         # Simulate the audio processing that would happen in Rust
         # In real implementation, this would call the Opus codec via FFI
-        result = ces_client.process_file_data(
-            file_data, filename=os.path.basename(wav_file)
-        )
+        ces_client.process_file_data(file_data, filename=os.path.basename(wav_file))
 
         processing_time = (time.time() - processing_start) * 1000  # Convert to ms
 
@@ -158,7 +156,7 @@ def test_real_time_streaming_simulation():
         total_duration_ms = 100
         sample_rate = 48000
 
-        chunk_samples = int(chunk_duration_ms * sample_rate / 1000)
+        int(chunk_duration_ms * sample_rate / 1000)
         total_chunks = total_duration_ms // chunk_duration_ms
 
         print(f"Simulating {total_chunks} chunks of {chunk_duration_ms}ms each")
@@ -167,13 +165,12 @@ def test_real_time_streaming_simulation():
 
         for i in range(total_chunks):
             # Generate chunk of audio
-            chunk_audio = generate_test_audio(duration_ms=chunk_duration_ms)
+            generate_test_audio(duration_ms=chunk_duration_ms)
 
             # Measure processing time per chunk
             start_time = time.time()
 
             # Simulate processing (in real implementation: Opus encode -> network -> decode)
-            processed_data = chunk_audio  # Placeholder for actual processing
 
             chunk_latency = (time.time() - start_time) * 1000
             latencies.append(chunk_latency)

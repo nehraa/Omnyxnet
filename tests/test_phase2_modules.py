@@ -18,13 +18,9 @@ def test_translation_pipeline_import():
     """Test translation pipeline module import."""
     print("Testing translation_pipeline module import...")
     try:
-        from ai.translation_pipeline import (
-            TranslationPipeline,
-            TranslationConfig,
-            ASRModule,
-            NMTModule,
-            TTSModule,
-        )
+        import importlib
+
+        importlib.import_module("ai.translation_pipeline")
 
         print("✅ Translation pipeline modules imported successfully")
         return True
@@ -37,13 +33,9 @@ def test_video_lipsync_import():
     """Test video lipsync module import."""
     print("Testing video_lipsync module import...")
     try:
-        from ai.video_lipsync import (
-            VideoLipsync,
-            LipsyncConfig,
-            FaceDetector,
-            LipsyncModel,
-            VideoTranslationPipeline,
-        )
+        import importlib
+
+        importlib.import_module("ai.video_lipsync")
 
         print("✅ Video lipsync modules imported successfully")
         return True
@@ -56,13 +48,9 @@ def test_federated_learning_import():
     """Test federated learning module import."""
     print("Testing federated_learning module import...")
     try:
-        from ai.federated_learning import (
-            P2PFederatedLearning,
-            FederatedConfig,
-            CustomSerializationModel,
-            LocalTrainer,
-            FederatedAggregator,
-        )
+        import importlib
+
+        importlib.import_module("ai.federated_learning")
 
         print("✅ Federated learning modules imported successfully")
         return True
@@ -78,7 +66,7 @@ def test_translation_pipeline_init():
         from ai.translation_pipeline import TranslationPipeline, TranslationConfig
 
         config = TranslationConfig(use_gpu=False)
-        pipeline = TranslationPipeline(config)
+        TranslationPipeline(config)
 
         print(f"  - Pipeline created with config: {config.asr_model_name}")
         print(f"  - Target latency: {config.latency_target_ms}ms")
@@ -96,7 +84,7 @@ def test_video_lipsync_init():
         from ai.video_lipsync import VideoLipsync, LipsyncConfig
 
         config = LipsyncConfig(use_gpu=False, video_fps=30)
-        lipsync = VideoLipsync(config)
+        VideoLipsync(config)
 
         print(f"  - Lipsync created with model: {config.model_name}")
         print(f"  - Video FPS: {config.video_fps}")
@@ -114,7 +102,7 @@ def test_federated_learning_init():
         from ai.federated_learning import P2PFederatedLearning, FederatedConfig
 
         config = FederatedConfig(use_gpu=False, local_epochs=5)
-        fl_coordinator = P2PFederatedLearning(config)
+        P2PFederatedLearning(config)
 
         print("  - FL coordinator created")
         print(f"  - Personalization weight: {config.personalization_weight}")

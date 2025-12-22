@@ -9,9 +9,9 @@ import threading
 import time
 import sys
 import asyncio
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple, Any
 from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, Future
 
 # Add parent directory for relative imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -25,7 +25,10 @@ class GoNodeClient:
     """Client for connecting to a Go node via Cap'n Proto RPC."""
 
     def __init__(
-        self, host: str = "localhost", port: int = 8080, schema_path: str = None
+        self,
+        host: str = "localhost",
+        port: int = 8080,
+        schema_path: Optional[str] = None,
     ):
         """
         Initialize Go node client.
@@ -50,21 +53,27 @@ class GoNodeClient:
             else:
                 self.schema_path = schema_path
 
-        self.client = None
-        self.service = None
-        self.schema = None
-        self._connected = False
-        self._loop_thread = None
-        self._loop = None
-        self._executor = ThreadPoolExecutor(max_workers=1)
-        self._connection_event = threading.Event()
-        self._connection_error = None
-        self._connection_future = None
+        self.client: Optional[Any] = None
+        self.service: Optional[Any] = None
+        self.schema: Optional[Any] = None
+        self._connected: bool = False
+        self._loop_thread: Optional[threading.Thread] = None
+        self._loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
+        self._executor: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=1)
+        self._connection_event: threading.Event = threading.Event()
+        self._connection_error: Optional[BaseException] = None
+        self._connection_future: Optional[Future] = None
 
     def _run_event_loop(self):
         """Run the Cap'n Proto event loop in a background thread."""
         asyncio.set_event_loop(self._loop)
         self._loop.run_forever()
+
+    def _get_loop(self) -> asyncio.AbstractEventLoop:
+        """Return the background event loop or raise if not initialized."""
+        if self._loop is None:
+            raise RuntimeError("Event loop not initialized")
+        return self._loop
 
     def connect(self) -> bool:
         """Connect to Go node. Returns True if successful."""

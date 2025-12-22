@@ -19,24 +19,24 @@ type NoiseConfig struct {
 
 // P2PNode represents a P2P network node
 type P2PNode struct {
-	id           uint32
-	store        *NodeStore
-	noiseConfig  *NoiseConfig
-	connections  map[uint32]*P2PConnection
-	mu           sync.RWMutex
-	listener     net.Listener
-	ctx          context.Context
-	cancel       context.CancelFunc
+	id          uint32
+	store       *NodeStore
+	noiseConfig *NoiseConfig
+	connections map[uint32]*P2PConnection
+	mu          sync.RWMutex
+	listener    net.Listener
+	ctx         context.Context
+	cancel      context.CancelFunc
 }
 
 // P2PConnection represents a connection to another peer
 type P2PConnection struct {
-	id         uint32
-	conn       net.Conn
+	id          uint32
+	conn        net.Conn
 	cipherState *noise.CipherState // Encryption state after handshake
-	mu         sync.Mutex
-	lastPing   time.Time
-	latency    time.Duration
+	mu          sync.Mutex
+	lastPing    time.Time
+	latency     time.Duration
 }
 
 // NewP2PNode creates a new P2P node
@@ -50,8 +50,8 @@ func NewP2PNode(id uint32, store *NodeStore) (*P2PNode, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &P2PNode{
-		id:          id,
-		store:       store,
+		id:    id,
+		store: store,
 		noiseConfig: &NoiseConfig{
 			staticKey: staticKey,
 		},
@@ -170,7 +170,7 @@ func (p *P2PNode) performHandshake(conn net.Conn, isInitiator bool) (*noise.Ciph
 
 	// Message 2: <- e, ee, s, es (contains peer's static public key)
 	var peerID uint32
-	
+
 	if !isInitiator {
 		// Include our node ID in the payload
 		nodeIDPayload := make([]byte, 4)
@@ -408,4 +408,3 @@ func (p *P2PNode) Stop() {
 		conn.conn.Close()
 	}
 }
-

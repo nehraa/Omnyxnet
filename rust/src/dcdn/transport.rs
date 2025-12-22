@@ -1,7 +1,7 @@
 //! QUIC transport layer for chunk delivery
 
-use crate::dcdn::types::{ChunkData, PeerId};
 use crate::dcdn::config::QuicConfig;
+use crate::dcdn::types::{ChunkData, PeerId};
 use anyhow::{Context, Result};
 use dashmap::DashMap;
 use quinn::{Connection, Endpoint, ServerConfig};
@@ -32,8 +32,8 @@ impl QuicTransport {
     /// Start listening on the given address
     pub async fn listen(&self, addr: SocketAddr) -> Result<()> {
         let server_config = Self::create_server_config(&self.config)?;
-        let endpoint = Endpoint::server(server_config, addr)
-            .context("Failed to create QUIC endpoint")?;
+        let endpoint =
+            Endpoint::server(server_config, addr).context("Failed to create QUIC endpoint")?;
 
         let mut ep = self.endpoint.lock().await;
         *ep = Some(endpoint);
@@ -42,17 +42,21 @@ impl QuicTransport {
     }
 
     /// Connect to a peer
-    pub async fn connect(&self, peer_id: PeerId, peer_addr: SocketAddr) -> Result<ConnectionHandle> {
+    pub async fn connect(
+        &self,
+        peer_id: PeerId,
+        peer_addr: SocketAddr,
+    ) -> Result<ConnectionHandle> {
         // Check if already connected
         if let Some(conn) = self.active_connections.get(&peer_id) {
             return Ok(Arc::new(conn.clone()));
         }
 
         let endpoint = self.endpoint.lock().await;
-        let endpoint = endpoint.as_ref()
-            .context("Endpoint not initialized")?;
+        let endpoint = endpoint.as_ref().context("Endpoint not initialized")?;
 
-        let conn = endpoint.connect(peer_addr, "localhost")
+        let conn = endpoint
+            .connect(peer_addr, "localhost")
             .context("Failed to initiate connection")?
             .await
             .context("Connection failed")?;
@@ -65,10 +69,11 @@ impl QuicTransport {
     /// Accept an incoming connection
     pub async fn accept(&self) -> Result<(PeerId, Connection)> {
         let endpoint = self.endpoint.lock().await;
-        let endpoint = endpoint.as_ref()
-            .context("Endpoint not initialized")?;
+        let endpoint = endpoint.as_ref().context("Endpoint not initialized")?;
 
-        let conn = endpoint.accept().await
+        let conn = endpoint
+            .accept()
+            .await
             .context("No incoming connection")?
             .await
             .context("Failed to accept connection")?;
@@ -80,31 +85,33 @@ impl QuicTransport {
 
         Ok((peer_id, conn))
     }
-    
+
     /// Derive a peer ID from the TLS certificate of a QUIC connection
     fn derive_peer_id_from_connection(conn: &Connection) -> Result<PeerId> {
-        use sha2::{Sha256, Digest};
-        
+        use sha2::{Digest, Sha256};
+
         // Get the peer's certificate chain
         if let Some(peer_certs) = conn.peer_identity() {
             // Get the DER-encoded certificate data
-            if let Some(cert_der) = peer_certs.downcast_ref::<Vec<rustls::pki_types::CertificateDer>>() {
+            if let Some(cert_der) =
+                peer_certs.downcast_ref::<Vec<rustls::pki_types::CertificateDer>>()
+            {
                 if !cert_der.is_empty() {
                     // Hash the certificate to derive a deterministic peer ID
                     let mut hasher = Sha256::new();
                     hasher.update(&cert_der[0]);
                     let hash = hasher.finalize();
-                    
+
                     // Use first 8 bytes of hash as peer ID
                     let mut id_bytes = [0u8; 8];
                     id_bytes.copy_from_slice(&hash[..8]);
                     let peer_id = u64::from_be_bytes(id_bytes);
-                    
+
                     return Ok(PeerId::new(peer_id));
                 }
             }
         }
-        
+
         // Fallback: If no certificate available (e.g., server-only auth),
         // use connection stable_id which is deterministic per connection
         let stable_id = conn.stable_id();
@@ -113,40 +120,42 @@ impl QuicTransport {
 
     /// Send a chunk over a connection
     pub async fn send_chunk(&self, conn: &ConnectionHandle, chunk: &ChunkData) -> Result<()> {
-        let mut send_stream = conn.open_uni().await
-            .context("Failed to open stream")?;
+        let mut send_stream = conn.open_uni().await.context("Failed to open stream")?;
 
         // Serialize chunk (simplified)
-        let data = bincode::serialize(chunk)
-            .context("Failed to serialize chunk")?;
+        let data = bincode::serialize(chunk).context("Failed to serialize chunk")?;
 
-        send_stream.write_all(&data).await
+        send_stream
+            .write_all(&data)
+            .await
             .context("Failed to write chunk data")?;
 
-        send_stream.finish()
-            .context("Failed to finish stream")?;
+        send_stream.finish().context("Failed to finish stream")?;
 
         Ok(())
     }
 
     /// Receive a chunk from a connection
     pub async fn receive_chunk(&self, conn: &ConnectionHandle) -> Result<ChunkData> {
-        let mut recv_stream = conn.accept_uni().await
-            .context("Failed to accept stream")?;
+        let mut recv_stream = conn.accept_uni().await.context("Failed to accept stream")?;
 
         // Use configurable max_chunk_size from QuicConfig
-        let data = recv_stream.read_to_end(self.config.max_chunk_size).await
+        let data = recv_stream
+            .read_to_end(self.config.max_chunk_size)
+            .await
             .context("Failed to read chunk data")?;
 
-        let chunk: ChunkData = bincode::deserialize(&data)
-            .context("Failed to deserialize chunk")?;
+        let chunk: ChunkData =
+            bincode::deserialize(&data).context("Failed to deserialize chunk")?;
 
         Ok(chunk)
     }
 
     /// Get active connection for a peer
     pub fn get_connection(&self, peer_id: &PeerId) -> Option<ConnectionHandle> {
-        self.active_connections.get(peer_id).map(|c| Arc::new(c.clone()))
+        self.active_connections
+            .get(peer_id)
+            .map(|c| Arc::new(c.clone()))
     }
 
     /// Close connection to a peer
@@ -177,13 +186,14 @@ impl QuicTransport {
 
         let mut transport_config = quinn::TransportConfig::default();
         transport_config.max_concurrent_uni_streams(
-            quinn::VarInt::from_u64(config.max_streams_per_connection).unwrap_or(quinn::VarInt::from_u32(256))
+            quinn::VarInt::from_u64(config.max_streams_per_connection)
+                .unwrap_or(quinn::VarInt::from_u32(256)),
         );
         transport_config.max_idle_timeout(Some(
             quinn::IdleTimeout::try_from(std::time::Duration::from_millis(config.idle_timeout_ms))
-                .unwrap_or(quinn::IdleTimeout::from(quinn::VarInt::from_u32(30000)))
+                .unwrap_or(quinn::IdleTimeout::from(quinn::VarInt::from_u32(30000))),
         ));
-        
+
         // Apply congestion control algorithm
         match config.congestion_algorithm {
             crate::dcdn::config::CongestionAlgo::BBR => {
@@ -194,7 +204,7 @@ impl QuicTransport {
                 // CUBIC is the default-like behavior in quinn
             }
         }
-        
+
         // Note: GSO (Generic Segmentation Offload) is enabled at the Endpoint level,
         // not in TransportConfig. It's handled by the OS and quinn automatically uses it if available.
 
@@ -231,6 +241,7 @@ mod tests {
             congestion_algorithm: crate::dcdn::config::CongestionAlgo::BBR,
             enable_gso: true,
             idle_timeout_ms: 30000,
+            max_chunk_size: 10 * 1024 * 1024,
         };
 
         let transport = QuicTransport::new(config);
@@ -245,11 +256,12 @@ mod tests {
             congestion_algorithm: crate::dcdn::config::CongestionAlgo::BBR,
             enable_gso: true,
             idle_timeout_ms: 30000,
+            max_chunk_size: 10 * 1024 * 1024,
         };
 
         let transport = QuicTransport::new(config);
         let addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
-        
+
         // Should be able to start listening
         let result = transport.listen(addr).await;
         assert!(result.is_ok());

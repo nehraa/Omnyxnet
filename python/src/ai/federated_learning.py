@@ -19,10 +19,13 @@ import torch
 import torch.nn as nn
 import numpy as np
 import logging
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List, Tuple, Any, TypeVar, Sequence, cast
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
+
+# Generic module type for deserialize helpers
+T = TypeVar("T", bound=nn.Module)
 
 
 @dataclass
@@ -164,8 +167,8 @@ class ModelWeightManager:
 
     @staticmethod
     def deserialize_weights(
-        weights_bytes: bytes, model: nn.Module, compressed: bool = True
-    ) -> nn.Module:
+        weights_bytes: bytes, model: T, compressed: bool = True
+    ) -> T:
         """
         Deserialize weights and load into model.
 
@@ -186,6 +189,7 @@ class ModelWeightManager:
 
         # Load state dict
         buffer = io.BytesIO(weights_bytes)
+
         state_dict = torch.load(buffer, map_location="cpu")
 
         # Load into model
@@ -271,7 +275,7 @@ class LocalTrainer:
         self.criterion = nn.MSELoss()
 
         # Training history
-        self.training_history = []
+        self.training_history: List[Dict[str, Any]] = []
 
         logger.info(f"Local trainer initialized on {self.device}")
 
@@ -362,8 +366,11 @@ class LocalTrainer:
         Args:
             weights: Serialized model weights
         """
-        self.model = ModelWeightManager.deserialize_weights(
-            weights, self.model, compressed=True
+        self.model = cast(
+            CustomSerializationModel,
+            ModelWeightManager.deserialize_weights(
+                weights, self.model, compressed=True
+            ),
         )
         logger.info("Model weights loaded")
 
@@ -378,7 +385,7 @@ class FederatedAggregator:
 
     @staticmethod
     def federated_average(
-        models: List[nn.Module], weights: Optional[List[float]] = None
+        models: Sequence[nn.Module], weights: Optional[Sequence[float]] = None
     ) -> nn.Module:
         """
         Federated Averaging (FedAvg).
@@ -427,8 +434,8 @@ class FederatedAggregator:
 
     @staticmethod
     def personalized_federated_average(
-        local_model: nn.Module, peer_models: List[nn.Module], alpha: float = 0.7
-    ) -> nn.Module:
+        local_model: T, peer_models: Sequence[nn.Module], alpha: float = 0.7
+    ) -> T:
         """
         Personalized Federated Learning.
 
@@ -493,10 +500,10 @@ class P2PFederatedLearning:
         self.trainer = LocalTrainer(self.config)
 
         # Peer models cache
-        self.peer_models = {}  # peer_id -> model_weights
+        self.peer_models: Dict[str, bytes] = {}  # peer_id -> model_weights
 
         # Statistics
-        self.round_history = []
+        self.round_history: List[Dict[str, Any]] = []
 
         logger.info("P2P Federated Learning coordinator initialized")
 
@@ -572,11 +579,12 @@ class P2PFederatedLearning:
         logger.info(f"Aggregating with {len(self.peer_models)} peer models")
 
         # Load peer models
-        peer_model_objects = []
+        peer_model_objects: List[nn.Module] = []
         for peer_id, weights in self.peer_models.items():
             model = CustomSerializationModel(self.config)
-            model = ModelWeightManager.deserialize_weights(
-                weights, model, compressed=True
+            model = cast(
+                CustomSerializationModel,
+                ModelWeightManager.deserialize_weights(weights, model, compressed=True),
             )
             peer_model_objects.append(model)
 
