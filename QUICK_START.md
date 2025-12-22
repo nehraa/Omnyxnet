@@ -117,7 +117,7 @@ Now both nodes are connected via DCDN and can exchange data.
 ## DCDN Connection (via GUI)
 
 ### Device A:
-1. Open desktop_app_kivy.py
+1. Open `desktop/desktop_app_kivy.py`
 2. Connect to Go node (localhost:8080)
 3. Go to "DCDN" tab
 4. Click **"Show My Multiaddr"** (green button)
@@ -125,7 +125,7 @@ Now both nodes are connected via DCDN and can exchange data.
 6. Share with Device B
 
 ### Device B:
-1. Open desktop_app_kivy.py  
+1. Open `desktop/desktop_app_kivy.py`  
 2. Connect to Go node (localhost:8080)
 3. Go to "DCDN" tab
 4. Paste Device A's multiaddr in the text field

@@ -209,7 +209,7 @@ To test DCDN video streaming:
 METHOD 1: Using Desktop Application
 -----------------------------------
 1. Launch the desktop app:
-   python desktop_app_kivy.py
+   python desktop/desktop_app_kivy.py
     (or python desktop/desktop_app.py for Tkinter version)
 
 2. Navigate to the DCDN tab

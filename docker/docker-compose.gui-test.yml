@@ -13,7 +13,7 @@
 #   docker-compose -f docker/docker-compose.gui-test.yml down
 #
 # GUI Connection:
-#   Connect desktop_app_kivy.py to localhost:8080 (node1)
+#   Connect desktop/desktop_app_kivy.py to localhost:8080 (node1)
 #   Node1 will auto-discover nodes 2-5 via mDNS
 #
 # Get Node Multiaddrs:

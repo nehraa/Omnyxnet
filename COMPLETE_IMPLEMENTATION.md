@@ -111,7 +111,7 @@ Device B sends: "Hi back" → Device A sees: "Peer (...): Hi back" (automaticall
 **Status:** ✅ **PYTHON SIDE 100% COMPLETE** - Needs Go backend to implement RPC handler
 
 ### 6. Multiaddr Retrieval (No Temp Node Needed)
-**Location**: `go/schema/schema.capnp`, `go_client.py`, `desktop_app_kivy.py`
+**Location**: `go/schema/schema.capnp`, `go_client.py`, `desktop/desktop_app_kivy.py`
 
 **Fixed:**
 - ✅ **NEW RPC METHOD:** `getLocalMultiaddr @38` in schema

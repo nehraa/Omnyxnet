@@ -57,7 +57,7 @@ def ping_all_nodes(self):
 - `get_all_nodes()` → Returns list of all nodes with health status
 
 **Verification:**
-- ✅ Method defined in `desktop_app_kivy.py` line 1537
+- ✅ Method defined in `desktop/desktop_app_kivy.py` line 1537
 - ✅ RPC call to `go_client.get_all_nodes()` line 1548
 - ✅ Thread-safe UI update via `Clock.schedule_once()`
 - ✅ Error handling implemented
@@ -95,7 +95,7 @@ def upload_file(self):
 - `upload(data, target_peers)` → CES process + distribute shards
 
 **Verification:**
-- ✅ Method defined in `desktop_app_kivy.py` line 1339
+- ✅ Method defined in `desktop/desktop_app_kivy.py` line 1339
 - ✅ RPC call to `get_connected_peers()` line 1363
 - ✅ RPC call to `upload()` line 1377
 - ✅ File reading with error handling
@@ -140,7 +140,7 @@ def submit_compute_task(self):
 - `submit_compute_job(job_id, input_data, split_strategy, timeout_secs, priority)` → Submit distributed job
 
 **Verification:**
-- ✅ Method defined in `desktop_app_kivy.py` line 1133
+- ✅ Method defined in `desktop/desktop_app_kivy.py` line 1133
 - ✅ RPC call to `submit_compute_job()` line 1154
 - ✅ Job ID generation and storage
 - ✅ Input data creation based on task type
@@ -182,7 +182,7 @@ def show_peers(self):
 - `get_connection_quality(peer_id)` → Latency, jitter, packet loss for each peer
 
 **Verification:**
-- ✅ Method defined in `desktop_app_kivy.py` line 1643
+- ✅ Method defined in `desktop/desktop_app_kivy.py` line 1643
 - ✅ RPC call to `get_connected_peers()` line 1654
 - ✅ RPC call to `get_connection_quality()` per peer line 1665
 - ✅ Quality rating calculation
@@ -232,7 +232,7 @@ def run_dcdn_demo(self):
 - Not a Cap'n Proto RPC (by design - DCDN is Rust-native)
 
 **Verification:**
-- ✅ Method defined in `desktop_app_kivy.py` line 1789
+- ✅ Method defined in `desktop/desktop_app_kivy.py` line 1789
 - ✅ Subprocess call with timeout line 1802
 - ✅ Output capture and truncation
 - ✅ Error handling for timeout/failure
@@ -444,7 +444,7 @@ To perform live testing:
 ./scripts/gui_test_network.sh start
 
 # 2. Launch GUI
-python3 desktop_app_kivy.py
+python3 desktop/desktop_app_kivy.py
 
 # 3. Test each tab:
 #    - Node Management: Click "List All Nodes"
