@@ -170,6 +170,7 @@ networks:
         - subnet: 172.30.0.0/24
 """
 
+
 def generate_bootstrap_nodes(count=3):
     """Generate bootstrap nodes configuration."""
     nodes = []
@@ -179,10 +180,11 @@ def generate_bootstrap_nodes(count=3):
             node_id=i,
             external_port=8080 + i,
             p2p_port=9080 + i,
-            ip_addr=f"172.30.0.{9 + i}"
+            ip_addr=f"172.30.0.{9 + i}",
         )
         nodes.append(node)
     return nodes
+
 
 def generate_aggregator_nodes(count=5):
     """Generate aggregator/parameter server nodes configuration."""
@@ -193,23 +195,22 @@ def generate_aggregator_nodes(count=5):
             node_id=100 + i,
             external_port=8100 + i,
             p2p_port=9100 + i,
-            ip_addr=f"172.30.0.{19 + i}"
+            ip_addr=f"172.30.0.{19 + i}",
         )
         nodes.append(node)
     return nodes
+
 
 def generate_worker_nodes(count=40):
     """Generate worker nodes configuration."""
     nodes = []
     for i in range(1, count + 1):
         node = WORKER_TEMPLATE.format(
-            id=i,
-            node_id=200 + i,
-            p2p_port=9200 + i,
-            ip_addr=f"172.30.0.{29 + i}"
+            id=i, node_id=200 + i, p2p_port=9200 + i, ip_addr=f"172.30.0.{29 + i}"
         )
         nodes.append(node)
     return nodes
+
 
 def generate_gui_nodes(count=2):
     """Generate GUI client nodes configuration."""
@@ -220,42 +221,59 @@ def generate_gui_nodes(count=2):
             external_port=8200 + i,
             vnc_port=5900 + i,
             ip_addr=f"172.30.0.{69 + i}",
-            bootstrap_id=i  # Connect to different bootstrap nodes
+            bootstrap_id=i,  # Connect to different bootstrap nodes
         )
         nodes.append(node)
     return nodes
 
+
 def main():
     """Generate complete 50-node docker-compose configuration."""
     print(HEADER)
-    
+
     # Generate nodes
-    print("  # =========================================================================")
+    print(
+        "  # ========================================================================="
+    )
     print("  # Bootstrap Nodes (3 nodes) - Network Discovery & DHT")
-    print("  # =========================================================================")
+    print(
+        "  # ========================================================================="
+    )
     for node in generate_bootstrap_nodes(3):
         print(node)
-    
-    print("\n  # =========================================================================")
+
+    print(
+        "\n  # ========================================================================="
+    )
     print("  # Aggregator/Parameter Server Nodes (5 nodes) - ML Coordination")
-    print("  # =========================================================================")
+    print(
+        "  # ========================================================================="
+    )
     for node in generate_aggregator_nodes(5):
         print(node)
-    
-    print("\n  # =========================================================================")
+
+    print(
+        "\n  # ========================================================================="
+    )
     print("  # Worker Nodes (40 nodes) - ML Training Workers")
-    print("  # =========================================================================")
+    print(
+        "  # ========================================================================="
+    )
     for node in generate_worker_nodes(40):
         print(node)
-    
-    print("\n  # =========================================================================")
+
+    print(
+        "\n  # ========================================================================="
+    )
     print("  # GUI Client Nodes (2 nodes) - Testing GUI Functionality")
-    print("  # =========================================================================")
+    print(
+        "  # ========================================================================="
+    )
     for node in generate_gui_nodes(2):
         print(node)
-    
+
     print(NETWORK_CONFIG)
-    
+
     # Print statistics
     print("\n# Generated configuration:")
     print("#   Bootstrap nodes: 3")
@@ -264,6 +282,7 @@ def main():
     print("#   GUI clients: 2")
     print("#   Total: 50 nodes")
     print("#   IP range: 172.30.0.10 - 172.30.0.71")
+
 
 if __name__ == "__main__":
     main()

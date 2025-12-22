@@ -5,7 +5,6 @@ Tests basic connection to Go node via Cap'n Proto RPC
 """
 import sys
 import time
-import socket
 from pathlib import Path
 
 # Add python directory to path
@@ -24,6 +23,7 @@ except ImportError as e:
     print(f"   Python path: {sys.path}")
     sys.exit(1)
 
+
 def test_connection():
     """Test basic connection to Go node"""
     print("   Testing connection...")
@@ -35,6 +35,7 @@ def test_connection():
         print("   ❌ Failed to connect")
         return None
 
+
 def test_get_all_nodes(client):
     """Test getting all nodes"""
     print("   Testing getAllNodes()...")
@@ -43,11 +44,14 @@ def test_get_all_nodes(client):
         print(f"   ✅ Got {len(nodes)} nodes")
         if len(nodes) > 0:
             node = nodes[0]
-            print(f"      Node {node['id']}: latency={node['latencyMs']}ms, threat={node['threatScore']:.3f}")
+            print(
+                f"      Node {node['id']}: latency={node['latencyMs']}ms, threat={node['threatScore']:.3f}"
+            )
         return True
     else:
         print("   ❌ Failed to get nodes")
         return False
+
 
 def test_get_node(client, node_id):
     """Test getting specific node"""
@@ -60,16 +64,18 @@ def test_get_node(client, node_id):
         print(f"   ❌ Failed to get node {node_id}")
         return False
 
+
 def test_update_threat_score(client, node_id, score):
     """Test updating threat score"""
     print(f"   Testing updateThreatScore({node_id}, {score})...")
     success = client.update_threat_score(node_id, score)
     if success:
-        print(f"   ✅ Updated threat score")
+        print("   ✅ Updated threat score")
         return True
     else:
-        print(f"   ❌ Failed to update threat score")
+        print("   ❌ Failed to update threat score")
         return False
+
 
 def test_get_connected_peers(client):
     """Test getting connected peers"""
@@ -78,62 +84,66 @@ def test_get_connected_peers(client):
     print(f"   ✅ Got {len(peers)} connected peers: {peers}")
     return True
 
+
 def test_connection_quality(client, peer_id):
     """Test getting connection quality"""
     print(f"   Testing getConnectionQuality({peer_id})...")
     quality = client.get_connection_quality(peer_id)
     if quality:
-        print(f"   ✅ Got quality: latency={quality['latencyMs']:.2f}ms, jitter={quality['jitterMs']:.2f}ms")
+        print(
+            f"   ✅ Got quality: latency={quality['latencyMs']:.2f}ms, jitter={quality['jitterMs']:.2f}ms"
+        )
         return True
     else:
-        print(f"   ⚠️  No quality data (peer may not be connected)")
+        print("   ⚠️  No quality data (peer may not be connected)")
         return True  # Not a failure, just no data
+
 
 # Main test
 if __name__ == "__main__":
     print("\n🧪 Python Connectivity Tests")
     print("=" * 40)
-    
+
     # Test connection
     client = test_connection()
     if not client:
         sys.exit(1)
-    
+
     # Wait a bit for node to initialize
     time.sleep(1)
-    
+
     # Run tests
     tests_passed = 0
     tests_total = 0
-    
+
     # Test 1: Get all nodes
     tests_total += 1
     if test_get_all_nodes(client):
         tests_passed += 1
-    
+
     # Test 2: Get specific node
     tests_total += 1
     if test_get_node(client, 1):
         tests_passed += 1
-    
+
     # Test 3: Update threat score
     tests_total += 1
     if test_update_threat_score(client, 1, 0.75):
         tests_passed += 1
-    
+
     # Test 4: Get connected peers
     tests_total += 1
     if test_get_connected_peers(client):
         tests_passed += 1
-    
+
     # Test 5: Get connection quality
     tests_total += 1
     if test_connection_quality(client, 1):
         tests_passed += 1
-    
+
     # Disconnect
     client.disconnect()
-    
+
     # Results
     print(f"\n📊 Results: {tests_passed}/{tests_total} tests passed")
     if tests_passed == tests_total:

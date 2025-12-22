@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: bash -c "while [ ! -f /app/.tests-ready ]; do sleep 0.5; done; pytest -q"
+
+  # Example dependent services: enable as needed for integration tests
+  # db:
+  #   image: postgres:15
+  #   environment:
+  #     POSTGRES_DB: omnyxnet
+  #     POSTGRES_USER: omnyxnet
+  #     POSTGRES_PASSWORD: secret
+  #   ports:
+  #     - '5432:5432'
+
+# Use networks or volumes as required by your tests

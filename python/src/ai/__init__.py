@@ -15,6 +15,7 @@ Phase 2: Translation and Personalization
 try:
     from src.ai.cnn_model import ModelManager, LatencyPredictorCNN
     from src.ai.predictor import ThreatPredictor
+
     _AI_AVAILABLE = True
 except ImportError:
     # Torch not installed - AI features unavailable
@@ -23,5 +24,4 @@ except ImportError:
     ThreatPredictor = None
     _AI_AVAILABLE = False
 
-__all__ = ['ModelManager', 'LatencyPredictorCNN', 'ThreatPredictor', '_AI_AVAILABLE']
-
+__all__ = ["ModelManager", "LatencyPredictorCNN", "ThreatPredictor", "_AI_AVAILABLE"]
