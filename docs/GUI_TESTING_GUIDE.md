@@ -6,7 +6,7 @@
 
 ## Overview
 
-This guide explains how to test **all Pangea Net features** using the desktop GUI application (`desktop_app_kivy.py`) with a local multi-node Docker network. The GUI provides full access to:
+This guide explains how to test **all Pangea Net features** using the desktop GUI application (`desktop/desktop_app_kivy.py`) with a local multi-node Docker network. The GUI provides full access to:
 
 - **Node Management** - View nodes, connection info, health status
 - **Compute Tasks** - Submit distributed compute jobs, monitor workers
@@ -54,7 +54,7 @@ This guide explains how to test **all Pangea Net features** using the desktop GU
 ./scripts/gui_test_network.sh start
 
 # 2. Launch GUI (auto-connects to node1 on localhost:8080)
-python3 desktop_app_kivy.py
+python3 desktop/desktop_app_kivy.py
 
 # 3. Test features through GUI tabs
 ```
@@ -97,7 +97,7 @@ The `gui_test_network.sh` script manages a 5-node Docker network optimized for G
 ### Step 2: Launch Desktop GUI
 
 ```bash
-python3 desktop_app_kivy.py
+python3 desktop/desktop_app_kivy.py
 ```
 
 **What Happens on Startup:**

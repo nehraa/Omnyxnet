@@ -315,7 +315,7 @@ chmod 755 ~/.pangea
 
 ### Input Validation Too Strict
 **If you need to:**
-- Upload files > 100MB: Modify `max_size` in `desktop_app_kivy.py`
+- Upload files > 100MB: Modify `max_size` in `desktop/desktop_app_kivy.py`
 - Use custom hash format: Modify regex in validation
 
 ---

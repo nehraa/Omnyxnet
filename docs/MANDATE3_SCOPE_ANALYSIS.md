@@ -161,7 +161,7 @@ All 17 new RPC methods have handler implementations:
 - `go/proxy_transport.go` (new) - SOCKS5 transport wrapper
 - `go/libp2p_node.go` (modify) - Add proxy configuration
 - `python/src/cli.py` (modify) - Add `--use-tor` flags
-- `desktop_app_kivy.py` (modify) - Add Tor UI controls
+- `desktop/desktop_app_kivy.py` (modify) - Add Tor UI controls
 
 **Estimated Time:** 2-3 weeks for a networking specialist
 
@@ -197,7 +197,7 @@ All 17 new RPC methods have handler implementations:
 **Files to Create/Modify:**
 - `go/chat_protocol.go` (new) - libp2p chat protocol
 - `python/src/chat_client.py` (new) - Python chat interface
-- `desktop_app_kivy.py` (modify) - Chat UI tab
+- `desktop/desktop_app_kivy.py` (modify) - Chat UI tab
 
 **Estimated Time:** 1-1.5 weeks for core, 2-3 weeks for full UI
 

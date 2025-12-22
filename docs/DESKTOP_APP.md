@@ -94,7 +94,7 @@ go build -o bin/go-node .
 
 2. **Launch the desktop app**:
    ```bash
-   python3 desktop_app_kivy.py
+   python3 desktop/desktop_app_kivy.py
    ```
 
 3. **Connect to the node**:
@@ -189,7 +189,7 @@ export LOG_LEVEL=INFO
 | **CLI Access** | Limited | Complete |
 | **Dependencies** | FastAPI, uvicorn | Kivy, KivyMD, SDL2 |
 | **Installation** | `pip install fastapi uvicorn` | Python + System libs |
-| **Startup** | `./setup.sh --demo` | `python3 desktop_app_kivy.py` |
+| **Startup** | `./setup.sh --demo` | `python3 desktop/desktop_app_kivy.py` |
 
 ## Development
 

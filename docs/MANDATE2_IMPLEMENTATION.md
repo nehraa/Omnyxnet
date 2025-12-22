@@ -48,7 +48,7 @@ Implemented comprehensive defensive coding and error handling:
 #### 1. CES Manifest Integrity ✅
 **Implementation:** Client-side hash verification on download completion
 
-**File:** `desktop_app_kivy.py`
+**File:** `desktop/desktop_app_kivy.py`
 
 **Features:**
 - SHA-256 hash computation on downloaded data
@@ -136,7 +136,7 @@ struct DiscoveredPeer {
 ```
 
 #### GUI Implementation ✅
-**File:** `desktop_app_kivy.py`
+**File:** `desktop/desktop_app_kivy.py`
 
 **Enhanced Network Info Tab:**
 - "mDNS Local Discovery" section
@@ -312,7 +312,7 @@ Download → Reconstruct → Compute Hash → Compare → Verify → Save or Rej
 2. `go/schema.capnp.go` - Regenerated (383KB)
 3. `go/capnp_service.go` - Implemented new RPC methods
 4. `go/main.go` - Integrated config manager
-5. `desktop_app_kivy.py` - Enhanced with:
+5. `desktop/desktop_app_kivy.py` - Enhanced with:
    - mDNS discovery UI
    - Client-side manifest verification
    - Comprehensive input validation

@@ -260,10 +260,10 @@ Pangea Net provides graphical desktop applications for easy access to all featur
 
 ```bash
 # Launch Kivy version (recommended for modern UI)
-python3 desktop_app_kivy.py
+python3 desktop/desktop_app_kivy.py
 
 # OR launch Tkinter version (lightweight, usually pre-installed)
-python3 desktop_app.py
+python3 desktop/desktop_app.py
 ```
 
 **Features:**

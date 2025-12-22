@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-The Pangea Net desktop GUI (`desktop_app_kivy.py`) has been **fully transformed** from a non-functional skeleton into a production-ready desktop application. All features are now **completely wired** to the backend RPC services, with comprehensive error handling and a local 5-node Docker simulation environment for testing.
+The Pangea Net desktop GUI (`desktop/desktop_app_kivy.py`) has been **fully transformed** from a non-functional skeleton into a production-ready desktop application. All features are now **completely wired** to the backend RPC services, with comprehensive error handling and a local 5-node Docker simulation environment for testing.
 
 ### What Was Delivered
 
@@ -82,7 +82,7 @@ The Pangea Net desktop GUI (`desktop_app_kivy.py`) has been **fully transformed*
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                   Desktop GUI (Kivy/Python)                   │
-│                    desktop_app_kivy.py                        │
+│                    desktop/desktop_app_kivy.py                        │
 └────────────────────────┬─────────────────────────────────────┘
                          │ Cap'n Proto RPC (localhost:8080)
                          │ GoNodeClient.py
@@ -267,7 +267,7 @@ Features:
 ./scripts/gui_test_network.sh start
 
 # 2. Launch GUI
-python3 desktop_app_kivy.py
+python3 desktop/desktop_app_kivy.py
 
 # 3. Test features
 # (Use GUI tabs to test each feature)
@@ -310,7 +310,7 @@ Upon analysis of the Rust codebase, the DCDN module is **fully implemented and f
 - ✅ Configuration: `config/dcdn.toml`
 
 #### GUI Integration
-- ✅ DCDN tab added to `desktop_app_kivy.py`
+- ✅ DCDN tab added to `desktop/desktop_app_kivy.py`
 - ✅ Run Demo - Executes `cargo run --example dcdn_demo`
 - ✅ System Info - Shows DCDN capabilities and configuration
 - ✅ Test DCDN - Runs `cargo test --test test_dcdn`
@@ -378,7 +378,7 @@ self.main_screen.output.add_text(data)  # ❌ Not thread-safe
 ## Files Modified/Created
 
 ### Modified Files
-1. **`desktop_app_kivy.py`** (626 lines changed)
+1. **`desktop/desktop_app_kivy.py`** (626 lines changed)
    - Wired all 18 features to RPC methods
    - Added DCDN tab with 3 operations
    - Enhanced error handling with diagnostics
@@ -541,7 +541,7 @@ self.main_screen.output.add_text(data)  # ❌ Not thread-safe
 - [x] Install system dependencies (SDL2, GStreamer)
 - [x] Build Go node (`cd go && go build`)
 - [ ] Start Docker network (`./scripts/gui_test_network.sh start`)
-- [ ] Launch GUI (`python3 desktop_app_kivy.py`)
+- [ ] Launch GUI (`python3 desktop/desktop_app_kivy.py`)
 
 ### For Testing Team
 - [x] Review `docs/GUI_TESTING_GUIDE.md`
@@ -581,7 +581,7 @@ self.main_screen.output.add_text(data)  # ❌ Not thread-safe
 
 ### Overall Status
 
-**The transformation of `desktop_app_kivy.py` from a non-functional skeleton into a fully wired, production-ready desktop application is COMPLETE.**
+**The transformation of `desktop/desktop_app_kivy.py` from a non-functional skeleton into a fully wired, production-ready desktop application is COMPLETE.**
 
 Every button, every tab, and every feature is now connected to working backend services. The GUI provides complete access to all Pangea Net capabilities through an intuitive interface, with comprehensive error handling and a robust local testing environment.
 

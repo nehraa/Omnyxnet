@@ -39,7 +39,7 @@ The Decentralized Content Delivery Network (DCDN) is a high-performance subsyste
 You can run the DCDN demo via the Desktop App or the CLI.
 
 **Via Desktop App:**
-1.  Open `desktop_app_kivy.py`.
+1.  Open `desktop/desktop_app_kivy.py`.
 2.  Navigate to the **DCDN** tab.
 3.  Click **Run Demo**.
 

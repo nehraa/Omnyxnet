@@ -136,7 +136,7 @@ All code includes:
 1. `go/schema/schema.capnp` - Added 5 RPC methods, 3 structures
 2. `go/capnp_service.go` - Added 5 RPC handlers, config integration
 3. `go/main.go` - Config manager integration, save/load logic
-4. `desktop_app_kivy.py` - mDNS UI, validation, verification
+4. `desktop/desktop_app_kivy.py` - mDNS UI, validation, verification
 5. (Schema regeneration)
 
 ### 2. Test Infrastructure ✅
@@ -199,7 +199,7 @@ Ctrl+C
 
 **Proof of Implementation:**
 ```python
-# In desktop_app_kivy.py download_file() method:
+# In desktop/desktop_app_kivy.py download_file() method:
 
 # CLIENT-SIDE MANIFEST VERIFICATION
 computed_hash = hashlib.sha256(data).hexdigest()
