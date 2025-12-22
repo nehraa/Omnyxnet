@@ -167,5 +167,5 @@ pub fn parse_multiaddr(s: &str) -> Result<Multiaddr> {
 pub fn local_multiaddr(port: u16) -> Multiaddr {
     format!("/ip4/127.0.0.1/tcp/{}", port)
         .parse()
-        .expect("Valid multiaddr")
+        .expect("Hard-coded local multiaddr must be valid; check dht::local_multiaddr()")
 }

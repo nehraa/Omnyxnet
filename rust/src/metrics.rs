@@ -55,7 +55,15 @@ impl MetricsTracker {
                 .as_secs(),
         };
 
-        let mut latencies = self.latencies.write().unwrap();
+        let mut latencies = match self.latencies.write() {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                // If the lock is poisoned we recover the inner value and log once;
+                // metrics degradation should not take the whole process down.
+                eprintln!("metrics: RwLock poisoned in record_latency, recovering");
+                poisoned.into_inner()
+            }
+        };
         if latencies.len() >= self.max_samples {
             latencies.pop_front();
         }
@@ -70,7 +78,13 @@ impl MetricsTracker {
 
     /// Get average latency for an operation
     pub fn average_latency(&self, operation: &str) -> Option<f64> {
-        let latencies = self.latencies.read().unwrap();
+        let latencies = match self.latencies.read() {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                eprintln!("metrics: RwLock poisoned in average_latency, recovering");
+                poisoned.into_inner()
+            }
+        };
         let matching: Vec<f64> = latencies
             .iter()
             .filter(|m| m.operation == operation)
@@ -86,7 +100,13 @@ impl MetricsTracker {
 
     /// Get percentile latency (p50, p95, p99)
     pub fn percentile_latency(&self, operation: &str, percentile: f64) -> Option<f64> {
-        let latencies = self.latencies.read().unwrap();
+        let latencies = match self.latencies.read() {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                eprintln!("metrics: RwLock poisoned in percentile_latency, recovering");
+                poisoned.into_inner()
+            }
+        };
         let mut matching: Vec<f64> = latencies
             .iter()
             .filter(|m| m.operation == operation)
@@ -104,7 +124,13 @@ impl MetricsTracker {
 
     /// Get all measurements for an operation
     pub fn get_measurements(&self, operation: &str) -> Vec<LatencyMeasurement> {
-        let latencies = self.latencies.read().unwrap();
+        let latencies = match self.latencies.read() {
+            Ok(guard) => guard,
+            Err(poisoned) => {
+                eprintln!("metrics: RwLock poisoned in percentiles, recovering");
+                poisoned.into_inner()
+            }
+        };
         latencies
             .iter()
             .filter(|m| m.operation == operation)

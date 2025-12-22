@@ -45,7 +45,7 @@ From the comment feedback:
 - SDL2 system dependencies: `libsdl2-dev`, `libsdl2-image-dev`, `libsdl2-mixer-dev`, `libsdl2-ttf-dev`
 - GStreamer dependencies: `libgstreamer1.0-dev`, `gstreamer1.0-plugins-base`, `gstreamer1.0-plugins-good`
 - macOS: `sdl2`, `sdl2_image`, `sdl2_mixer`, `sdl2_ttf`, `gstreamer`
-- Created `desktop_app_kivy.py` with Kivy+KivyMD interface
+- Created `desktop/desktop_app_kivy.py` with Kivy+KivyMD interface
 
 **Features:**
 - MDTopAppBar for navigation
@@ -127,7 +127,7 @@ CMD ["cargo", "test", "--test", "test_dcdn"]
 **Checks:**
 - Verifies both `kivy` and `kivymd` are installed
 - Provides installation instructions if missing
-- Launches `desktop_app_kivy.py`
+- Launches `desktop/desktop_app_kivy.py`
 
 ## Code Quality Improvements
 
@@ -157,7 +157,7 @@ CMD ["cargo", "test", "--test", "test_dcdn"]
 5. `python/src/cli.py` - No changes (kept existing DCDN commands)
 
 ### New Files:
-1. `desktop_app_kivy.py` - New Kivy+KivyMD desktop application
+1. `desktop/desktop_app_kivy.py` - New Kivy+KivyMD desktop application
 
 ### Removed Files:
 1. `DCDN_SETUP.md` - Old tkinter documentation
@@ -168,7 +168,7 @@ CMD ["cargo", "test", "--test", "test_dcdn"]
 
 ### Syntax Validation:
 - ✅ `bash -n scripts/setup.sh` - Valid
-- ✅ `python3 -m py_compile desktop_app_kivy.py` - Valid
+- ✅ `python3 -m py_compile desktop/desktop_app_kivy.py` - Valid
 - ✅ `python3 -m py_compile demo/server.py` - Valid
 - ✅ `python3 -m py_compile python/src/cli.py` - Valid
 

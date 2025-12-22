@@ -260,7 +260,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_go_client_creation() {
-        let addr: SocketAddr = "127.0.0.1:8080".parse().unwrap();
+        let addr: SocketAddr = "127.0.0.1:8080"
+            .parse()
+            .expect("Hard-coded Go addr 127.0.0.1:8080 must be a valid SocketAddr");
         let client = GoClient::new(addr);
         assert_eq!(client.addr, addr);
     }

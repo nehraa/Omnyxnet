@@ -78,7 +78,7 @@ def test_multiaddr_ip_replacement():
     
     import re
     
-    # Simulate the IP replacement logic from desktop_app_kivy.py
+    # Simulate the IP replacement logic from desktop/desktop_app_kivy.py
     test_cases = [
         ("/ip4/0.0.0.0/tcp/7777/p2p/QmTest", "192.168.1.100", "/ip4/192.168.1.100/tcp/7777/p2p/QmTest"),
         ("/ip4/127.0.0.1/tcp/7777/p2p/QmTest", "192.168.1.100", "/ip4/192.168.1.100/tcp/7777/p2p/QmTest"),

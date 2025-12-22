@@ -10,7 +10,7 @@ December 8, 2025
 
 ## Features Implemented
 
-### 1. Enhanced Communications Tab (desktop_app_kivy.py)
+### 1. Enhanced Communications Tab (desktop/desktop_app_kivy.py)
 
 #### Tor Integration
 - **Tor Proxy Toggle**: UI switch to enable/disable Tor routing
@@ -40,7 +40,7 @@ December 8, 2025
 - **IP Verification**: Display peer IP address
 - **Reference Implementation**: Links to `python/src/communication/live_voice.py`
 
-### 2. DCDN Video Streaming (desktop_app_kivy.py)
+### 2. DCDN Video Streaming (desktop/desktop_app_kivy.py)
 
 #### Streaming Controls
 - **Peer IP Input**: Enter peer IP or "server" for receiver mode
@@ -173,7 +173,7 @@ Added comprehensive Desktop Applications section covering:
 3. `docs/COMMUNICATIONS_TESTING.md` (10,899 lines)
 
 ### Modified Files (2)
-1. `desktop_app_kivy.py` (+547 lines)
+1. `desktop/desktop_app_kivy.py` (+547 lines)
    - Enhanced Communications tab (170 lines)
    - Enhanced DCDN tab (70 lines)
    - Communication methods (260 lines)
@@ -238,7 +238,7 @@ Current Status:
 
 1. **Launch Desktop App**:
    ```bash
-   python desktop_app_kivy.py
+   python desktop/desktop_app_kivy.py
    ```
 
 2. **Generate Test Video**:
@@ -340,7 +340,7 @@ This implementation provides a complete testing framework for communications and
 - Testing Guide: `docs/COMMUNICATIONS_TESTING.md`
 - Test Video Generator: `tools/generate_test_video.py`
 - Test Script: `tools/test_dcdn_stream.sh`
-- Desktop App: `desktop_app_kivy.py`
+- Desktop App: `desktop/desktop_app_kivy.py`
 - Reference Implementations: `python/src/communication/`
 
 ---

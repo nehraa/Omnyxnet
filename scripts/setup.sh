@@ -1517,7 +1517,7 @@ EOF
                 
                 # Launch desktop app
                 cd "$PROJECT_ROOT"
-                python3 desktop_app_kivy.py
+                python3 desktop/desktop_app_kivy.py
                 
                 echo ""
                 read -p "Press Enter to continue..."

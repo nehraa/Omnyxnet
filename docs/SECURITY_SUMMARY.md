@@ -14,7 +14,7 @@
 
 ### Python Analysis
 - **Result:** ✅ No alerts found
-- **Scanned Files:** desktop_app_kivy.py, Python modules
+- **Scanned Files:** desktop/desktop_app_kivy.py, Python modules
 - **Checks Performed:** 
   - SQL injection
   - Command injection

@@ -29,7 +29,7 @@ python main.py compute matrix-multiply --size 10 --generate --verify
 
 ```bash
 # Via Desktop App (Recommended)
-python3 desktop_app_kivy.py
+python3 desktop/desktop_app_kivy.py
 # Go to "DCDN" tab -> "Run Demo"
 
 # Via CLI

@@ -37,7 +37,7 @@ from typing import Optional, Any
 from datetime import datetime
 
 # Add Python module to path
-PROJECT_ROOT = Path(__file__).parent.parent  # Go up to WGT/
+PROJECT_ROOT = Path(__file__).resolve().parent.parent  # Go up to WGT/
 sys.path.insert(0, str(PROJECT_ROOT / "python"))
 sys.path.insert(0, str(PROJECT_ROOT / "python" / "src"))
 

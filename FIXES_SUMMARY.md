@@ -31,7 +31,7 @@
 # Paste Device A's multiaddr
 ```
 
-### 2. Show IP Buttons in GUI (desktop_app_kivy.py)
+### 2. Show IP Buttons in GUI (`desktop/desktop_app_kivy.py`)
 **Problem**: Users didn't know what IP to share, had to find it manually
 
 **Solution**:
@@ -48,7 +48,7 @@
 2. Share the displayed IP with the other node
 3. Other node enters that IP in their peer IP field
 
-### 3. DCDN GUI Integration (desktop_app_kivy.py)
+### 3. DCDN GUI Integration (`desktop/desktop_app_kivy.py`)
 **Problem**: DCDN had no GUI interface for P2P connection setup
 
 **Solution**:
@@ -62,7 +62,7 @@
 **Files Changed**:
 - `desktop/desktop_app_kivy.py` (lines 704-760, 3097-3296)
 
-### 4. Chat Message Receiver (desktop_app_kivy.py)
+### 4. Chat Message Receiver (`desktop/desktop_app_kivy.py`)
 **Problem**: Messages were sent but never received/displayed
 
 **Solution**:
@@ -205,7 +205,7 @@ All GUI buttons now properly call CLI functionality through go_client:
 
 ### Immediate Actions
 1. **Test Chat Functionality**: 
-   - Run desktop_app_kivy.py on two machines
+   - Run `desktop/desktop_app_kivy.py` on two machines
    - Test message sending and receiving
    - Verify messages appear in both GUIs
 

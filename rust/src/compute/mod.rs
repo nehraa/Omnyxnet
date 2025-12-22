@@ -193,7 +193,11 @@ impl ComputeEngine {
 
 impl Default for ComputeEngine {
     fn default() -> Self {
-        Self::new(ComputeConfig::default()).expect("Failed to create default ComputeEngine")
+        // Creating a default engine should never fail; if it does, we abort
+        // startup early with a clear message rather than panicking deep inside
+        // the runtime.
+        Self::new(ComputeConfig::default())
+            .expect("Failed to create default ComputeEngine with default config")
     }
 }
 

@@ -86,7 +86,7 @@ start_network() {
     $DOCKER_COMPOSE -f "$COMPOSE_FILE" ps
     echo ""
     print_info "To connect desktop GUI, run:"
-    echo -e "${GREEN}  python3 desktop_app_kivy.py${NC}"
+    echo -e "${GREEN}  python3 desktop/desktop_app_kivy.py${NC}"
     echo ""
     print_info "GUI will auto-connect to localhost:8080 (node1)"
     echo ""
@@ -177,7 +177,7 @@ show_connect_instructions() {
     
     echo ""
     echo "1. Start the GUI:"
-    echo -e "   ${GREEN}python3 desktop_app_kivy.py${NC}"
+    echo -e "   ${GREEN}python3 desktop/desktop_app_kivy.py${NC}"
     echo ""
     echo "2. The GUI will auto-connect to localhost:8080 (node1)"
     echo ""

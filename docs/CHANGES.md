@@ -45,7 +45,7 @@
 ### 3. Desktop Application (New)
 
 **New Files**:
-- `desktop_app.py` - Native GUI application
+- `desktop/desktop_app.py` - Native GUI application
 - `DESKTOP_APP.md` - Complete documentation
 
 **Features**:
@@ -68,7 +68,7 @@
 ./go/bin/go-node -node-id=1 -capnp-addr=:8080 -libp2p=true -local
 
 # Launch desktop app
-python3 desktop_app.py
+python3 desktop/desktop_app.py
 ```
 
 **Benefits**:
@@ -141,7 +141,7 @@ python3 main.py predict --port 8080
 
 **After**:
 ```bash
-python3 desktop_app.py
+python3 desktop/desktop_app.py
 # Click "Connect"
 # Use GUI tabs for all operations
 ```
@@ -212,7 +212,7 @@ All existing scripts and commands continue to work:
 
 New features are opt-in:
 
-- Use desktop app: `python3 desktop_app.py`
+- Use desktop app: `python3 desktop/desktop_app.py`
 - Or continue using CLI: `python3 main.py ...`
 - Or continue using browser demo: `./setup.sh --demo`
 
@@ -261,7 +261,7 @@ New features are opt-in:
    ./go/bin/go-node -node-id=1 -capnp-addr=:8080 -libp2p=true -local
    
    # Launch desktop app
-   python3 desktop_app.py
+   python3 desktop/desktop_app.py
    
    # Connect and test each tab
    ```

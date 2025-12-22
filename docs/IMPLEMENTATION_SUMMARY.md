@@ -59,7 +59,7 @@ This implementation addresses all requirements from the problem statement for th
 **Status**: COMPLETED (with note)
 
 **What was done**:
-- Created complete desktop application (`desktop_app.py`)
+- Created complete desktop application (`desktop/desktop_app.py`)
 - Implemented all core features:
   - ✅ Node management and discovery
   - ✅ Compute task submission and monitoring  
@@ -98,14 +98,14 @@ This implementation addresses all requirements from the problem statement for th
 **Status**: COMPLETED
 
 **What was done**:
-- Created `desktop_app_kivy.py` - Native desktop application
+- Created `desktop/desktop_app_kivy.py` - Native desktop application
 - Uses Python Kivy/KivyMD (modern, touch-friendly GUI framework)
 - Runs as standalone desktop window
 - **NO browser required**
 - Completely local application
 
 **Files created**:
-- `desktop_app_kivy.py`
+- `desktop/desktop_app_kivy.py`
 - `DESKTOP_APP.md` (comprehensive documentation)
 
 #### ✅ CLI Call Wiring
@@ -185,7 +185,7 @@ This implementation addresses all requirements from the problem statement for th
 ## Files Created
 
 1. **PORT_CONFIGURATION.md** - Port documentation and troubleshooting
-2. **desktop_app.py** - Complete desktop GUI application
+2. **desktop/desktop_app.py** - Complete desktop GUI application
 3. **DESKTOP_APP.md** - Desktop app documentation
 4. **CHANGES.md** - Comprehensive changelog
 5. **IMPLEMENTATION_SUMMARY.md** - This file

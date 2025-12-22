@@ -29,8 +29,8 @@ The desktop application now includes comprehensive communications testing featur
 
 1. **Python 3.8+**
 2. **Desktop Application**
-   - Kivy (for desktop_app_kivy.py): `pip install kivy kivymd`
-   - OR Tkinter (for desktop_app.py): Usually included with Python
+   - Kivy (for desktop/desktop_app_kivy.py): `pip install kivy kivymd`
+   - OR Tkinter (for desktop/desktop_app.py): Usually included with Python
 
 3. **Communication Dependencies**
    - For video: `pip install opencv-python numpy`
@@ -55,9 +55,9 @@ The desktop application now includes comprehensive communications testing featur
 
 1. **Launch the desktop application**:
    ```bash
-   python desktop_app_kivy.py
+   python desktop/desktop_app_kivy.py
    # OR
-   python desktop_app.py
+   python desktop/desktop_app.py
    ```
 
 2. **Navigate to the Communications tab**
@@ -399,7 +399,7 @@ Planned improvements include:
 
 - [DCDN Design Specification](../dcdn_design_spec.txt)
 - [Communication Modules](../python/src/communication/)
-- [Desktop Application Guide](../desktop_app_kivy.py)
+- [Desktop Application Guide](../desktop/desktop_app_kivy.py)
 - [Network Connection Guide](NETWORK_CONNECTION.md)
 - [Testing Documentation](testing/TESTING_INDEX.md)
 

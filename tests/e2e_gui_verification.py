@@ -35,10 +35,10 @@ try:
 except ImportError as e:
     print(f"  ❌ Failed to import GoNodeClient: {e}")
 
-# Test 2: Parse desktop_app_kivy.py and verify RPC method calls
-print("\nTest 2: Analyzing RPC method wiring in desktop_app_kivy.py...")
+# Test 2: Parse desktop/desktop_app_kivy.py and verify RPC method calls
+print("\nTest 2: Analyzing RPC method wiring in desktop/desktop_app_kivy.py...")
 
-desktop_app_path = PROJECT_ROOT / "desktop_app_kivy.py"
+desktop_app_path = PROJECT_ROOT / "desktop" / "desktop_app_kivy.py"
 with open(desktop_app_path, 'r') as f:
     code = f.read()
     tree = ast.parse(code)

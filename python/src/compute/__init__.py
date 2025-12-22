@@ -45,7 +45,7 @@ __all__ = [
 # Convenience function for submitting jobs
 def submit_job(job_definition, input_data: bytes, host: str = 'localhost', port: int = 8080, **kwargs):
     """
-    Submit a compute job to the network.
+    Submit a compute job to the network with safe fallbacks.
     
     Args:
         job_definition: A job definition created with @Job.define
@@ -58,9 +58,20 @@ def submit_job(job_definition, input_data: bytes, host: str = 'localhost', port:
         Tuple of (result bytes, worker_node) where worker_node indicates which node executed
     """
     client = ComputeClient(host, port)
+    connected = False
     try:
-        client.connect()
+        connected = client.connect()
+        if not connected:
+            # Match CLI behaviour: fail clearly instead of raising opaque errors later
+            raise ConnectionError(f"Unable to connect to compute service at {host}:{port}")
+
         job_id = client.submit_job(job_definition, input_data, **kwargs)
         return client.get_result(job_id)
     finally:
-        client.disconnect()
+        # Always attempt to disconnect, but don't let cleanup errors hide the real problem
+        try:
+            if connected:
+                client.disconnect()
+        except Exception:
+            # Best-effort cleanup; log at call-site if desired
+            pass

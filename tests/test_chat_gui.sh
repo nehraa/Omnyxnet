@@ -116,7 +116,7 @@ if [ "$run_auto" = "y" ] || [ "$run_auto" = "Y" ]; then
     echo "   Node B: localhost:8081 (PID: $NODE_B_PID)"
     echo ""
     echo "Now you can:"
-    echo "  1. Open desktop_app_kivy.py"
+    echo "  1. Open desktop/desktop_app_kivy.py"
     echo "  2. Connect to localhost:8080"
     echo "  3. Follow the test procedure above"
     echo ""
