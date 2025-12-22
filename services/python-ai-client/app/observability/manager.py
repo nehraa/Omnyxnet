@@ -25,6 +25,9 @@ class ObservabilityManager:
         self.sentry_environment = os.getenv('SENTRY_ENVIRONMENT', 'production')
         self.localstack_endpoint_url = os.getenv('LOCALSTACK_ENDPOINT_URL')
         self.aws_access_key_id = os.getenv('AWS_ACCESS_KEY_ID')
+        # Secrets are always read from the environment; never hard-code keys
+        # or credentials in source. In production, these should come from a
+        # secret manager or encrypted configuration, not plain env vars.
         self.aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
         self.aws_region = os.getenv('AWS_REGION', 'eu-west-2')
         

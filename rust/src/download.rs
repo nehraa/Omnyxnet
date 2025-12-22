@@ -151,7 +151,9 @@ mod tests {
         let caps = crate::capabilities::HardwareCaps::probe();
         let config = CesConfig::adaptive(&caps, 8 * 1024 * 1024, 1.0);
         let ces = Arc::new(CesPipeline::new(config));
-        let go_addr: SocketAddr = "127.0.0.1:8080".parse().unwrap();
+        let go_addr: SocketAddr = "127.0.0.1:8080"
+            .parse()
+            .expect("Hard-coded Go addr 127.0.0.1:8080 must be a valid SocketAddr");
         let go_client = Arc::new(GoClient::new(go_addr));
         
         let download = DownloadProtocol::new(ces, go_client);

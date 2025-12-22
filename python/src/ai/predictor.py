@@ -43,6 +43,19 @@ class ThreatPredictor:
     
     def start(self):
         """Start the prediction loop in a background thread."""
+        # Defensive check: make sure the Go client is actually connected.
+        # The CLI ensures this already, but library callers might forget.
+        try:
+            if hasattr(self.go_client, "is_connected") and not self.go_client.is_connected():
+                raise RuntimeError(
+                    "GoNodeClient is not connected. Call go_client.connect() "
+                    "and check the return value before starting ThreatPredictor."
+                )
+        except Exception:
+            # If the client does not expose is_connected or raises unexpectedly,
+            # we fail fast rather than running a blind background loop.
+            raise
+
         if self.running:
             logger.warning("Predictor already running")
             return
