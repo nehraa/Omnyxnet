@@ -184,4 +184,21 @@ Files added:
   4. Re-run the checks inside the container until clean.
 
 - Status: checks executed; fixes required (see recommended next actions).
+ - Status: auto-fixes applied (see repo commit). Remaining issues listed below.
+
+### Auto-fix results
+
+- Actions taken:
+  - Ran `ruff --fix .` and `black .` and committed the changes in branch `copilot/rebase-fixes-2025-12-22`.
+  - Commit message: "style: apply ruff --fix and black formatting" (58 files changed).
+
+- Remaining issues after auto-fix:
+  - `ruff`/format auto-fixes addressed 177 fixable issues; 78 lint/type issues remain that require manual attention (unused imports/variables, bare `except`, ambiguous names, undefined variables, and duplicate definitions in CLI).
+  - `mypy` still reports a blocking error: duplicate module named `main` (`services/python-ai-client/app/main.py` and `python/main.py`).
+
+- Recommended manual fixes (next):
+  1. Resolve duplicate `main` modules by renaming or introducing packages (`__init__.py`) or adjusting `mypy` config.
+  2. For each remaining `ruff` issue, fix code as appropriate (remove unused imports/variables, avoid bare `except`, fix undefined names like `e`).
+  3. Re-run `mypy` and targeted unit tests inside the container.
+
 
