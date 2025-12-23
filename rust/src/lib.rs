@@ -13,6 +13,7 @@ pub mod codecs; // Phase 1: Media codecs
 pub mod compute; // Distributed Compute System
 pub mod dcdn;
 pub mod dht;
+pub mod dkg;
 pub mod download;
 pub mod ffi;
 pub mod file_detector;
@@ -36,7 +37,7 @@ pub use cache::{Cache, CacheStats, FileManifest};
 pub use capabilities::HardwareCaps;
 pub use ces::CesPipeline;
 pub use codecs::{AudioConfig, AudioDecoder, AudioEncoder, VideoConfig}; // Phase 1: Media codecs
-pub use dht::DhtNode;
+pub use dht::{DhtNode, DualDht};
 pub use firewall::Firewall;
 pub use lookup::{DiscoveryResult, LookupResult, LookupService};
 pub use metrics::{LatencyTimer, MetricsTracker, PerformanceReport, ThroughputTracker}; // Phase 1: Metrics
@@ -58,6 +59,7 @@ pub use compute::{
     ResourceUsage, ResultVerifier, SandboxConfig, SplitStrategy, TaskResult, TaskStatus,
     VerificationMode, VerificationResult, WasmSandbox,
 };
+pub use dkg::{generate_shares, reconstruct_secret, DkgError, Share};
 
 // DCDN System exports
 pub use dcdn::{
