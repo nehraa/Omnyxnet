@@ -19,6 +19,12 @@ GO_DIR="$PROJECT_ROOT/go"
 echo "Project root: $PROJECT_ROOT"
 echo "Go directory: $GO_DIR"
 
+# Ensure Rust CES library is built for cgo linking
+echo -e "\n0. Building Rust CES library..."
+cd "$PROJECT_ROOT/rust"
+cargo build --release --lib
+cd "$PROJECT_ROOT"
+
 # Test 1: Build
 echo -e "\n1. Testing build..."
 cd "$GO_DIR"
@@ -71,4 +77,3 @@ fi
 cd "$PROJECT_ROOT"
 
 echo -e "\n${GREEN}✅ All Go tests passed!${NC}"
-

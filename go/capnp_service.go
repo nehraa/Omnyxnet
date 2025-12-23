@@ -1389,10 +1389,8 @@ func (s *nodeServiceServer) GetComputeCapacity(ctx context.Context, call NodeSer
 }
 
 // =============================================================================
-// mDNS Discovery Methods - DISABLED (schema definitions missing)
+// mDNS Discovery Methods
 // =============================================================================
-
-/*
 // GetMdnsDiscovered implements the getMdnsDiscovered method
 func (s *nodeServiceServer) GetMdnsDiscovered(ctx context.Context, call NodeService_getMdnsDiscovered) error {
 	results, err := call.AllocResults()
@@ -1630,4 +1628,3 @@ func (s *nodeServiceServer) UpdateConfigValue(ctx context.Context, call NodeServ
 	log.Printf("✅ [CONFIG] Updated config: %s = %s", key, value)
 	return nil
 }
-*/
