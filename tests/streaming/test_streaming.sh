@@ -69,7 +69,11 @@ echo "Test 2: Python CLI Functionality"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 cd python
-source .venv/bin/activate
+if [ -d ".venv" ]; then
+    source .venv/bin/activate
+else
+    echo "No venv found; using system python"
+fi
 
 # Test Python CLI syntax
 echo "Testing Python CLI syntax..."

@@ -228,41 +228,107 @@ interface NodeService {
     # Get streaming statistics
     getStreamStats @21 () -> (stats :StreamStats);
     
+    # Get received video frames (for display in GUI)
+    getReceivedFrames @22 (maxFrames :UInt32) -> (frames :List(VideoFrame));
+    
+    # Get received audio chunks (for playback in GUI)
+    getReceivedAudio @23 (maxChunks :UInt32) -> (chunks :List(AudioChunk));
+    
+    # Get local node's multiaddr for sharing
+    getLocalMultiaddr @24 () -> (multiaddr :Text);
+    
+    # List connected libp2p peers
+    listLibp2pPeers @25 () -> (peers :List(Text));
+    
     # === Distributed Compute Service ===
     
     # Submit a new compute job
-    submitComputeJob @22 (manifest :ComputeJobManifest) -> (jobId :Text, success :Bool, errorMsg :Text);
+    submitComputeJob @26 (manifest :ComputeJobManifest) -> (jobId :Text, success :Bool, errorMsg :Text);
     
     # Get job status
-    getComputeJobStatus @23 (jobId :Text) -> (status :ComputeJobStatus);
+    getComputeJobStatus @27 (jobId :Text) -> (status :ComputeJobStatus);
     
     # Get job result (blocks until complete or timeout)
-    getComputeJobResult @24 (jobId :Text, timeoutMs :UInt32) -> (result :Data, success :Bool, errorMsg :Text, workerNode :Text);
+    getComputeJobResult @28 (jobId :Text, timeoutMs :UInt32) -> (result :Data, success :Bool, errorMsg :Text, workerNode :Text);
     
     # Cancel a running job
-    cancelComputeJob @25 (jobId :Text) -> (success :Bool);
+    cancelComputeJob @29 (jobId :Text) -> (success :Bool);
     
     # Get node compute capacity
-    getComputeCapacity @26 () -> (capacity :ComputeCapacity);
+    getComputeCapacity @30 () -> (capacity :ComputeCapacity);
     
     # === mDNS Discovery Service ===
     
     # Get list of peers discovered via mDNS
-    getMdnsDiscovered @27 () -> (peers :List(DiscoveredPeer));
+    getMdnsDiscovered @31 () -> (peers :List(DiscoveredPeer));
     
     # Connect to an mDNS-discovered peer
-    connectMdnsPeer @28 (peerID :Text) -> (success :Bool, errorMsg :Text);
+    connectMdnsPeer @32 (peerID :Text) -> (success :Bool, errorMsg :Text);
     
     # === Configuration Management ===
     
     # Load configuration from disk
-    loadConfig @29 () -> (config :ConfigData, success :Bool, errorMsg :Text);
+    loadConfig @33 () -> (config :ConfigData, success :Bool, errorMsg :Text);
     
     # Save configuration to disk
-    saveConfig @30 (config :ConfigData) -> (success :Bool, errorMsg :Text);
+    saveConfig @34 (config :ConfigData) -> (success :Bool, errorMsg :Text);
     
     # Update a configuration value
-    updateConfigValue @31 (key :Text, value :Text) -> (success :Bool);
+    updateConfigValue @35 (key :Text, value :Text) -> (success :Bool);
+    
+    # === Security & Encryption Services (Mandate 3) ===
+    
+    # Configure SOCKS5/Tor proxy
+    setProxyConfig @36 (config :ProxyConfig) -> (success :Bool, errorMsg :Text);
+    
+    # Get current proxy configuration
+    getProxyConfig @37 () -> (config :ProxyConfig);
+    
+    # Set encryption configuration for communications
+    setEncryptionConfig @38 (config :EncryptionConfig) -> (success :Bool, errorMsg :Text);
+    
+    # Get current encryption configuration
+    getEncryptionConfig @39 () -> (config :EncryptionConfig);
+    
+    # Initiate key exchange with peer
+    initiateKeyExchange @40 (peerAddr :Text, request :KeyExchangeRequest) -> (response :KeyExchangeResponse, success :Bool, errorMsg :Text);
+    
+    # Accept key exchange from peer
+    acceptKeyExchange @41 (request :KeyExchangeRequest) -> (response :KeyExchangeResponse, success :Bool, errorMsg :Text);
+    
+    # === Ephemeral Chat Services (Mandate 3) ===
+    
+    # Start an ephemeral chat session with a peer
+    startChatSession @42 (peerAddr :Text, encryptionConfig :EncryptionConfig) -> (session :ChatSession, success :Bool, errorMsg :Text);
+    
+    # Send ephemeral chat message
+    sendEphemeralMessage @43 (message :EphemeralChatMessage) -> (success :Bool, errorMsg :Text);
+    
+    # Receive ephemeral chat messages for specific session (with authorization)
+    receiveChatMessages @44 (sessionId :Text) -> (messages :List(EphemeralChatMessage));
+    
+    # Close chat session
+    closeChatSession @45 (sessionId :Text) -> (success :Bool);
+    
+    # === Distributed ML Services (Mandate 3) ===
+    
+    # Distribute dataset to worker nodes
+    distributeDataset @46 (dataset :MLDataset, workerNodes :List(Text)) -> (success :Bool, errorMsg :Text);
+    
+    # Submit gradient update from worker
+    submitGradient @47 (update :GradientUpdate) -> (success :Bool, errorMsg :Text);
+    
+    # Get model update from aggregator (for workers)
+    getModelUpdate @48 (modelVersion :UInt32) -> (update :ModelUpdate, success :Bool, errorMsg :Text);
+    
+    # Start ML training task (aggregator role)
+    startMLTraining @49 (task :MLTrainingTask) -> (success :Bool, errorMsg :Text);
+    
+    # Get ML training status
+    getMLTrainingStatus @50 (taskId :Text) -> (status :MLTrainingStatus);
+    
+    # Stop ML training
+    stopMLTraining @51 (taskId :Text) -> (success :Bool);
 }
 
 # === Distributed Compute Structures ===

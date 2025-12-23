@@ -32,6 +32,13 @@ trap cleanup EXIT
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$PROJECT_ROOT"
 
+# Ensure capnp bindings are available for Python client
+python3 - <<'PY'
+import importlib.util, subprocess, sys
+if importlib.util.find_spec("capnp") is None:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "pycapnp"])
+PY
+
 # Set schema path - use Python schema to avoid pycapnp import issues
 SCHEMA_PATH="$PROJECT_ROOT/python/schema.capnp"
 

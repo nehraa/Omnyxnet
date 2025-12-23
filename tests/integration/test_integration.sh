@@ -29,6 +29,13 @@ echo "Go directory: $GO_DIR"
 echo "Python directory: $PYTHON_DIR"
 echo "Schema path: $SCHEMA_PATH"
 
+# Ensure capnp bindings are available
+python3 - <<'PY'
+import importlib.util, subprocess, sys
+if importlib.util.find_spec("capnp") is None:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "pycapnp"])
+PY
+
 # Cleanup function
 cleanup() {
     echo -e "\n${BLUE}Cleaning up...${NC}"
@@ -53,6 +60,12 @@ echo "  2. Test Python connection"
 echo "  3. Test RPC calls"
 echo "  4. Test peer connections"
 echo ""
+
+# Ensure Rust CES library is built for cgo
+echo -e "${BLUE}0. Building Rust CES library...${NC}"
+cd "$PROJECT_ROOT/rust"
+cargo build --release --lib
+cd "$PROJECT_ROOT"
 
 # Test 1: Build Go node (or use existing)
 echo -e "${BLUE}1. Building Go node...${NC}"
@@ -310,4 +323,3 @@ fi
 echo -e "\n${GREEN}✅ All integration tests passed!${NC}"
 echo -e "${BLUE}Go node was running with PID: $GO_NODE_PID${NC}"
 echo -e "${BLUE}Logs available at: /tmp/go-node.log${NC}"
-

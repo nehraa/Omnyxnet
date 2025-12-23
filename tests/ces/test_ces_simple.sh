@@ -30,6 +30,13 @@ cleanup() {
 
 trap cleanup EXIT
 
+# Ensure capnp bindings are available for Python client
+python3 - <<'PY'
+import importlib.util, subprocess, sys
+if importlib.util.find_spec("capnp") is None:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "-q", "pycapnp"])
+PY
+
 # Check if Go binary exists
 if [ ! -f "$PROJECT_ROOT/go/go-node" ] && [ ! -f "$PROJECT_ROOT/go/bin/go-node" ]; then
     echo -e "${YELLOW}Go node binary not found. Building...${NC}"
