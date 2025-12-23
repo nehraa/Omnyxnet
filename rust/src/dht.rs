@@ -6,7 +6,13 @@ use libp2p::{
     swarm::{NetworkBehaviour, Swarm, SwarmEvent},
     tcp, Multiaddr, PeerId,
 };
-use std::time::Duration;
+use std::{
+    collections::HashMap,
+    sync::Arc,
+    time::Duration,
+};
+use futures::future::{select, Either};
+use tokio::{sync::RwLock, time::sleep};
 use tracing::{debug, info, warn};
 
 #[derive(NetworkBehaviour)]
@@ -180,4 +186,119 @@ pub fn local_multiaddr(port: u16) -> Multiaddr {
     format!("/ip4/127.0.0.1/tcp/{}", port)
         .parse()
         .expect("Hard-coded local multiaddr must be valid; check dht::local_multiaddr()")
+}
+
+/// In-memory dual DHT facade that issues parallel queries against a fast "local"
+/// table and a slower "global" table, returning the first successful hit.
+#[derive(Clone, Default)]
+pub struct DualDht {
+    local: Arc<RwLock<HashMap<Vec<u8>, Vec<u8>>>>,
+    global: Arc<RwLock<HashMap<Vec<u8>, Vec<u8>>>>,
+    local_latency: Duration,
+    global_latency: Duration,
+}
+
+impl DualDht {
+    /// Create a new dual DHT with configurable simulated latency for local/global caches.
+    pub fn new(local_latency: Duration, global_latency: Duration) -> Self {
+        Self {
+            local: Arc::new(RwLock::new(HashMap::new())),
+            global: Arc::new(RwLock::new(HashMap::new())),
+            local_latency,
+            global_latency,
+        }
+    }
+
+    /// Insert a value into both local and global tables.
+    pub async fn put(&self, key: Vec<u8>, value: Vec<u8>) {
+        {
+            let mut l = self.local.write().await;
+            l.insert(key.clone(), value.clone());
+        }
+        {
+            let mut g = self.global.write().await;
+            g.insert(key, value);
+        }
+    }
+
+    /// Insert only into the local cache (e.g., recent accesses).
+    pub async fn put_local(&self, key: Vec<u8>, value: Vec<u8>) {
+        let mut l = self.local.write().await;
+        l.insert(key, value);
+    }
+
+    /// Insert only into the global table (network source of truth).
+    pub async fn put_global(&self, key: Vec<u8>, value: Vec<u8>) {
+        let mut g = self.global.write().await;
+        g.insert(key, value);
+    }
+
+    /// Query both local and global tables in parallel, returning the first hit.
+    pub async fn get_first(&self, key: &[u8]) -> Option<Vec<u8>> {
+        let key_vec = key.to_vec();
+        let local = self.local.clone();
+        let global = self.global.clone();
+        let local_latency = self.local_latency;
+        let global_latency = self.global_latency;
+
+        let local_key = key_vec.clone();
+        let local_fut = async move {
+            sleep(local_latency).await;
+            local.read().await.get(&local_key).cloned()
+        };
+
+        let global_fut = async move {
+            sleep(global_latency).await;
+            global.read().await.get(&key_vec).cloned()
+        };
+
+        match select(Box::pin(local_fut), Box::pin(global_fut)).await {
+            Either::Left((local_res, pending_global)) => {
+                if local_res.is_some() {
+                    local_res
+                } else {
+                    pending_global.await
+                }
+            }
+            Either::Right((global_res, pending_local)) => {
+                if global_res.is_some() {
+                    global_res
+                } else {
+                    pending_local.await
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod dual_tests {
+    use super::DualDht;
+    use std::time::Duration;
+
+    #[tokio::test]
+    async fn returns_local_first_when_available() {
+        let dual = DualDht::new(Duration::from_millis(5), Duration::from_millis(50));
+        dual.put_local(b"key".to_vec(), b"local".to_vec()).await;
+        dual.put_global(b"key".to_vec(), b"global".to_vec()).await;
+
+        let res = dual.get_first(b"key").await;
+        assert_eq!(res.unwrap(), b"local".to_vec());
+    }
+
+    #[tokio::test]
+    async fn falls_back_to_global_when_local_missing() {
+        let dual = DualDht::new(Duration::from_millis(5), Duration::from_millis(10));
+        dual.put_global(b"key".to_vec(), b"global".to_vec()).await;
+
+        let res = dual.get_first(b"key").await;
+        assert_eq!(res.unwrap(), b"global".to_vec());
+    }
+
+    #[tokio::test]
+    async fn returns_none_when_not_found() {
+        let dual = DualDht::new(Duration::from_millis(1), Duration::from_millis(1));
+        let res = dual.get_first(b"missing").await;
+        assert!(res.is_none());
+    }
 }

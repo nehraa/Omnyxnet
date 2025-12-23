@@ -111,7 +111,7 @@
 
 ### Phase 1D: File Storage & DHT (Weeks 8-12)
 
-#### REQ-010: Dual DHT Architecture
+#### REQ-010: Dual DHT Architecture (✅ implemented)
 - **Description**: Local + global distributed hash table for file discovery
 - **Must Have**:
   - **Local DHT**: Regional peer cache
@@ -269,7 +269,7 @@
 
 ### DKG & Shared Data (Weeks 17-18)
 
-#### REQ-025: Distributed Key Generation (DKG)
+#### REQ-025: Distributed Key Generation (DKG) (✅ implemented)
 - **Description**: Threshold cryptography for shared encryption
 - **Must Have**:
   - Implement t-of-n threshold scheme
@@ -356,7 +356,7 @@
 
 ### WASM & Encrypted I/O Tunnel (Weeks 23-24)
 
-#### REQ-031: WASM Sandbox with Data Privacy
+#### REQ-031: WASM Sandbox with Data Privacy (✅ implemented)
 - **Description**: Isolated computation with encrypted host interaction
 - **Must Have**:
   - WASM sandbox setup (wasmer or wasmtime)
