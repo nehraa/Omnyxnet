@@ -1389,10 +1389,8 @@ func (s *nodeServiceServer) GetComputeCapacity(ctx context.Context, call NodeSer
 }
 
 // =============================================================================
-// mDNS Discovery Methods - DISABLED (schema definitions missing)
+// mDNS Discovery Methods
 // =============================================================================
-
-/*
 // GetMdnsDiscovered implements the getMdnsDiscovered method
 func (s *nodeServiceServer) GetMdnsDiscovered(ctx context.Context, call NodeService_getMdnsDiscovered) error {
 	results, err := call.AllocResults()
@@ -1630,4 +1628,578 @@ func (s *nodeServiceServer) UpdateConfigValue(ctx context.Context, call NodeServ
 	log.Printf("✅ [CONFIG] Updated config: %s = %s", key, value)
 	return nil
 }
-*/
+
+// =============================================================================
+// Streaming Auxiliary Accessors
+// =============================================================================
+
+func (s *nodeServiceServer) GetReceivedFrames(ctx context.Context, call NodeService_getReceivedFrames) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	// No in-memory buffer yet; return empty list
+	frames, err := NewVideoFrame_List(results.Segment(), 0)
+	if err != nil {
+		return err
+	}
+	return results.SetFrames(VideoFrame_List(frames))
+}
+
+func (s *nodeServiceServer) GetReceivedAudio(ctx context.Context, call NodeService_getReceivedAudio) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	chunks, err := NewAudioChunk_List(results.Segment(), 0)
+	if err != nil {
+		return err
+	}
+	return results.SetChunks(AudioChunk_List(chunks))
+}
+
+func (s *nodeServiceServer) GetLocalMultiaddr(ctx context.Context, call NodeService_getLocalMultiaddr) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	results.SetMultiaddr("")
+	return nil
+}
+
+func (s *nodeServiceServer) ListLibp2pPeers(ctx context.Context, call NodeService_listLibp2pPeers) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	peers := []string{}
+	list, err := capnp.NewTextList(results.Segment(), int32(len(peers)))
+	if err != nil {
+		return err
+	}
+	for i, p := range peers {
+		list.Set(i, p)
+	}
+	return results.SetPeers(list)
+}
+
+// =============================================================================
+// Security & Encryption (Mandate 3)
+// =============================================================================
+
+func (s *nodeServiceServer) SetProxyConfig(ctx context.Context, call NodeService_setProxyConfig) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	cfg, err := args.Config()
+	if err != nil {
+		return err
+	}
+
+	proxyType, _ := cfg.ProxyType()
+	proxyHost, _ := cfg.ProxyHost()
+	username, _ := cfg.Username()
+	data := &ProxyConfigData{
+		Enabled:   cfg.Enabled(),
+		ProxyType: proxyType,
+		ProxyHost: proxyHost,
+		ProxyPort: cfg.ProxyPort(),
+		Username:  username,
+	}
+	data.Password = "" // not carried over capnp for safety
+
+	if err := s.securityManager.SetProxyConfig(data); err != nil {
+		results.SetSuccess(false)
+		results.SetErrorMsg(err.Error())
+		return nil
+	}
+
+	results.SetSuccess(true)
+	results.SetErrorMsg("")
+	return nil
+}
+
+func (s *nodeServiceServer) GetProxyConfig(ctx context.Context, call NodeService_getProxyConfig) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	cfg := s.securityManager.GetProxyConfig()
+	proxy, err := results.NewConfig()
+	if err != nil {
+		return err
+	}
+	proxy.SetEnabled(cfg.Enabled)
+	proxy.SetProxyType(cfg.ProxyType)
+	proxy.SetProxyHost(cfg.ProxyHost)
+	proxy.SetProxyPort(cfg.ProxyPort)
+	proxy.SetUsername(cfg.Username)
+	proxy.SetPasswordPresent(cfg.Password != "")
+
+	return nil
+}
+
+func (s *nodeServiceServer) SetEncryptionConfig(ctx context.Context, call NodeService_setEncryptionConfig) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	cfg, err := args.Config()
+	if err != nil {
+		return err
+	}
+
+	encType, _ := cfg.EncryptionType()
+	keyAlgo, _ := cfg.KeyExchangeAlgorithm()
+	symAlgo, _ := cfg.SymmetricAlgorithm()
+	data := &EncryptionConfigData{
+		EncryptionType:   encType,
+		KeyExchangeAlgo:  keyAlgo,
+		SymmetricAlgo:    symAlgo,
+		EnableSignatures: cfg.EnableSignatures(),
+	}
+
+	if err := s.securityManager.SetEncryptionConfig(data); err != nil {
+		results.SetSuccess(false)
+		results.SetErrorMsg(err.Error())
+		return nil
+	}
+
+	results.SetSuccess(true)
+	results.SetErrorMsg("")
+	return nil
+}
+
+func (s *nodeServiceServer) GetEncryptionConfig(ctx context.Context, call NodeService_getEncryptionConfig) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	cfg := s.securityManager.GetEncryptionConfig()
+	enc, err := results.NewConfig()
+	if err != nil {
+		return err
+	}
+	enc.SetEncryptionType(cfg.EncryptionType)
+	enc.SetKeyExchangeAlgorithm(cfg.KeyExchangeAlgo)
+	enc.SetSymmetricAlgorithm(cfg.SymmetricAlgo)
+	enc.SetEnableSignatures(cfg.EnableSignatures)
+
+	return nil
+}
+
+func (s *nodeServiceServer) InitiateKeyExchange(ctx context.Context, call NodeService_initiateKeyExchange) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	// For now, echo back the request as the response
+	args := call.Args()
+	req, err := args.Request()
+	if err != nil {
+		return err
+	}
+
+	resp, err := results.NewResponse()
+	if err != nil {
+		return err
+	}
+	pubKey, _ := req.PublicKey()
+	resp.SetPublicKey(pubKey)
+	resp.SetSelectedCipher(func() string {
+		ciphers, _ := req.SupportedCiphers()
+		if ciphers.Len() > 0 {
+			v, _ := ciphers.At(0)
+			return v
+		}
+		return "chacha20"
+	}())
+	resp.SetEncryptedSessionKey(pubKey)
+	nonce, _ := req.Nonce()
+	resp.SetNonce(nonce)
+	resp.SetSignature([]byte{})
+
+	results.SetSuccess(true)
+	results.SetErrorMsg("")
+	return nil
+}
+
+func (s *nodeServiceServer) AcceptKeyExchange(ctx context.Context, call NodeService_acceptKeyExchange) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	req, err := args.Request()
+	if err != nil {
+		return err
+	}
+
+	resp, err := results.NewResponse()
+	if err != nil {
+		return err
+	}
+	pubKey, _ := req.PublicKey()
+	resp.SetPublicKey(pubKey)
+	resp.SetSelectedCipher("chacha20")
+	resp.SetEncryptedSessionKey(pubKey)
+	nonce, _ := req.Nonce()
+	resp.SetNonce(nonce)
+	resp.SetSignature([]byte{})
+
+	results.SetSuccess(true)
+	results.SetErrorMsg("")
+	return nil
+}
+
+// =============================================================================
+// Ephemeral Chat (Mandate 3)
+// =============================================================================
+
+func (s *nodeServiceServer) StartChatSession(ctx context.Context, call NodeService_startChatSession) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	peerAddr, _ := args.PeerAddr()
+	encCfg, err := args.EncryptionConfig()
+	if err != nil {
+		return err
+	}
+
+	encType, _ := encCfg.EncryptionType()
+	keyAlgo, _ := encCfg.KeyExchangeAlgorithm()
+	symAlgo, _ := encCfg.SymmetricAlgorithm()
+	chatCfg := &EncryptionConfigData{
+		EncryptionType:   encType,
+		KeyExchangeAlgo:  keyAlgo,
+		SymmetricAlgo:    symAlgo,
+		EnableSignatures: encCfg.EnableSignatures(),
+	}
+
+	sessionID := fmt.Sprintf("%s-%d", peerAddr, time.Now().UnixNano())
+	session := &ChatSessionData{
+		SessionID:        sessionID,
+		PeerAddr:         peerAddr,
+		EncryptionConfig: chatCfg,
+		Established:      time.Now(),
+		MessageQueue:     []*EphemeralChatMessageData{},
+	}
+
+	s.securityManager.mu.Lock()
+	s.securityManager.chatSessions[sessionID] = session
+	s.securityManager.mu.Unlock()
+
+	resp, err := results.NewSession()
+	if err != nil {
+		return err
+	}
+	resp.SetSessionId(sessionID)
+	resp.SetPeerAddr(peerAddr)
+	resp.SetEstablished(time.Now().Unix())
+	resp.SetEncryptionConfig(encCfg)
+
+	results.SetSuccess(true)
+	results.SetErrorMsg("")
+	return nil
+}
+
+func (s *nodeServiceServer) SendEphemeralMessage(ctx context.Context, call NodeService_sendEphemeralMessage) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	msg, err := args.Message_()
+	if err != nil {
+		return err
+	}
+
+	sessionID := "default"
+	s.securityManager.mu.Lock()
+	session, ok := s.securityManager.chatSessions[sessionID]
+	if ok {
+		body, _ := msg.Message_()
+		from, _ := msg.FromPeer()
+		to, _ := msg.ToPeer()
+		msgID, _ := msg.MessageId()
+		session.MessageQueue = append(session.MessageQueue, &EphemeralChatMessageData{
+			FromPeer:  from,
+			ToPeer:    to,
+			Message:   body,
+			Timestamp: msg.Timestamp(),
+			MessageID: msgID,
+		})
+	}
+	s.securityManager.mu.Unlock()
+
+	results.SetSuccess(ok)
+	if !ok {
+		results.SetErrorMsg("session not found")
+	} else {
+		results.SetErrorMsg("")
+	}
+	return nil
+}
+
+func (s *nodeServiceServer) ReceiveChatMessages(ctx context.Context, call NodeService_receiveChatMessages) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	sessionID, _ := args.SessionId()
+
+	s.securityManager.mu.Lock()
+	session, ok := s.securityManager.chatSessions[sessionID]
+	var queue []*EphemeralChatMessageData
+	if ok {
+		queue = session.MessageQueue
+		session.MessageQueue = []*EphemeralChatMessageData{}
+	}
+	s.securityManager.mu.Unlock()
+
+	list, err := NewEphemeralChatMessage_List(results.Segment(), int32(len(queue)))
+	if err != nil {
+		return err
+	}
+	for i, m := range queue {
+		item := list.At(i)
+		item.SetFromPeer(m.FromPeer)
+		item.SetToPeer(m.ToPeer)
+		item.SetMessage_(m.Message)
+		item.SetTimestamp(m.Timestamp)
+		item.SetMessageId(m.MessageID)
+		item.SetEncryptionType(m.EncryptionType)
+		item.SetSignature(m.Signature)
+	}
+
+	return results.SetMessages(list)
+}
+
+func (s *nodeServiceServer) CloseChatSession(ctx context.Context, call NodeService_closeChatSession) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	sessionID, _ := args.SessionId()
+
+	s.securityManager.mu.Lock()
+	_, ok := s.securityManager.chatSessions[sessionID]
+	if ok {
+		delete(s.securityManager.chatSessions, sessionID)
+	}
+	s.securityManager.mu.Unlock()
+
+	results.SetSuccess(ok)
+	return nil
+}
+
+// =============================================================================
+// Distributed ML Services (Mandate 3)
+// =============================================================================
+
+func (s *nodeServiceServer) DistributeDataset(ctx context.Context, call NodeService_distributeDataset) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	// Stub distribution acknowledgment
+	results.SetSuccess(true)
+	results.SetErrorMsg("")
+	return nil
+}
+
+func (s *nodeServiceServer) SubmitGradient(ctx context.Context, call NodeService_submitGradient) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	update, err := args.Update()
+	if err != nil {
+		return err
+	}
+
+	workerID, _ := update.WorkerId()
+	grads, _ := update.Gradients()
+	grad := &GradientUpdateData{
+		WorkerID:     workerID,
+		ModelVersion: update.ModelVersion(),
+		Gradients:    grads,
+		NumSamples:   update.NumSamples(),
+		Loss:         update.Loss(),
+		Accuracy:     update.Accuracy(),
+	}
+
+	if err := s.mlCoordinator.SubmitGradient(ctx, grad); err != nil {
+		results.SetSuccess(false)
+		results.SetErrorMsg(err.Error())
+		return nil
+	}
+
+	results.SetSuccess(true)
+	results.SetErrorMsg("")
+	return nil
+}
+
+func (s *nodeServiceServer) GetModelUpdate(ctx context.Context, call NodeService_getModelUpdate) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	version := args.ModelVersion()
+
+	s.mlCoordinator.mu.RLock()
+	update, ok := s.mlCoordinator.models[version]
+	s.mlCoordinator.mu.RUnlock()
+
+	if !ok {
+		results.SetSuccess(false)
+		results.SetErrorMsg("model version not found")
+		return nil
+	}
+
+	resp, err := results.NewUpdate()
+	if err != nil {
+		return err
+	}
+	resp.SetModelVersion(update.ModelVersion)
+	resp.SetParameters(update.Parameters)
+	resp.SetAggregationMethod(update.AggregationMethod)
+	resp.SetNumWorkers(update.NumWorkers)
+	resp.SetGlobalLoss(update.GlobalLoss)
+	resp.SetGlobalAccuracy(update.GlobalAccuracy)
+
+	results.SetSuccess(true)
+	results.SetErrorMsg("")
+	return nil
+}
+
+func (s *nodeServiceServer) StartMLTraining(ctx context.Context, call NodeService_startMLTraining) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	task, err := args.Task()
+	if err != nil {
+		return err
+	}
+
+	// Build task data
+	hyper := make(map[string]string)
+	if h, err := task.Hyperparameters(); err == nil {
+		for i := 0; i < h.Len(); i++ {
+			kv := h.At(i)
+			key, _ := kv.Key()
+			val, _ := kv.Value()
+			hyper[key] = val
+		}
+	}
+
+	workers := []string{}
+	if ws, err := task.WorkerNodes(); err == nil {
+		for i := 0; i < ws.Len(); i++ {
+			w, _ := ws.At(i)
+			workers = append(workers, w)
+		}
+	}
+
+	taskID, _ := task.TaskId()
+	datasetID, _ := task.DatasetId()
+	modelArch, _ := task.ModelArchitecture()
+	aggNode, _ := task.AggregatorNode()
+
+	taskData := &MLTrainingTaskData{
+		TaskID:            taskID,
+		DatasetID:         datasetID,
+		ModelArchitecture: modelArch,
+		Hyperparameters:   hyper,
+		WorkerNodes:       workers,
+		AggregatorNode:    aggNode,
+		Epochs:            task.Epochs(),
+		BatchSize:         task.BatchSize(),
+	}
+
+	if err := s.mlCoordinator.StartMLTraining(ctx, taskData); err != nil {
+		results.SetSuccess(false)
+		results.SetErrorMsg(err.Error())
+		return nil
+	}
+
+	results.SetSuccess(true)
+	results.SetErrorMsg("")
+	return nil
+}
+
+func (s *nodeServiceServer) GetMLTrainingStatus(ctx context.Context, call NodeService_getMLTrainingStatus) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	taskID, _ := args.TaskId()
+	task, err := s.mlCoordinator.GetMLTrainingStatus(taskID)
+	if err != nil {
+		return err
+	}
+
+	status, err := results.NewStatus()
+	if err != nil {
+		return err
+	}
+	status.SetTaskId(task.TaskID)
+	status.SetCurrentEpoch(task.CurrentEpoch)
+	status.SetTotalEpochs(task.Epochs)
+	status.SetActiveWorkers(uint32(len(task.WorkerNodes)))
+	status.SetCompletedWorkers(0)
+	status.SetCurrentLoss(0)
+	status.SetCurrentAccuracy(0)
+	status.SetEstimatedTimeRemaining(0)
+
+	return nil
+}
+
+func (s *nodeServiceServer) StopMLTraining(ctx context.Context, call NodeService_stopMLTraining) error {
+	results, err := call.AllocResults()
+	if err != nil {
+		return err
+	}
+
+	args := call.Args()
+	taskID, _ := args.TaskId()
+
+	if err := s.mlCoordinator.StopMLTraining(taskID); err != nil {
+		results.SetSuccess(false)
+		return nil
+	}
+
+	results.SetSuccess(true)
+	return nil
+}

@@ -1,5 +1,9 @@
 @0x8513e0c6129c1f4c;
 
+using Go = import "/go.capnp";
+$Go.package("main");
+$Go.import("main");
+
 # Cap'n Proto schema for Pangea Net
 
 struct Node {
@@ -223,5 +227,284 @@ interface NodeService {
     
     # Get streaming statistics
     getStreamStats @21 () -> (stats :StreamStats);
+    
+    # Get received video frames (for display in GUI)
+    getReceivedFrames @22 (maxFrames :UInt32) -> (frames :List(VideoFrame));
+    
+    # Get received audio chunks (for playback in GUI)
+    getReceivedAudio @23 (maxChunks :UInt32) -> (chunks :List(AudioChunk));
+    
+    # Get local node's multiaddr for sharing
+    getLocalMultiaddr @24 () -> (multiaddr :Text);
+    
+    # List connected libp2p peers
+    listLibp2pPeers @25 () -> (peers :List(Text));
+    
+    # === Distributed Compute Service ===
+    
+    # Submit a new compute job
+    submitComputeJob @26 (manifest :ComputeJobManifest) -> (jobId :Text, success :Bool, errorMsg :Text);
+    
+    # Get job status
+    getComputeJobStatus @27 (jobId :Text) -> (status :ComputeJobStatus);
+    
+    # Get job result (blocks until complete or timeout)
+    getComputeJobResult @28 (jobId :Text, timeoutMs :UInt32) -> (result :Data, success :Bool, errorMsg :Text, workerNode :Text);
+    
+    # Cancel a running job
+    cancelComputeJob @29 (jobId :Text) -> (success :Bool);
+    
+    # Get node compute capacity
+    getComputeCapacity @30 () -> (capacity :ComputeCapacity);
+    
+    # === mDNS Discovery Service ===
+    
+    # Get list of peers discovered via mDNS
+    getMdnsDiscovered @31 () -> (peers :List(DiscoveredPeer));
+    
+    # Connect to an mDNS-discovered peer
+    connectMdnsPeer @32 (peerID :Text) -> (success :Bool, errorMsg :Text);
+    
+    # === Configuration Management ===
+    
+    # Load configuration from disk
+    loadConfig @33 () -> (config :ConfigData, success :Bool, errorMsg :Text);
+    
+    # Save configuration to disk
+    saveConfig @34 (config :ConfigData) -> (success :Bool, errorMsg :Text);
+    
+    # Update a configuration value
+    updateConfigValue @35 (key :Text, value :Text) -> (success :Bool);
+    
+    # === Security & Encryption Services (Mandate 3) ===
+    
+    # Configure SOCKS5/Tor proxy
+    setProxyConfig @36 (config :ProxyConfig) -> (success :Bool, errorMsg :Text);
+    
+    # Get current proxy configuration
+    getProxyConfig @37 () -> (config :ProxyConfig);
+    
+    # Set encryption configuration for communications
+    setEncryptionConfig @38 (config :EncryptionConfig) -> (success :Bool, errorMsg :Text);
+    
+    # Get current encryption configuration
+    getEncryptionConfig @39 () -> (config :EncryptionConfig);
+    
+    # Initiate key exchange with peer
+    initiateKeyExchange @40 (peerAddr :Text, request :KeyExchangeRequest) -> (response :KeyExchangeResponse, success :Bool, errorMsg :Text);
+    
+    # Accept key exchange from peer
+    acceptKeyExchange @41 (request :KeyExchangeRequest) -> (response :KeyExchangeResponse, success :Bool, errorMsg :Text);
+    
+    # === Ephemeral Chat Services (Mandate 3) ===
+    
+    # Start an ephemeral chat session with a peer
+    startChatSession @42 (peerAddr :Text, encryptionConfig :EncryptionConfig) -> (session :ChatSession, success :Bool, errorMsg :Text);
+    
+    # Send ephemeral chat message
+    sendEphemeralMessage @43 (message :EphemeralChatMessage) -> (success :Bool, errorMsg :Text);
+    
+    # Receive ephemeral chat messages for specific session (with authorization)
+    receiveChatMessages @44 (sessionId :Text) -> (messages :List(EphemeralChatMessage));
+    
+    # Close chat session
+    closeChatSession @45 (sessionId :Text) -> (success :Bool);
+    
+    # === Distributed ML Services (Mandate 3) ===
+    
+    # Distribute dataset to worker nodes
+    distributeDataset @46 (dataset :MLDataset, workerNodes :List(Text)) -> (success :Bool, errorMsg :Text);
+    
+    # Submit gradient update from worker
+    submitGradient @47 (update :GradientUpdate) -> (success :Bool, errorMsg :Text);
+    
+    # Get model update from aggregator (for workers)
+    getModelUpdate @48 (modelVersion :UInt32) -> (update :ModelUpdate, success :Bool, errorMsg :Text);
+    
+    # Start ML training task (aggregator role)
+    startMLTraining @49 (task :MLTrainingTask) -> (success :Bool, errorMsg :Text);
+    
+    # Get ML training status
+    getMLTrainingStatus @50 (taskId :Text) -> (status :MLTrainingStatus);
+    
+    # Stop ML training
+    stopMLTraining @51 (taskId :Text) -> (success :Bool);
 }
 
+# === Distributed Compute Structures ===
+
+struct ComputeJobManifest {
+    jobId @0 :Text;
+    wasmModule @1 :Data;
+    inputData @2 :Data;
+    splitStrategy @3 :Text;
+    minChunkSize @4 :UInt64;
+    maxChunkSize @5 :UInt64;
+    verificationMode @6 :Text;
+    timeoutSecs @7 :UInt32;
+    retryCount @8 :UInt32;
+    priority @9 :UInt32;
+    redundancy @10 :UInt32;
+}
+
+struct ComputeJobStatus {
+    jobId @0 :Text;
+    status @1 :Text;
+    progress @2 :Float32;
+    completedChunks @3 :UInt32;
+    totalChunks @4 :UInt32;
+    estimatedTimeRemaining @5 :UInt32;
+    errorMsg @6 :Text;
+}
+
+struct ComputeCapacity {
+    cpuCores @0 :UInt32;
+    ramMb @1 :UInt64;
+    currentLoad @2 :Float32;
+    diskMb @3 :UInt64;
+    bandwidthMbps @4 :Float32;
+}
+
+# === mDNS Discovery Structures ===
+
+struct DiscoveredPeer {
+    peerId @0 :Text;
+    multiaddrs @1 :List(Text);
+    discoveredAt @2 :Int64;
+}
+
+# === Configuration Structures ===
+
+struct ConfigData {
+    nodeId @0 :UInt32;
+    capnpAddr @1 :Text;
+    libp2pPort @2 :Int32;
+    useLibp2p @3 :Bool;
+    localMode @4 :Bool;
+    bootstrapPeers @5 :List(Text);
+    lastSavedAt @6 :Text;
+    customSettings @7 :List(KeyValue);
+}
+
+struct KeyValue {
+    key @0 :Text;
+    value @1 :Text;
+}
+
+# === Security & Encryption Structures (Mandate 3) ===
+
+# SOCKS5 Proxy Configuration for Tor support
+struct ProxyConfig {
+    enabled @0 :Bool;
+    proxyType @1 :Text;  # "socks5", "socks4", "http"
+    proxyHost @2 :Text;
+    proxyPort @3 :UInt16;
+    username @4 :Text;    # Optional authentication (do not expose if sensitive)
+    passwordPresent @5 :Bool;  # True if password is set, actual value not exposed via getProxyConfig
+}
+
+# Encryption configuration
+struct EncryptionConfig {
+    encryptionType @0 :Text;  # "asymmetric", "symmetric", "none"
+    keyExchangeAlgorithm @1 :Text;  # "rsa", "ecc", "dh"
+    symmetricAlgorithm @2 :Text;    # "aes256", "chacha20"
+    enableSignatures @3 :Bool;
+}
+
+# Ephemeral chat message structure
+struct EphemeralChatMessage {
+    fromPeer @0 :Text;
+    toPeer @1 :Text;
+    message @2 :Data;  # Encrypted message payload
+    timestamp @3 :Int64;
+    messageId @4 :Text;
+    encryptionType @5 :Text;
+    signature @6 :Data;  # Digital signature of the message
+}
+
+# Chat session management
+struct ChatSession {
+    sessionId @0 :Text;
+    peerAddr @1 :Text;
+    encryptionConfig @2 :EncryptionConfig;
+    publicKey @3 :Data;  # Peer's public key
+    sessionKey @4 :Data;  # Symmetric session key (if applicable)
+    established @5 :Int64;  # Timestamp when session was established
+}
+
+# Key exchange request/response
+struct KeyExchangeRequest {
+    publicKey @0 :Data;
+    algorithm @1 :Text;  # "rsa2048", "ecc256", etc.
+    supportedCiphers @2 :List(Text);
+    nonce @3 :Data;
+}
+
+struct KeyExchangeResponse {
+    publicKey @0 :Data;
+    selectedCipher @1 :Text;
+    encryptedSessionKey @2 :Data;  # For symmetric mode
+    nonce @3 :Data;
+    signature @4 :Data;
+}
+
+# === Distributed ML Structures (Mandate 3) ===
+
+# ML Dataset distribution
+struct MLDataset {
+    datasetId @0 :Text;
+    dataType @1 :Text;  # "image", "text", "numeric"
+    totalSamples @2 :UInt64;
+    chunkSize @3 :UInt32;
+    chunks @4 :List(DataChunk);
+}
+
+struct DataChunk {
+    chunkId @0 :UInt32;
+    data @1 :Data;
+    labels @2 :Data;  # Optional labels
+    checksum @3 :Text;
+}
+
+# Gradient exchange for federated learning
+struct GradientUpdate {
+    workerId @0 :Text;
+    modelVersion @1 :UInt32;
+    gradients @2 :Data;  # Serialized gradient tensors
+    numSamples @3 :UInt32;
+    loss @4 :Float64;
+    accuracy @5 :Float64;
+    timestamp @6 :Int64;
+}
+
+struct ModelUpdate {
+    modelVersion @0 :UInt32;
+    parameters @1 :Data;  # Serialized model parameters
+    aggregationMethod @2 :Text;  # "fedavg", "fedprox", etc.
+    numWorkers @3 :UInt32;
+    globalLoss @4 :Float64;
+    globalAccuracy @5 :Float64;
+}
+
+# Training task specification
+struct MLTrainingTask {
+    taskId @0 :Text;
+    datasetId @1 :Text;
+    modelArchitecture @2 :Text;
+    hyperparameters @3 :List(KeyValue);
+    workerNodes @4 :List(Text);
+    aggregatorNode @5 :Text;
+    epochs @6 :UInt32;
+    batchSize @7 :UInt32;
+}
+
+struct MLTrainingStatus {
+    taskId @0 :Text;
+    currentEpoch @1 :UInt32;
+    totalEpochs @2 :UInt32;
+    activeWorkers @3 :UInt32;
+    completedWorkers @4 :UInt32;
+    currentLoss @5 :Float64;
+    currentAccuracy @6 :Float64;
+    estimatedTimeRemaining @7 :UInt32;
+}

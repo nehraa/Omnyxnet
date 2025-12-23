@@ -28,6 +28,10 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 cd "$PROJECT_ROOT"
 
+# Ensure Cap'n Proto Python bindings are available for integration tests
+echo -e "${BLUE}Ensuring pycapnp dependency...${NC}"
+python3 -m pip install --quiet pycapnp
+
 # Parse arguments
 WITH_CONTAINERS=false
 CONTAINERS_ONLY=false
