@@ -1,11 +1,11 @@
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use std::path::Path;
 use std::sync::Arc;
-use tracing::{info, debug};
+use tracing::{debug, info};
 
+use crate::cache::Cache;
 use crate::ces::CesPipeline;
 use crate::go_client::GoClient;
-use crate::cache::Cache;
 
 /// Download protocol - handles file downloads with CES reconstruction
 pub struct DownloadProtocol {
@@ -16,8 +16,8 @@ pub struct DownloadProtocol {
 
 impl DownloadProtocol {
     pub fn new(ces: Arc<CesPipeline>, go_client: Arc<GoClient>) -> Self {
-        Self { 
-            ces, 
+        Self {
+            ces,
             go_client,
             cache: None,
         }
@@ -38,7 +38,8 @@ impl DownloadProtocol {
         output_path: &Path,
         shard_locations: Vec<(usize, u32)>,
     ) -> Result<usize> {
-        self.download_file_with_hash(output_path, shard_locations, None).await
+        self.download_file_with_hash(output_path, shard_locations, None)
+            .await
     }
 
     /// Download with optional file hash for cache lookup
@@ -61,15 +62,15 @@ impl DownloadProtocol {
                     continue;
                 }
             }
-            
+
             // If not in cache, fetch from peer
             debug!("Fetching shard {} from peer {}", shard_index, peer_id);
-            
+
             match self.go_client.receive_data(peer_id).await {
                 Ok(data) => {
                     if !data.is_empty() {
                         shards[shard_index] = Some(data.clone());
-                        
+
                         // Cache the shard for future downloads
                         if let (Some(hash), Some(cache)) = (file_hash, &self.cache) {
                             let _ = cache.put_shard(hash, shard_index, data).await;
@@ -77,7 +78,10 @@ impl DownloadProtocol {
                     }
                 }
                 Err(e) => {
-                    debug!("Failed to fetch shard {} from peer {}: {}", shard_index, peer_id, e);
+                    debug!(
+                        "Failed to fetch shard {} from peer {}: {}",
+                        shard_index, peer_id, e
+                    );
                     // Continue - Reed-Solomon can reconstruct from partial shards
                 }
             }
@@ -88,18 +92,16 @@ impl DownloadProtocol {
         info!("Reconstructed {} bytes", data.len());
 
         // 3. Write to file
-        tokio::fs::write(output_path, &data).await
+        tokio::fs::write(output_path, &data)
+            .await
             .context("Failed to write file")?;
-        
+
         info!("Download complete: {} bytes written", data.len());
         Ok(data.len())
     }
 
     /// Download raw data
-    pub async fn download_data(
-        &self,
-        shard_locations: Vec<(usize, u32)>,
-    ) -> Result<Vec<u8>> {
+    pub async fn download_data(&self, shard_locations: Vec<(usize, u32)>) -> Result<Vec<u8>> {
         info!("Starting data download: {} shards", shard_locations.len());
 
         // Fetch shards
@@ -155,7 +157,7 @@ mod tests {
             .parse()
             .expect("Hard-coded Go addr 127.0.0.1:8080 must be a valid SocketAddr");
         let go_client = Arc::new(GoClient::new(go_addr));
-        
+
         let download = DownloadProtocol::new(ces, go_client);
         assert!(true); // Protocol created successfully
     }

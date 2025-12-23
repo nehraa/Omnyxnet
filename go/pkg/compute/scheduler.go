@@ -35,7 +35,7 @@ func NewScheduler(manager *Manager) *Scheduler {
 func (s *Scheduler) Schedule(task *ComputeTask, priority int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	st := &scheduledTask{
 		task:       task,
 		priority:   priority,
@@ -43,7 +43,7 @@ func (s *Scheduler) Schedule(task *ComputeTask, priority int) {
 		submitted:  time.Now(),
 		attempts:   0,
 	}
-	
+
 	s.queue = append(s.queue, st)
 	s.sortQueue()
 }
@@ -52,16 +52,16 @@ func (s *Scheduler) Schedule(task *ComputeTask, priority int) {
 func (s *Scheduler) GetNextTask() *ComputeTask {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	if len(s.queue) == 0 {
 		return nil
 	}
-	
+
 	// Get highest priority task
 	st := s.queue[0]
 	s.queue = s.queue[1:]
 	st.attempts++
-	
+
 	return st.task
 }
 
@@ -85,8 +85,8 @@ func (s *Scheduler) sortQueue() {
 // calculateTaskComplexity estimates the complexity of a task
 func (s *Scheduler) calculateTaskComplexity(task *ComputeTask) float64 {
 	dataFactor := float64(len(task.InputData)) / (1024.0 * 1024.0) // MB
-	wasmFactor := float64(len(task.WASMModule)) / (64.0 * 1024.0)   // 64KB units
-	
+	wasmFactor := float64(len(task.WASMModule)) / (64.0 * 1024.0)  // 64KB units
+
 	return dataFactor * (1.0 + wasmFactor*0.1)
 }
 
@@ -97,7 +97,7 @@ func (s *Scheduler) SelectWorker(task *ComputeTask) string {
 	s.manager.mu.RLock()
 	delegator := s.manager.delegator
 	s.manager.mu.RUnlock()
-	
+
 	// Primary source: TaskDelegator (libp2p peers for distributed compute)
 	if delegator != nil && delegator.HasWorkers() {
 		workers := delegator.GetAvailableWorkers()
@@ -114,18 +114,18 @@ func (s *Scheduler) SelectWorker(task *ComputeTask) string {
 			return workers[taskHash%len(workers)]
 		}
 	}
-	
+
 	// Fallback: internal workers map (for testing/custom setups)
 	s.manager.mu.RLock()
 	defer s.manager.mu.RUnlock()
-	
+
 	if len(s.manager.workers) == 0 {
 		return ""
 	}
-	
+
 	var bestWorker string
 	var bestScore float64 = -1
-	
+
 	for id, worker := range s.manager.workers {
 		score := s.scoreWorker(worker, task)
 		if score > bestScore {
@@ -133,7 +133,7 @@ func (s *Scheduler) SelectWorker(task *ComputeTask) string {
 			bestWorker = id
 		}
 	}
-	
+
 	return bestWorker
 }
 
@@ -141,14 +141,14 @@ func (s *Scheduler) SelectWorker(task *ComputeTask) string {
 func (s *Scheduler) scoreWorker(worker *workerState, task *ComputeTask) float64 {
 	// Calculate availability score (1.0 = fully available, 0.0 = fully loaded)
 	availScore := 1.0 - float64(worker.capacity.CurrentLoad)
-	
+
 	// Calculate trust score
 	trustScore := float64(worker.trustScore)
-	
+
 	// Calculate recency score (prefer recently active workers)
 	timeSinceLastSeen := time.Since(worker.lastSeen).Seconds()
 	recencyScore := 1.0 / (1.0 + timeSinceLastSeen/60.0) // Decay over minutes
-	
+
 	// Weighted combination
 	return availScore*0.4 + trustScore*0.4 + recencyScore*0.2
 }
@@ -157,7 +157,7 @@ func (s *Scheduler) scoreWorker(worker *workerState, task *ComputeTask) float64 
 func (s *Scheduler) UpdateWorkerLoad(workerID string, load float32) {
 	s.manager.mu.Lock()
 	defer s.manager.mu.Unlock()
-	
+
 	if worker, exists := s.manager.workers[workerID]; exists {
 		worker.capacity.CurrentLoad = load
 		worker.lastSeen = time.Now()
@@ -168,17 +168,17 @@ func (s *Scheduler) UpdateWorkerLoad(workerID string, load float32) {
 func (s *Scheduler) UpdateWorkerTrust(workerID string, success bool) {
 	s.manager.mu.Lock()
 	defer s.manager.mu.Unlock()
-	
+
 	worker, exists := s.manager.workers[workerID]
 	if !exists {
 		return
 	}
-	
+
 	worker.totalTasks++
 	if success {
 		worker.successTasks++
 	}
-	
+
 	// Exponential moving average
 	oldScore := float64(worker.trustScore)
 	if success {
@@ -192,7 +192,7 @@ func (s *Scheduler) UpdateWorkerTrust(workerID string, success bool) {
 func (s *Scheduler) GetLoadDistribution() map[string]float32 {
 	s.manager.mu.RLock()
 	defer s.manager.mu.RUnlock()
-	
+
 	dist := make(map[string]float32)
 	for id, worker := range s.manager.workers {
 		dist[id] = worker.capacity.CurrentLoad
@@ -204,7 +204,7 @@ func (s *Scheduler) GetLoadDistribution() map[string]float32 {
 func (s *Scheduler) RebalanceTasks() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	// Re-sort queue based on current worker loads
 	s.sortQueue()
 }

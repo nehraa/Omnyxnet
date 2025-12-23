@@ -9,19 +9,19 @@
 //!
 //! Based on design specification in dcdn_design_spec.txt
 
-pub mod types;
-pub mod transport;
-pub mod storage;
+pub mod config;
 pub mod fec;
 pub mod p2p;
+pub mod storage;
+pub mod transport;
+pub mod types;
 pub mod verifier;
-pub mod config;
 
-pub use types::*;
-pub use transport::QuicTransport;
-pub use storage::ChunkStore;
-pub use types::StorageStats;
-pub use fec::{FecEngine, FecEngineConfig, FecAlgorithm, FecGroup};
-pub use p2p::{P2PEngine, P2PConfig};
-pub use verifier::{SignatureVerifier, VerificationMetrics};
 pub use config::DcdnConfig;
+pub use fec::{FecAlgorithm, FecEngine, FecEngineConfig, FecGroup};
+pub use p2p::{P2PConfig, P2PEngine};
+pub use storage::ChunkStore;
+pub use transport::QuicTransport;
+pub use types::StorageStats;
+pub use types::*;
+pub use verifier::{SignatureVerifier, VerificationMetrics};

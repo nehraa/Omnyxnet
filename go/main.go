@@ -45,7 +45,7 @@ func main() {
 
 	// Create configuration manager for persistence
 	configManager := NewConfigManager(uint32(*nodeID))
-	
+
 	// Try to load existing configuration
 	loadedConfig, err := configManager.LoadConfig()
 	if err != nil {
@@ -57,14 +57,14 @@ func main() {
 			// Could optionally override flags here with loaded values
 		}
 	}
-	
+
 	// Save initial configuration
 	initialConfig := &NodeConfig{
-		NodeID:     uint32(*nodeID),
-		CapnpAddr:  *capnpAddr,
-		LibP2PPort: *libp2pPort,
-		UseLibP2P:  *useLibp2p,
-		LocalMode:  *localMode,
+		NodeID:         uint32(*nodeID),
+		CapnpAddr:      *capnpAddr,
+		LibP2PPort:     *libp2pPort,
+		UseLibP2P:      *useLibp2p,
+		LocalMode:      *localMode,
 		CustomSettings: make(map[string]string),
 	}
 	if err := configManager.SaveConfig(initialConfig); err != nil {
@@ -175,7 +175,7 @@ func main() {
 		<-sigChan
 
 		log.Println("🛑 Shutting down...")
-		
+
 		// Save configuration on shutdown
 		if configManager != nil {
 			log.Printf("💾 Saving configuration...")
@@ -186,7 +186,7 @@ func main() {
 				log.Printf("✅ Configuration saved")
 			}
 		}
-		
+
 		libp2pNode.Stop()
 		log.Println("✅ Shutdown complete")
 

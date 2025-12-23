@@ -1,7 +1,7 @@
+use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use anyhow::Result;
 use tracing::info;
 
 use crate::types::{Node, NodeStatus};
@@ -51,7 +51,10 @@ impl NodeStore {
         let mut nodes = self.nodes.write().await;
         if let Some(node) = nodes.get_mut(&node_id) {
             node.update_threat_score(threat_score);
-            info!("Updated threat score for node {}: {}", node_id, threat_score);
+            info!(
+                "Updated threat score for node {}: {}",
+                node_id, threat_score
+            );
         }
         Ok(())
     }
@@ -74,7 +77,8 @@ impl NodeStore {
     /// Get nodes by status
     pub async fn get_nodes_by_status(&self, status: NodeStatus) -> Vec<Node> {
         let nodes = self.nodes.read().await;
-        nodes.values()
+        nodes
+            .values()
             .filter(|n| n.status == status)
             .cloned()
             .collect()
@@ -83,7 +87,8 @@ impl NodeStore {
     /// Get healthy nodes (Active status with good health score)
     pub async fn get_healthy_nodes(&self, min_health: f32) -> Vec<Node> {
         let nodes = self.nodes.read().await;
-        nodes.values()
+        nodes
+            .values()
             .filter(|n| n.status == NodeStatus::Active && n.health_score() >= min_health)
             .cloned()
             .collect()

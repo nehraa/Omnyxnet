@@ -3,4 +3,4 @@
 from .manager import ObservabilityManager
 from .metrics import setup_metrics
 
-__all__ = ['ObservabilityManager', 'setup_metrics']
+__all__ = ["ObservabilityManager", "setup_metrics"]

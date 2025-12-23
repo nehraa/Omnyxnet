@@ -3,12 +3,11 @@ use pangea_ces::*;
 #[cfg(test)]
 mod integration_tests {
     use super::*;
-    
 
     #[tokio::test]
     async fn test_node_store() {
         let store = store::NodeStore::new();
-        
+
         // Create and insert node
         let node = types::Node::new(1);
         store.upsert_node(node.clone()).await;
@@ -31,7 +30,7 @@ mod integration_tests {
     #[tokio::test]
     async fn test_health_scoring() {
         let mut node = types::Node::new(1);
-        
+
         // Perfect health
         node.latency_ms = 10.0;
         node.jitter_ms = 1.0;
@@ -65,12 +64,20 @@ mod integration_tests {
     #[test]
     fn test_capabilities_probe() {
         let caps = capabilities::HardwareCaps::probe();
-        
+
         assert!(caps.cpu_cores > 0);
         assert!(caps.ram_gb > 0);
-        
+
         // At least one should be false (not all systems have everything)
-        println!("Capabilities: {:?}", (caps.has_avx2, caps.has_neon, caps.has_io_uring, caps.has_ebpf));
+        println!(
+            "Capabilities: {:?}",
+            (
+                caps.has_avx2,
+                caps.has_neon,
+                caps.has_io_uring,
+                caps.has_ebpf
+            )
+        );
     }
 
     #[test]

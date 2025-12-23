@@ -9,7 +9,7 @@
 /// - Adaptable bitrate
 /// - Loss tolerance for lossy networks
 use anyhow::Result;
-use opus::{Channels, Application, Encoder as OpusEncoder, Decoder as OpusDecoder};
+use opus::{Application, Channels, Decoder as OpusDecoder, Encoder as OpusEncoder};
 use tracing::{debug, info};
 
 /// Audio codec configuration for real-time communication
@@ -28,10 +28,10 @@ pub struct AudioConfig {
 impl Default for AudioConfig {
     fn default() -> Self {
         Self {
-            sample_rate: 48000,          // 48kHz for high quality
-            channels: Channels::Stereo,   // Stereo
-            bitrate: 64000,               // 64 kbps
-            frame_duration_ms: 20.0,      // 20ms frames (low latency)
+            sample_rate: 48000,         // 48kHz for high quality
+            channels: Channels::Stereo, // Stereo
+            bitrate: 64000,             // 64 kbps
+            frame_duration_ms: 20.0,    // 20ms frames (low latency)
         }
     }
 }
@@ -41,9 +41,9 @@ impl AudioConfig {
     pub fn low_latency() -> Self {
         Self {
             sample_rate: 48000,
-            channels: Channels::Mono,     // Mono reduces bandwidth
-            bitrate: 32000,               // 32 kbps
-            frame_duration_ms: 10.0,      // 10ms frames (very low latency)
+            channels: Channels::Mono, // Mono reduces bandwidth
+            bitrate: 32000,           // 32 kbps
+            frame_duration_ms: 10.0,  // 10ms frames (very low latency)
         }
     }
 
@@ -52,7 +52,7 @@ impl AudioConfig {
         Self {
             sample_rate: 48000,
             channels: Channels::Stereo,
-            bitrate: 128000,              // 128 kbps
+            bitrate: 128000, // 128 kbps
             frame_duration_ms: 20.0,
         }
     }
@@ -81,35 +81,40 @@ impl AudioEncoder {
         let mut encoder = OpusEncoder::new(
             config.sample_rate,
             config.channels,
-            Application::Voip,  // Optimized for low latency VoIP
+            Application::Voip, // Optimized for low latency VoIP
         )?;
-        
+
         // Set the configured bitrate
         encoder.set_bitrate(opus::Bitrate::Bits(config.bitrate))?;
-        
-        info!("Created Opus encoder: {}Hz, {:?}, {}bps, {}ms frames",
-              config.sample_rate, config.channels, config.bitrate, config.frame_duration_ms);
+
+        info!(
+            "Created Opus encoder: {}Hz, {:?}, {}bps, {}ms frames",
+            config.sample_rate, config.channels, config.bitrate, config.frame_duration_ms
+        );
 
         Ok(Self { encoder, config })
     }
 
     /// Encode PCM audio samples to Opus
-    /// 
+    ///
     /// Input: PCM samples (16-bit signed integers)
     /// Output: Compressed Opus packet
     pub fn encode(&mut self, pcm: &[i16]) -> Result<Vec<u8>> {
         let frame_size = self.config.frame_size();
         let expected_samples = frame_size * self.config.channels as usize;
-        
+
         if pcm.len() != expected_samples {
-            anyhow::bail!("Invalid PCM frame size: expected {} samples, got {}",
-                         expected_samples, pcm.len());
+            anyhow::bail!(
+                "Invalid PCM frame size: expected {} samples, got {}",
+                expected_samples,
+                pcm.len()
+            );
         }
 
         let mut output = vec![0u8; self.config.max_packet_size()];
         let len = self.encoder.encode(pcm, &mut output)?;
         output.truncate(len);
-        
+
         debug!("Encoded {} PCM samples to {} bytes", pcm.len(), len);
         Ok(output)
     }
@@ -131,66 +136,65 @@ pub struct AudioDecoder {
 impl AudioDecoder {
     /// Create a new audio decoder with the given configuration
     pub fn new(config: AudioConfig) -> Result<Self> {
-        let decoder = OpusDecoder::new(
-            config.sample_rate,
-            config.channels,
-        )?;
-        
-        info!("Created Opus decoder: {}Hz, {:?}",
-              config.sample_rate, config.channels);
+        let decoder = OpusDecoder::new(config.sample_rate, config.channels)?;
+
+        info!(
+            "Created Opus decoder: {}Hz, {:?}",
+            config.sample_rate, config.channels
+        );
 
         Ok(Self { decoder, config })
     }
 
     /// Decode Opus packet to PCM audio samples
-    /// 
+    ///
     /// Input: Compressed Opus packet
     /// Output: PCM samples (16-bit signed integers)
     pub fn decode(&mut self, opus_packet: &[u8]) -> Result<Vec<i16>> {
         let frame_size = self.config.frame_size();
         let mut output = vec![0i16; frame_size * self.config.channels as usize];
-        
+
         let len = self.decoder.decode(opus_packet, &mut output, false)?;
         output.truncate(len);
-        
+
         debug!("Decoded {} bytes to {} PCM samples", opus_packet.len(), len);
         Ok(output)
     }
 
     /// Decode with Packet Loss Concealment (PLC)
-    /// 
+    ///
     /// When a packet is lost, this generates synthetic audio to mask the loss
     pub fn decode_plc(&mut self) -> Result<Vec<i16>> {
         let frame_size = self.config.frame_size();
         let mut output = vec![0i16; frame_size * self.config.channels as usize];
-        
+
         // Decode without a packet (FEC/PLC mode)
         let len = self.decoder.decode(&[], &mut output, true)?;
         output.truncate(len);
-        
+
         debug!("Generated {} PLC samples for lost packet", len);
         Ok(output)
     }
 }
 
 /// Video codec information (for future implementation)
-/// 
+///
 /// Phase 1 specifies VP9/AV1 codecs for video streaming. These are documented
 /// here but not implemented to avoid heavy dependencies in the MVP.
-/// 
+///
 /// VP9:
 /// - Open-source, royalty-free
 /// - Better compression than H.264
 /// - Good hardware support
 /// - Crate: rav1e (encoder), dav1d (decoder)
-/// 
+///
 /// AV1:
 /// - Next-generation codec
 /// - 30% better compression than VP9
 /// - Increasing hardware support
 /// - Higher CPU requirements for software encoding
 /// - Crate: rav1e (encoder), dav1d (decoder)
-/// 
+///
 /// To enable video support in the future:
 /// 1. Add dependencies: rav1e = "0.7", dav1d = "0.10"
 /// 2. Create VideoEncoder and VideoDecoder similar to AudioEncoder
@@ -224,19 +228,23 @@ mod tests {
 
     #[test]
     fn test_opus_encode_decode() -> Result<()> {
-        const TEST_FREQUENCY_HZ: f32 = 440.0;  // A4 note
+        const TEST_FREQUENCY_HZ: f32 = 440.0; // A4 note
         const SAMPLE_RATE: f32 = 48000.0;
-        const AMPLITUDE_SCALE: f32 = 32767.0;  // Max i16 value
-        
+        const AMPLITUDE_SCALE: f32 = 32767.0; // Max i16 value
+
         let config = AudioConfig::low_latency();
         let frame_size = config.frame_size();
-        
+
         let mut encoder = AudioEncoder::new(config.clone())?;
         let mut decoder = AudioDecoder::new(config)?;
 
         // Generate test audio (440Hz sine wave for testing)
         let pcm: Vec<i16> = (0..frame_size)
-            .map(|i| (AMPLITUDE_SCALE * (2.0 * std::f32::consts::PI * TEST_FREQUENCY_HZ * i as f32 / SAMPLE_RATE).sin()) as i16)
+            .map(|i| {
+                (AMPLITUDE_SCALE
+                    * (2.0 * std::f32::consts::PI * TEST_FREQUENCY_HZ * i as f32 / SAMPLE_RATE)
+                        .sin()) as i16
+            })
             .collect();
 
         // Encode

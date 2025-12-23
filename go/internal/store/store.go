@@ -22,10 +22,10 @@ type Node struct {
 	LatencyMs   float32
 	ThreatScore float32
 	// Connection quality metrics
-	JitterMs    float32 // Latency variance
-	PacketLoss  float32 // Packet loss percentage (0.0-1.0)
-	LastSeen    int64   // Unix timestamp of last successful ping
-	mu          sync.RWMutex
+	JitterMs   float32 // Latency variance
+	PacketLoss float32 // Packet loss percentage (0.0-1.0)
+	LastSeen   int64   // Unix timestamp of last successful ping
+	mu         sync.RWMutex
 }
 
 // Store manages the in-memory storage of nodes
@@ -77,7 +77,7 @@ func (s *Store) UpdateLatency(nodeID uint32, latencyMs float32) bool {
 	}
 	node.mu.Lock()
 	defer node.mu.Unlock()
-	
+
 	// Calculate jitter (latency variance)
 	oldLatency := node.LatencyMs
 	if oldLatency > 0 {
@@ -88,7 +88,7 @@ func (s *Store) UpdateLatency(nodeID uint32, latencyMs float32) bool {
 		}
 		node.JitterMs = (node.JitterMs*0.9 + jitter*0.1) // Exponential moving average
 	}
-	
+
 	node.LatencyMs = latencyMs
 	node.LastSeen = time.Now().Unix()
 	return true
@@ -105,7 +105,7 @@ func (s *Store) UpdateThreatScore(nodeID uint32, threatScore float32) bool {
 	node.mu.Lock()
 	defer node.mu.Unlock()
 	node.ThreatScore = threatScore
-	
+
 	// Auto-transition to Purgatory if threat score is high
 	if threatScore > 0.8 {
 		node.Status = StatePurgatory

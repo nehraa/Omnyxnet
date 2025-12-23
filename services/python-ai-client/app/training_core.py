@@ -6,7 +6,7 @@ Handles zero-copy Cap'n Proto ingestion and PyTorch training.
 
 import logging
 import time
-from typing import Tuple, List
+from typing import Tuple
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ class TrainingEngine:
             # In production, this would use pycapnp to deserialize
             # without copying data between Python and Cap'n Proto buffers
             input_tensor = batch_data
-            logger.debug(f"   ✅ Zero-copy deserialization complete")
+            logger.debug("   ✅ Zero-copy deserialization complete")
 
             # Simulate training step (compute loss and gradients)
             # In production, this would be actual PyTorch/TensorFlow code
@@ -89,7 +89,7 @@ class TrainingEngine:
     def _compute_loss(self, data: np.ndarray) -> float:
         """Compute loss for the current batch (stub)."""
         # In production: return model(data).loss
-        return float(np.mean((data ** 2).sum()))
+        return float(np.mean((data**2).sum()))
 
     def _compute_gradients(self, data: np.ndarray) -> np.ndarray:
         """Compute gradients for the current batch (stub)."""
@@ -99,7 +99,7 @@ class TrainingEngine:
     def run(self):
         """
         Main training loop.
-        
+
         Orchestrates:
         1. Connection to Go Orchestrator and Rust Compute Core
         2. Data ingestion pipeline
@@ -136,7 +136,7 @@ class TrainingEngine:
     def _sync_gradients(self, loss: float, gradients: np.ndarray):
         """
         Synchronize gradients with Go Orchestrator.
-        
+
         In production, this would:
         1. Serialize gradients to Cap'n Proto format
         2. Send via RPC to go-orchestrator

@@ -1,5 +1,5 @@
-use std::fmt;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Node status enum matching Go implementation
@@ -160,17 +160,21 @@ pub struct CesConfig {
 
 impl CesConfig {
     /// Create adaptive config based on system capabilities and file size
-    pub fn adaptive(caps: &crate::capabilities::HardwareCaps, file_size: u64, _bandwidth: f32) -> Self {
+    pub fn adaptive(
+        caps: &crate::capabilities::HardwareCaps,
+        file_size: u64,
+        _bandwidth: f32,
+    ) -> Self {
         let chunk_size = if caps.ram_gb > 16 {
             100 * 1024 * 1024 // 100 MB for high-memory systems
         } else if caps.ram_gb > 4 {
-            10 * 1024 * 1024  // 10 MB for medium-memory systems
+            10 * 1024 * 1024 // 10 MB for medium-memory systems
         } else {
-            64 * 1024         // 64 KB for low-memory systems
+            64 * 1024 // 64 KB for low-memory systems
         };
 
         let compression_level = if caps.cpu_cores > 8 { 9 } else { 3 };
-        
+
         // Dynamic sharding based on file size
         let shard_count = ((file_size / chunk_size as u64).max(4).min(32)) as usize;
         let parity_count = shard_count / 2; // 50% redundancy

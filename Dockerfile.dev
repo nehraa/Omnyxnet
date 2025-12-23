@@ -1,0 +1,19 @@
+FROM python:3.11-slim
+
+# Install build deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for running tests
+RUN useradd -m testuser
+WORKDIR /app
+
+# Note: don't COPY with shell redirects (unsupported). We'll mount the repo at runtime
+# and install requirements from the mounted filesystem if present.
+RUN pip install --upgrade pip setuptools wheel || true
+
+# Default to bash so we can run commands: e.g. `docker run --rm -v $PWD:/app -w /app omnyxnet:dev pytest`
+USER testuser
+CMD ["bash"]

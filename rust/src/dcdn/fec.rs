@@ -48,7 +48,11 @@ impl FecEngine {
     }
 
     /// Encode data packets into parity packets
-    pub fn encode(&self, packets: &[Packet], config: &FecEngineConfig) -> Result<Vec<ParityPacket>> {
+    pub fn encode(
+        &self,
+        packets: &[Packet],
+        config: &FecEngineConfig,
+    ) -> Result<Vec<ParityPacket>> {
         if packets.is_empty() {
             anyhow::bail!("Cannot encode empty packet list");
         }
@@ -61,8 +65,7 @@ impl FecEngine {
         }
 
         // Create Reed-Solomon encoder
-        let rs = ReedSolomon::new(k, m)
-            .context("Failed to create Reed-Solomon encoder")?;
+        let rs = ReedSolomon::new(k, m).context("Failed to create Reed-Solomon encoder")?;
 
         // Prepare shards (data + parity placeholders)
         let shard_len = packets.iter().map(|p| p.data.len()).max().unwrap_or(0);
@@ -112,16 +115,19 @@ impl FecEngine {
 
         // Check if we have enough packets
         if !self.can_recover(group) {
-            anyhow::bail!("Insufficient packets for recovery: have {}, need {}", 
-                          group.received_count, k);
+            anyhow::bail!(
+                "Insufficient packets for recovery: have {}, need {}",
+                group.received_count,
+                k
+            );
         }
 
         // Create Reed-Solomon decoder
-        let rs = ReedSolomon::new(k, m)
-            .context("Failed to create Reed-Solomon decoder")?;
+        let rs = ReedSolomon::new(k, m).context("Failed to create Reed-Solomon decoder")?;
 
         // Prepare shards with present flags
-        let shard_len = group.data_packets
+        let shard_len = group
+            .data_packets
             .iter()
             .filter_map(|p| p.as_ref())
             .map(|p| p.data.len())
@@ -154,14 +160,15 @@ impl FecEngine {
         }
 
         // Reconstruct missing shards
-        let mut shard_options: Vec<Option<Vec<u8>>> = shards.into_iter()
+        let mut shard_options: Vec<Option<Vec<u8>>> = shards
+            .into_iter()
             .zip(present.iter())
             .map(|(s, &p)| if p { Some(s) } else { None })
             .collect();
-        
+
         rs.reconstruct_data(&mut shard_options)
             .context("Reed-Solomon reconstruction failed")?;
-        
+
         // Extract reconstructed shards, handling possible reconstruction failures
         let mut missing_indices = Vec::new();
         shards = shard_options
@@ -176,9 +183,12 @@ impl FecEngine {
                 }
             })
             .collect();
-        
+
         if !missing_indices.is_empty() {
-            anyhow::bail!("Failed to reconstruct shards at indices: {:?}", missing_indices);
+            anyhow::bail!(
+                "Failed to reconstruct shards at indices: {:?}",
+                missing_indices
+            );
         }
 
         // Extract recovered data packets
@@ -205,13 +215,10 @@ impl FecEngine {
     /// Add a packet to an active FEC group
     pub fn add_packet(&self, packet: Packet) -> Result<()> {
         let group_id = packet.group_id;
-        
-        let mut group = self.active_groups.entry(group_id)
-            .or_insert_with(|| FecGroup::new(
-                group_id,
-                self.config.block_size,
-                self.config.parity_count,
-            ));
+
+        let mut group = self.active_groups.entry(group_id).or_insert_with(|| {
+            FecGroup::new(group_id, self.config.block_size, self.config.parity_count)
+        });
 
         let idx = packet.index;
         if idx < group.data_packets.len() && group.data_packets[idx].is_none() {
@@ -225,13 +232,10 @@ impl FecEngine {
     /// Add a parity packet to an active FEC group
     pub fn add_parity(&self, parity: ParityPacket) -> Result<()> {
         let group_id = parity.group_id;
-        
-        let mut group = self.active_groups.entry(group_id)
-            .or_insert_with(|| FecGroup::new(
-                group_id,
-                self.config.block_size,
-                self.config.parity_count,
-            ));
+
+        let mut group = self.active_groups.entry(group_id).or_insert_with(|| {
+            FecGroup::new(group_id, self.config.block_size, self.config.parity_count)
+        });
 
         group.parity_packets.push(parity);
         group.received_count += 1;
@@ -240,7 +244,10 @@ impl FecEngine {
     }
 
     /// Get an active FEC group
-    pub fn get_group(&self, group_id: &FecGroupId) -> Option<dashmap::mapref::one::Ref<FecGroupId, FecGroup>> {
+    pub fn get_group(
+        &self,
+        group_id: &FecGroupId,
+    ) -> Option<dashmap::mapref::one::Ref<FecGroupId, FecGroup>> {
         self.active_groups.get(group_id)
     }
 
@@ -323,7 +330,8 @@ mod tests {
         // Simulate loss of 2 packets
         let mut group = FecGroup::new(FecGroupId(1), 8, 2);
         for (i, packet) in packets.iter().enumerate() {
-            if i != 3 && i != 7 {  // Drop packets 3 and 7
+            if i != 3 && i != 7 {
+                // Drop packets 3 and 7
                 group.data_packets[i] = Some(packet.clone());
                 group.received_count += 1;
             }

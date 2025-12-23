@@ -120,7 +120,7 @@ impl PublicKey {
 // Serde helper for Signature
 mod signature_serde {
     use super::Signature;
-    use serde::{Deserializer, Serializer, Deserialize};
+    use serde::{Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S>(sig: &Signature, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -146,7 +146,7 @@ mod signature_serde {
 // Serde helper for Bytes
 mod bytes_serde {
     use bytes::Bytes;
-    use serde::{Deserializer, Serializer, Deserialize};
+    use serde::{Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S>(bytes: &Bytes, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -166,9 +166,9 @@ mod bytes_serde {
 
 // Serde helper for Instant (serializes as Unix timestamp in milliseconds)
 mod timestamp_serde {
+    use serde::{Deserialize, Deserializer, Serializer};
     use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-    use serde::{Deserializer, Serializer, Deserialize};
-    
+
     // Store the program start time to convert between Instant and SystemTime
     lazy_static::lazy_static! {
         static ref PROGRAM_START: (Instant, SystemTime) = (Instant::now(), SystemTime::now());

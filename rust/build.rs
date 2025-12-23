@@ -4,10 +4,7 @@ use std::process::Command;
 
 fn main() {
     // Check if capnp is installed
-    let capnp_available = Command::new("capnp")
-        .arg("--version")
-        .output()
-        .is_ok();
+    let capnp_available = Command::new("capnp").arg("--version").output().is_ok();
 
     if !capnp_available {
         println!("cargo:warning=Cap'n Proto compiler (capnp) not found.");
@@ -22,12 +19,9 @@ fn main() {
     let schema_path = std::env::var("CAPNP_SCHEMA_PATH")
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from("schema.capnp"));
-    
+
     if schema_path.exists() {
-        match capnpc::CompilerCommand::new()
-            .file(&schema_path)
-            .run()
-        {
+        match capnpc::CompilerCommand::new().file(&schema_path).run() {
             Ok(_) => println!("cargo:warning=Cap'n Proto schema compiled successfully"),
             Err(e) => {
                 println!("cargo:warning=Failed to compile Cap'n Proto schema: {}", e);
@@ -35,8 +29,11 @@ fn main() {
             }
         }
     } else {
-        println!("cargo:warning=Schema file not found at {:?}, skipping Cap'n Proto compilation", schema_path);
+        println!(
+            "cargo:warning=Schema file not found at {:?}, skipping Cap'n Proto compilation",
+            schema_path
+        );
     }
-    
+
     println!("cargo:rerun-if-changed=schema.capnp");
 }

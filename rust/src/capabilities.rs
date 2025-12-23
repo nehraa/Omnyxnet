@@ -23,7 +23,11 @@ impl HardwareCaps {
             false
         };
 
-        let neon = if cfg!(target_arch = "aarch64") { false } else { false };
+        let neon = if cfg!(target_arch = "aarch64") {
+            false
+        } else {
+            false
+        };
 
         Self {
             has_avx2: avx2,

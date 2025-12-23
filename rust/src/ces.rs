@@ -6,12 +6,12 @@ use chacha20poly1305::{
 use rand::RngCore;
 use rayon::prelude::*;
 use reed_solomon_erasure::ReedSolomon;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use std::io::{Read, Write};
 use tracing::{debug, info};
 
-use crate::types::{CesConfig, CompressionAlgorithm};
 use crate::file_detector::FileDetector;
+use crate::types::{CesConfig, CompressionAlgorithm};
 
 // Brotli compression constants
 const BROTLI_BUFFER_SIZE: usize = 4096;
@@ -52,7 +52,7 @@ impl CesPipeline {
         // Step 0: Detect file type (from content)
         let file_type = FileDetector::detect_from_content(data);
         debug!("Detected file type: {}", file_type.name());
-        
+
         // Step 1: Compress (skip if already compressed)
         let compressed = if file_type.skip_compression() {
             info!("Skipping compression for {} type", file_type.name());
@@ -62,11 +62,14 @@ impl CesPipeline {
             debug!("Using compression level {} for {}", level, file_type.name());
             self.compress_with_level(data, level)?
         };
-        
+
         if compressed.len() < data.len() {
-            info!("Compressed {} bytes to {} bytes ({:.1}% reduction)", 
-                  data.len(), compressed.len(), 
-                  (1.0 - compressed.len() as f64 / data.len() as f64) * 100.0);
+            info!(
+                "Compressed {} bytes to {} bytes ({:.1}% reduction)",
+                data.len(),
+                compressed.len(),
+                (1.0 - compressed.len() as f64 / data.len() as f64) * 100.0
+            );
         } else {
             info!("Data not compressed ({} bytes)", data.len());
         }
@@ -74,7 +77,7 @@ impl CesPipeline {
         // Step 2: Encrypt
         let encrypted = self.encrypt(&compressed)?;
         info!("Encrypted {} bytes", encrypted.len());
-        
+
         // Prepend encrypted length (4 bytes) to help with reconstruction
         let enc_len = encrypted.len() as u32;
         let mut data_to_shard = enc_len.to_le_bytes().to_vec();
@@ -82,8 +85,10 @@ impl CesPipeline {
 
         // Step 3: Shard with Reed-Solomon
         let shards = self.shard(&data_to_shard)?;
-        info!("Created {} data shards + {} parity shards", 
-              self.config.shard_count, self.config.parity_count);
+        info!(
+            "Created {} data shards + {} parity shards",
+            self.config.shard_count, self.config.parity_count
+        );
 
         Ok(shards)
     }
@@ -93,13 +98,18 @@ impl CesPipeline {
         // Step 1: Reconstruct from Reed-Solomon shards
         let reconstructed = self.reconstruct_shards(shards)?;
         info!("Reconstructed {} bytes from shards", reconstructed.len());
-        
+
         // Extract encrypted length
         if reconstructed.len() < 4 {
             anyhow::bail!("Reconstructed data too small");
         }
-        let enc_len = u32::from_le_bytes([reconstructed[0], reconstructed[1], reconstructed[2], reconstructed[3]]) as usize;
-        
+        let enc_len = u32::from_le_bytes([
+            reconstructed[0],
+            reconstructed[1],
+            reconstructed[2],
+            reconstructed[3],
+        ]) as usize;
+
         // Extract encrypted data (trim RS padding)
         if reconstructed.len() < 4 + enc_len {
             anyhow::bail!("Reconstructed data smaller than expected encrypted length");
@@ -128,7 +138,7 @@ impl CesPipeline {
             // No compression
             return Ok(data.to_vec());
         }
-        
+
         match self.config.compression_algorithm {
             CompressionAlgorithm::Zstd => {
                 let mut compressed = Vec::new();
@@ -142,10 +152,10 @@ impl CesPipeline {
                 let quality = (level.max(0).min(11)) as u32;
                 let mut compressed = Vec::new();
                 let mut compressor = brotli::CompressorReader::new(
-                    data, 
-                    BROTLI_BUFFER_SIZE, 
-                    quality, 
-                    BROTLI_LG_WINDOW_SIZE
+                    data,
+                    BROTLI_BUFFER_SIZE,
+                    quality,
+                    BROTLI_LG_WINDOW_SIZE,
                 );
                 compressor.read_to_end(&mut compressed)?;
                 Ok(compressed)
@@ -176,14 +186,15 @@ impl CesPipeline {
     /// Encrypt data using XChaCha20-Poly1305
     fn encrypt(&self, data: &[u8]) -> Result<Vec<u8>> {
         let cipher = XChaCha20Poly1305::new(&self.encryption_key.into());
-        
+
         // Generate random nonce (24 bytes for XChaCha20)
         let mut nonce_bytes = [0u8; 24];
         rand::thread_rng().fill_bytes(&mut nonce_bytes);
         let nonce = XNonce::from_slice(&nonce_bytes);
 
         // Encrypt
-        let ciphertext = cipher.encrypt(nonce, data)
+        let ciphertext = cipher
+            .encrypt(nonce, data)
             .map_err(|e| anyhow::anyhow!("Encryption failed: {}", e))?;
 
         // Prepend nonce to ciphertext
@@ -206,7 +217,8 @@ impl CesPipeline {
         let ciphertext = &data[24..];
 
         // Decrypt
-        let plaintext = cipher.decrypt(nonce, ciphertext)
+        let plaintext = cipher
+            .decrypt(nonce, ciphertext)
             .map_err(|e| anyhow::anyhow!("Decryption failed: {}", e))?;
 
         Ok(plaintext)
@@ -227,13 +239,13 @@ impl CesPipeline {
             .map(|i| {
                 let start = i * shard_size;
                 let end = std::cmp::min(start + shard_size, data.len());
-                
+
                 let mut shard = if start < data.len() {
                     data[start..end].to_vec()
                 } else {
                     vec![]
                 };
-                
+
                 // Pad to shard_size
                 shard.resize(shard_size, 0);
                 shard
@@ -248,10 +260,14 @@ impl CesPipeline {
         }
 
         // Generate parity shards using Reed-Solomon
-        let rs = ReedSolomon::<reed_solomon_erasure::galois_8::Field>::new(data_shards, parity_shards)?;
+        let rs =
+            ReedSolomon::<reed_solomon_erasure::galois_8::Field>::new(data_shards, parity_shards)?;
         rs.encode(&mut shards)?;
 
-        debug!("Created {} shards of {} bytes each", total_shards, shard_size);
+        debug!(
+            "Created {} shards of {} bytes each",
+            total_shards, shard_size
+        );
         Ok(shards)
     }
 
@@ -260,10 +276,11 @@ impl CesPipeline {
         let data_shards = self.config.shard_count;
         let parity_shards = self.config.parity_count;
 
-        let rs = ReedSolomon::<reed_solomon_erasure::galois_8::Field>::new(data_shards, parity_shards)?;
+        let rs =
+            ReedSolomon::<reed_solomon_erasure::galois_8::Field>::new(data_shards, parity_shards)?;
         rs.reconstruct(&mut shards)?;
 
-        // Concatenate data shards  
+        // Concatenate data shards
         let mut result = Vec::new();
         for i in 0..data_shards {
             if let Some(ref shard) = shards[i] {
@@ -299,11 +316,11 @@ mod tests {
     fn test_compression() {
         let config = CesConfig::default();
         let pipeline = CesPipeline::new(config);
-        
+
         let data = b"Hello, World! ".repeat(100);
         let compressed = pipeline.compress(&data).unwrap();
         assert!(compressed.len() < data.len());
-        
+
         let decompressed = pipeline.decompress(&compressed).unwrap();
         assert_eq!(data, decompressed.as_slice());
     }
@@ -312,11 +329,11 @@ mod tests {
     fn test_encryption() {
         let config = CesConfig::default();
         let pipeline = CesPipeline::new(config);
-        
+
         let data = b"Secret message";
         let encrypted = pipeline.encrypt(data).unwrap();
         assert_ne!(data.to_vec(), encrypted);
-        
+
         let decrypted = pipeline.decrypt(&encrypted).unwrap();
         assert_eq!(data.to_vec(), decrypted);
     }
@@ -331,18 +348,19 @@ mod tests {
             chunk_size: 1024,
         };
         let pipeline = CesPipeline::new(config);
-        
+
         let data = b"Test data for sharding".repeat(10);
         let shards = pipeline.shard(&data).unwrap();
-        
+
         assert_eq!(shards.len(), 6); // 4 data + 2 parity
-        
+
         // Simulate losing 2 shards
-        let recovery_shards = shards.into_iter()
+        let recovery_shards = shards
+            .into_iter()
             .enumerate()
             .map(|(i, s)| if i == 1 || i == 3 { None } else { Some(s) })
             .collect();
-        
+
         let reconstructed = pipeline.reconstruct_shards(recovery_shards).unwrap();
         // Note: reconstructed will be padded, so we check prefix
         assert!(reconstructed.starts_with(&data));
@@ -353,16 +371,17 @@ mod tests {
         let config = CesConfig::default();
         let key = [0u8; 32]; // Use a fixed key for testing
         let pipeline = CesPipeline::new(config).with_key(key);
-        
+
         let data = b"Full pipeline test data!".repeat(50);
         let shards = pipeline.process(&data).unwrap();
-        
+
         // Simulate some shard loss (up to parity_count shards can be lost)
-        let recovery_shards = shards.into_iter()
+        let recovery_shards = shards
+            .into_iter()
             .enumerate()
             .map(|(i, s)| if i == 2 { None } else { Some(s) })
             .collect();
-        
+
         let reconstructed = pipeline.reconstruct(recovery_shards).unwrap();
         assert_eq!(data.to_vec(), reconstructed);
     }

@@ -176,7 +176,7 @@ func (pr *ProximityRouter) SelectUploadTargets(targetCount int, excludePeers []p
 	for len(result) < targetCount && idx < len(proximities) {
 		result = append(result, proximities[idx].PeerID)
 		idx += diversityFactor
-		
+
 		// If we run out using diversity factor, go back and fill remaining
 		if idx >= len(proximities) && len(result) < targetCount {
 			diversityFactor = 1

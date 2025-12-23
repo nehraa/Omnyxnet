@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -33,8 +34,8 @@ type GoStreamConfig struct {
 // DefaultGoStreamConfig returns default streaming configuration
 func DefaultGoStreamConfig() GoStreamConfig {
 	return GoStreamConfig{
-		Port:          9996, // Default streaming port
-		MaxPacketSize: 65000, // Safe UDP packet size (leave room for headers)
+		Port:          9996,        // Default streaming port
+		MaxPacketSize: 65000,       // Safe UDP packet size (leave room for headers)
 		BufferSize:    1024 * 1024, // 1MB buffer
 	}
 }
@@ -42,13 +43,13 @@ func DefaultGoStreamConfig() GoStreamConfig {
 // StreamingService manages UDP and TCP streaming for video/audio/chat
 // This is the Go network layer that Python calls via RPC
 type StreamingService struct {
-	config    GoStreamConfig
-	udpConn   *net.UDPConn
+	config      GoStreamConfig
+	udpConn     *net.UDPConn
 	tcpListener net.Listener
-	mu        sync.RWMutex
-	running   bool
-	ctx       context.Context
-	cancel    context.CancelFunc
+	mu          sync.RWMutex
+	running     bool
+	ctx         context.Context
+	cancel      context.CancelFunc
 
 	// Callbacks for received data
 	onVideoFrame  func(peerAddr string, frameID uint32, data []byte)
@@ -347,7 +348,7 @@ func (s *StreamingService) SendChatMessage(peerAddr string, message string) erro
 
 // ConnectTCPPeer connects to a peer via TCP for chat
 func (s *StreamingService) ConnectTCPPeer(host string, port int) error {
-	addr := fmt.Sprintf("%s:%d", host, port)
+	addr := net.JoinHostPort(host, strconv.Itoa(port))
 	conn, err := net.DialTimeout("tcp", addr, 10*time.Second)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s: %w", addr, err)
@@ -367,7 +368,7 @@ func (s *StreamingService) ConnectTCPPeer(host string, port int) error {
 
 // GetPeerAddress resolves a hostname/IP to a UDP address
 func (s *StreamingService) GetPeerAddress(host string, port int) (*net.UDPAddr, error) {
-	return net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", host, port))
+	return net.ResolveUDPAddr("udp", net.JoinHostPort(host, strconv.Itoa(port)))
 }
 
 // Stop stops all streaming services
@@ -402,9 +403,9 @@ type VideoFrameAssembler struct {
 }
 
 type frameBuffer struct {
-	packets     map[uint16][]byte
-	totalPkts   uint16
-	lastUpdate  time.Time
+	packets    map[uint16][]byte
+	totalPkts  uint16
+	lastUpdate time.Time
 }
 
 // NewVideoFrameAssembler creates a new frame assembler

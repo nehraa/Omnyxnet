@@ -78,15 +78,18 @@ impl Firewall {
     /// Initialize eBPF firewall (Linux only)
     #[cfg(feature = "ebpf")]
     pub async fn init_ebpf(&self, interface: &str) -> anyhow::Result<()> {
-        use aya::{Bpf, programs::{Xdp, XdpFlags}};
-        
+        use aya::{
+            programs::{Xdp, XdpFlags},
+            Bpf,
+        };
+
         warn!("eBPF initialization not yet implemented");
         // Placeholder for eBPF initialization
         // In a real implementation:
         // 1. Load the compiled eBPF program
         // 2. Attach to the network interface using XDP
         // 3. Set up the IP allowlist map
-        
+
         Ok(())
     }
 }

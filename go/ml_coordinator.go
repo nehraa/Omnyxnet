@@ -10,11 +10,11 @@ import (
 
 // MLCoordinator manages distributed machine learning tasks
 type MLCoordinator struct {
-	tasks           map[string]*MLTrainingTaskData
-	gradients       map[string][]*GradientUpdateData
-	models          map[uint32]*ModelUpdateData
-	workerStatus    map[string]*WorkerStatus
-	mu              sync.RWMutex
+	tasks        map[string]*MLTrainingTaskData
+	gradients    map[string][]*GradientUpdateData
+	models       map[uint32]*ModelUpdateData
+	workerStatus map[string]*WorkerStatus
+	mu           sync.RWMutex
 }
 
 // MLTrainingTaskData represents an ML training task
@@ -56,11 +56,11 @@ type ModelUpdateData struct {
 
 // WorkerStatus tracks the status of a worker node
 type WorkerStatus struct {
-	WorkerID        string
-	TaskID          string
-	CurrentEpoch    uint32
-	LastUpdate      time.Time
-	Status          string // "idle", "training", "syncing", "failed"
+	WorkerID         string
+	TaskID           string
+	CurrentEpoch     uint32
+	LastUpdate       time.Time
+	Status           string // "idle", "training", "syncing", "failed"
 	CompletedBatches uint32
 }
 
@@ -86,7 +86,7 @@ func NewMLCoordinator() *MLCoordinator {
 func (mlc *MLCoordinator) StartMLTraining(ctx context.Context, task *MLTrainingTaskData) error {
 	mlc.mu.Lock()
 	defer mlc.mu.Unlock()
-	
+
 	// Validate task
 	if task.TaskID == "" {
 		return fmt.Errorf("task ID is required")
@@ -97,22 +97,22 @@ func (mlc *MLCoordinator) StartMLTraining(ctx context.Context, task *MLTrainingT
 	if len(task.WorkerNodes) == 0 {
 		return fmt.Errorf("at least one worker node is required")
 	}
-	
+
 	// Check if task already exists
 	if _, exists := mlc.tasks[task.TaskID]; exists {
 		return fmt.Errorf("task %s already exists", task.TaskID)
 	}
-	
+
 	// Initialize task
 	task.CurrentEpoch = 0
 	task.StartTime = time.Now()
 	task.Status = "pending"
-	
+
 	mlc.tasks[task.TaskID] = task
 	mlc.gradients[task.TaskID] = make([]*GradientUpdateData, 0)
-	
+
 	log.Printf("ML Training task started: %s with %d workers", task.TaskID, len(task.WorkerNodes))
-	
+
 	// Initialize worker status
 	for _, workerID := range task.WorkerNodes {
 		mlc.workerStatus[workerID] = &WorkerStatus{
@@ -123,7 +123,7 @@ func (mlc *MLCoordinator) StartMLTraining(ctx context.Context, task *MLTrainingT
 			Status:       "idle",
 		}
 	}
-	
+
 	// In a full implementation, this would:
 	// 1. Distribute the dataset to all workers
 	// 2. Initialize the model on all workers
@@ -131,10 +131,10 @@ func (mlc *MLCoordinator) StartMLTraining(ctx context.Context, task *MLTrainingT
 	// 4. Collect gradients asynchronously
 	// 5. Perform federated averaging
 	// 6. Broadcast updated model
-	
+
 	// Mark as running
 	task.Status = "running"
-	
+
 	return nil
 }
 
@@ -142,12 +142,12 @@ func (mlc *MLCoordinator) StartMLTraining(ctx context.Context, task *MLTrainingT
 func (mlc *MLCoordinator) GetMLTrainingStatus(taskID string) (*MLTrainingTaskData, error) {
 	mlc.mu.RLock()
 	defer mlc.mu.RUnlock()
-	
+
 	task, exists := mlc.tasks[taskID]
 	if !exists {
 		return nil, fmt.Errorf("task not found: %s", taskID)
 	}
-	
+
 	return task, nil
 }
 
@@ -155,22 +155,22 @@ func (mlc *MLCoordinator) GetMLTrainingStatus(taskID string) (*MLTrainingTaskDat
 func (mlc *MLCoordinator) StopMLTraining(taskID string) error {
 	mlc.mu.Lock()
 	defer mlc.mu.Unlock()
-	
+
 	task, exists := mlc.tasks[taskID]
 	if !exists {
 		return fmt.Errorf("task not found: %s", taskID)
 	}
-	
+
 	task.Status = "stopped"
 	log.Printf("ML Training task stopped: %s", taskID)
-	
+
 	// Clean up worker status
 	for _, workerID := range task.WorkerNodes {
 		if status, exists := mlc.workerStatus[workerID]; exists && status.TaskID == taskID {
 			status.Status = "idle"
 		}
 	}
-	
+
 	return nil
 }
 
@@ -178,54 +178,54 @@ func (mlc *MLCoordinator) StopMLTraining(taskID string) error {
 func (mlc *MLCoordinator) SubmitGradient(ctx context.Context, update *GradientUpdateData) error {
 	mlc.mu.Lock()
 	defer mlc.mu.Unlock()
-	
+
 	// Find the worker's task
 	workerStatus, exists := mlc.workerStatus[update.WorkerID]
 	if !exists {
 		return fmt.Errorf("worker not registered: %s", update.WorkerID)
 	}
-	
+
 	taskID := workerStatus.TaskID
 	task, exists := mlc.tasks[taskID]
 	if !exists {
 		return fmt.Errorf("task not found for worker: %s", update.WorkerID)
 	}
-	
+
 	// Add gradient to collection
 	update.Timestamp = time.Now()
 	mlc.gradients[taskID] = append(mlc.gradients[taskID], update)
-	
+
 	// Update worker status
 	workerStatus.LastUpdate = time.Now()
 	workerStatus.CurrentEpoch = task.CurrentEpoch
 	workerStatus.Status = "syncing"
-	
-	log.Printf("Gradient received from worker %s for task %s: loss=%.4f, accuracy=%.4f", 
+
+	log.Printf("Gradient received from worker %s for task %s: loss=%.4f, accuracy=%.4f",
 		update.WorkerID, taskID, update.Loss, update.Accuracy)
-	
+
 	// Check if we have gradients from all workers for this epoch
 	if len(mlc.gradients[taskID]) >= len(task.WorkerNodes) {
 		log.Printf("All gradients received for epoch %d, performing aggregation", task.CurrentEpoch)
-		
+
 		// Perform federated averaging
 		err := mlc.aggregateGradients(taskID)
 		if err != nil {
 			return fmt.Errorf("gradient aggregation failed: %w", err)
 		}
-		
+
 		// Clear gradients for next epoch
 		mlc.gradients[taskID] = make([]*GradientUpdateData, 0)
-		
+
 		// Increment epoch
 		task.CurrentEpoch++
-		
+
 		// Check if training is complete
 		if task.CurrentEpoch >= task.Epochs {
 			task.Status = "completed"
 			log.Printf("Training completed for task: %s", taskID)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -233,28 +233,28 @@ func (mlc *MLCoordinator) SubmitGradient(ctx context.Context, update *GradientUp
 func (mlc *MLCoordinator) aggregateGradients(taskID string) error {
 	gradients := mlc.gradients[taskID]
 	task := mlc.tasks[taskID]
-	
+
 	if len(gradients) == 0 {
 		return fmt.Errorf("no gradients to aggregate")
 	}
-	
+
 	// Calculate weighted average of losses and accuracies
 	totalSamples := uint32(0)
 	weightedLoss := 0.0
 	weightedAccuracy := 0.0
-	
+
 	for _, grad := range gradients {
 		totalSamples += grad.NumSamples
 		weightedLoss += grad.Loss * float64(grad.NumSamples)
 		weightedAccuracy += grad.Accuracy * float64(grad.NumSamples)
 	}
-	
+
 	globalLoss := weightedLoss / float64(totalSamples)
 	globalAccuracy := weightedAccuracy / float64(totalSamples)
-	
+
 	// Create model update
 	modelUpdate := &ModelUpdateData{
-		ModelVersion:      task.CurrentEpoch + 1,
+		ModelVersion: task.CurrentEpoch + 1,
 		// Foundation: Tensor operations not yet implemented
 		// In production, Parameters would contain serialized PyTorch/TensorFlow tensors
 		Parameters:        []byte{}, // Placeholder for model parameter tensors
@@ -264,19 +264,19 @@ func (mlc *MLCoordinator) aggregateGradients(taskID string) error {
 		GlobalAccuracy:    globalAccuracy,
 		Timestamp:         time.Now(),
 	}
-	
+
 	mlc.models[modelUpdate.ModelVersion] = modelUpdate
-	
-	log.Printf("Model aggregated for epoch %d: loss=%.4f, accuracy=%.4f, workers=%d", 
+
+	log.Printf("Model aggregated for epoch %d: loss=%.4f, accuracy=%.4f, workers=%d",
 		task.CurrentEpoch, globalLoss, globalAccuracy, len(gradients))
-	
+
 	// In a full implementation, this would:
 	// 1. Deserialize gradient tensors from each worker
 	// 2. Perform weighted averaging based on number of samples
 	// 3. Apply aggregation method (FedAvg, FedProx, etc.)
 	// 4. Serialize updated model parameters
 	// 5. Broadcast to all workers
-	
+
 	return nil
 }
 
@@ -284,12 +284,12 @@ func (mlc *MLCoordinator) aggregateGradients(taskID string) error {
 func (mlc *MLCoordinator) GetModelUpdate(modelVersion uint32) (*ModelUpdateData, error) {
 	mlc.mu.RLock()
 	defer mlc.mu.RUnlock()
-	
+
 	model, exists := mlc.models[modelVersion]
 	if !exists {
 		return nil, fmt.Errorf("model version not found: %d", modelVersion)
 	}
-	
+
 	return model, nil
 }
 
@@ -301,34 +301,34 @@ func (mlc *MLCoordinator) DistributeDataset(ctx context.Context, datasetID strin
 	if len(workerNodes) == 0 {
 		return fmt.Errorf("no worker nodes specified")
 	}
-	
-	log.Printf("Distributing dataset %s: %d chunks to %d workers", 
+
+	log.Printf("Distributing dataset %s: %d chunks to %d workers",
 		datasetID, len(chunks), len(workerNodes))
-	
+
 	// Distribute chunks evenly across workers
 	chunksPerWorker := len(chunks) / len(workerNodes)
 	if chunksPerWorker == 0 {
 		chunksPerWorker = 1
 	}
-	
+
 	for i, workerID := range workerNodes {
 		startIdx := i * chunksPerWorker
 		endIdx := startIdx + chunksPerWorker
 		if endIdx > len(chunks) || i == len(workerNodes)-1 {
 			endIdx = len(chunks)
 		}
-		
+
 		workerChunks := chunks[startIdx:endIdx]
-		log.Printf("Worker %s assigned chunks %d-%d (%d chunks)", 
+		log.Printf("Worker %s assigned chunks %d-%d (%d chunks)",
 			workerID, startIdx, endIdx-1, len(workerChunks))
-		
+
 		// In a full implementation, this would:
 		// 1. Connect to the worker node via RPC
 		// 2. Send the dataset chunks
 		// 3. Verify receipt with checksums
 		// 4. Handle transmission errors and retries
 	}
-	
+
 	return nil
 }
 
@@ -336,12 +336,12 @@ func (mlc *MLCoordinator) DistributeDataset(ctx context.Context, datasetID strin
 func (mlc *MLCoordinator) GetWorkerStatus(workerID string) (*WorkerStatus, error) {
 	mlc.mu.RLock()
 	defer mlc.mu.RUnlock()
-	
+
 	status, exists := mlc.workerStatus[workerID]
 	if !exists {
 		return nil, fmt.Errorf("worker not found: %s", workerID)
 	}
-	
+
 	return status, nil
 }
 
@@ -349,14 +349,14 @@ func (mlc *MLCoordinator) GetWorkerStatus(workerID string) (*WorkerStatus, error
 func (mlc *MLCoordinator) ListActiveTasks() []*MLTrainingTaskData {
 	mlc.mu.RLock()
 	defer mlc.mu.RUnlock()
-	
+
 	tasks := make([]*MLTrainingTaskData, 0, len(mlc.tasks))
 	for _, task := range mlc.tasks {
 		if task.Status == "running" || task.Status == "pending" {
 			tasks = append(tasks, task)
 		}
 	}
-	
+
 	return tasks
 }
 
@@ -364,21 +364,21 @@ func (mlc *MLCoordinator) ListActiveTasks() []*MLTrainingTaskData {
 func (mlc *MLCoordinator) HandleWorkerFailure(workerID string) error {
 	mlc.mu.Lock()
 	defer mlc.mu.Unlock()
-	
+
 	status, exists := mlc.workerStatus[workerID]
 	if !exists {
 		return fmt.Errorf("worker not found: %s", workerID)
 	}
-	
+
 	status.Status = "failed"
 	log.Printf("Worker failure detected: %s", workerID)
-	
+
 	// In a full implementation with fault tolerance:
 	// 1. Remove worker from active worker list
 	// 2. Redistribute worker's data to other workers
 	// 3. Continue training with remaining workers
 	// 4. Log the failure for monitoring
 	// 5. Optionally retry connecting to the worker
-	
+
 	return nil
 }
