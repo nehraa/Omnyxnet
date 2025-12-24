@@ -74,22 +74,22 @@ type LibP2PPangeaNode struct {
 	natType         NATType
 	reachabilityMu  sync.RWMutex
 	computeProtocol *ComputeProtocol
+
+	// Local stores for shards and DKG shares
+	shardStore map[string]map[uint32][]byte // fileHash -> shardIndex -> data
+	shardMu    sync.RWMutex
+
+	dkgShares map[string]map[uint32][]byte // fileID -> peerID -> share bytes
+	dkgMu     sync.RWMutex
 }
 
-// NewLibP2PPangeaNode creates a new libp2p-powered Pangea node
-func NewLibP2PPangeaNode(nodeID uint32, store *NodeStore) (*LibP2PPangeaNode, error) {
-	return NewLibP2PPangeaNodeWithOptions(nodeID, store, false, false, 7777)
-}
-
-// NewLibP2PPangeaNodeWithOptions creates a new libp2p node with specific options
-func NewLibP2PPangeaNodeWithOptions(nodeID uint32, store *NodeStore, localMode, testMode bool, port int) (*LibP2PPangeaNode, error) {
+func NewLibP2PPangeaNodeWithOptions(nodeID uint32, store *NodeStore, localMode bool, testMode bool, port int) (*LibP2PPangeaNode, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// Create connection manager with limits
 	connMgr, err := connmgr.NewConnManager(
-		10,  // Low watermark
-		100, // High watermark
-		connmgr.WithGracePeriod(time.Minute),
+		100, // low watermark
+		400, // high watermark
+		connmgr.WithGracePeriod(2*time.Second),
 	)
 	if err != nil {
 		cancel()
@@ -213,6 +213,8 @@ func NewLibP2PPangeaNodeWithOptions(nodeID uint32, store *NodeStore, localMode, 
 		testMode:     testMode,
 		reachability: ReachabilityUnknown,
 		natType:      NATTypeUnknown,
+		shardStore:   make(map[string]map[uint32][]byte),
+		dkgShares:    make(map[string]map[uint32][]byte),
 	}
 
 	// Link notifee to node for auto-connect
@@ -225,6 +227,50 @@ func NewLibP2PPangeaNodeWithOptions(nodeID uint32, store *NodeStore, localMode, 
 	host.Network().Notify(&networkNotifee{node: node})
 
 	return node, nil
+}
+
+// StoreShard stores a shard for a given fileHash and index on this node
+func (n *LibP2PPangeaNode) StoreShard(fileHash string, shardIndex uint32, data []byte) {
+	n.shardMu.Lock()
+	defer n.shardMu.Unlock()
+	if _, ok := n.shardStore[fileHash]; !ok {
+		n.shardStore[fileHash] = make(map[uint32][]byte)
+	}
+	n.shardStore[fileHash][shardIndex] = data
+}
+
+// FetchLocalShard returns shard data if present locally
+func (n *LibP2PPangeaNode) FetchLocalShard(fileHash string, shardIndex uint32) ([]byte, bool) {
+	n.shardMu.RLock()
+	defer n.shardMu.RUnlock()
+	if m, ok := n.shardStore[fileHash]; ok {
+		if d, ok2 := m[shardIndex]; ok2 {
+			return d, true
+		}
+	}
+	return nil, false
+}
+
+// StoreDKGShare stores a received DKG share for a file ID
+func (n *LibP2PPangeaNode) StoreDKGShare(fileID string, fromPeer uint32, share []byte) {
+	n.dkgMu.Lock()
+	defer n.dkgMu.Unlock()
+	if _, ok := n.dkgShares[fileID]; !ok {
+		n.dkgShares[fileID] = make(map[uint32][]byte)
+	}
+	n.dkgShares[fileID][fromPeer] = share
+}
+
+// GetLocalShare returns a locally stored share for fileID if present
+func (n *LibP2PPangeaNode) GetLocalShare(fileID string) ([]byte, bool) {
+	n.dkgMu.RLock()
+	defer n.dkgMu.RUnlock()
+	if m, ok := n.dkgShares[fileID]; ok {
+		if s, ok2 := m[n.nodeID]; ok2 {
+			return s, true
+		}
+	}
+	return nil, false
 }
 
 // Start begins the libp2p node operations
@@ -402,6 +448,14 @@ func (n *LibP2PPangeaNode) connectPeerInfo(pi peer.AddrInfo) (bool, error) {
 		log.Printf("👷 Registered peer %s (IP: %s) as compute worker", shortPeerID(pi.ID), peerIP)
 	}
 
+	// Ensure maps initialized
+	if n.shardStore == nil {
+		n.shardStore = make(map[string]map[uint32][]byte)
+	}
+	if n.dkgShares == nil {
+		n.dkgShares = make(map[string]map[uint32][]byte)
+	}
+
 	go n.testConnection(pi.ID)
 	return true, nil
 }
@@ -430,26 +484,153 @@ func (n *LibP2PPangeaNode) handlePangeaRPC(stream network.Stream) {
 
 	log.Printf("📞 Incoming RPC from peer %s", stream.Conn().RemotePeer().String()[:8])
 
-	// Here you would bridge to your existing Cap'n Proto RPC system
-	// For now, we'll implement a simple echo protocol
+	// Unified RPC handler - supports small request types for testing:
+	// [1] Shard fetch request: [TYPE=1][fileHashLen(2)][fileHash][shardIndex(4)] -> responds with shard bytes
+	// [2] DKG share request: [TYPE=2][fileIDLen(2)][fileID] -> responds with stored share bytes
 
-	buffer := make([]byte, 1024)
-	for {
-		read, err := stream.Read(buffer)
-		if err != nil {
-			if err != io.EOF {
-				log.Printf("❌ Stream read error: %v", err)
+	header := make([]byte, 1)
+	if _, err := io.ReadFull(stream, header); err != nil {
+		log.Printf("❌ Failed to read request header: %v", err)
+		return
+	}
+
+	switch header[0] {
+	case 1:
+		// Shard fetch
+		lenBuf := make([]byte, 2)
+		if _, err := io.ReadFull(stream, lenBuf); err != nil {
+			log.Printf("❌ Failed to read fileHash len: %v", err)
+			return
+		}
+		hashLen := int(lenBuf[0])<<8 | int(lenBuf[1])
+		fh := make([]byte, hashLen)
+		if _, err := io.ReadFull(stream, fh); err != nil {
+			log.Printf("❌ Failed to read fileHash: %v", err)
+			return
+		}
+		idxBuf := make([]byte, 4)
+		if _, err := io.ReadFull(stream, idxBuf); err != nil {
+			log.Printf("❌ Failed to read shard index: %v", err)
+			return
+		}
+		shardIdx := uint32(idxBuf[0])<<24 | uint32(idxBuf[1])<<16 | uint32(idxBuf[2])<<8 | uint32(idxBuf[3])
+
+		fileHash := string(fh)
+		n.shardMu.RLock()
+		if shardMap, ok := n.shardStore[fileHash]; ok {
+			if data, ok2 := shardMap[shardIdx]; ok2 {
+				n.shardMu.RUnlock()
+				if _, err := stream.Write(data); err != nil {
+					log.Printf("❌ Failed to write shard response: %v", err)
+				}
+				return
 			}
+		}
+		n.shardMu.RUnlock()
+		// Not found - respond with empty
+		if _, err := stream.Write([]byte{}); err != nil {
+			log.Printf("❌ Failed to write empty shard response: %v", err)
+		}
+
+	case 2:
+		// DKG share request
+		lenBuf := make([]byte, 2)
+		if _, err := io.ReadFull(stream, lenBuf); err != nil {
+			log.Printf("❌ Failed to read fileID len: %v", err)
+			return
+		}
+		idLen := int(lenBuf[0])<<8 | int(lenBuf[1])
+		fid := make([]byte, idLen)
+		if _, err := io.ReadFull(stream, fid); err != nil {
+			log.Printf("❌ Failed to read fileID: %v", err)
+			return
+		}
+		fileID := string(fid)
+
+		n.dkgMu.RLock()
+		if shares, ok := n.dkgShares[fileID]; ok {
+			if s, ok2 := shares[n.nodeID]; ok2 {
+				n.dkgMu.RUnlock()
+				if _, err := stream.Write(s); err != nil {
+					log.Printf("❌ Failed to write share response: %v", err)
+				}
+				return
+			}
+		}
+		n.dkgMu.RUnlock()
+		// Not found
+		if _, err := stream.Write([]byte{}); err != nil {
+			log.Printf("❌ Failed to write empty share response: %v", err)
+		}
+
+	case 3:
+		// Store shard on this node
+		lenBuf := make([]byte, 2)
+		if _, err := io.ReadFull(stream, lenBuf); err != nil {
+			log.Printf("❌ Failed to read fileHash len for store: %v", err)
+			return
+		}
+		hashLen := int(lenBuf[0])<<8 | int(lenBuf[1])
+		fh := make([]byte, hashLen)
+		if _, err := io.ReadFull(stream, fh); err != nil {
+			log.Printf("❌ Failed to read fileHash for store: %v", err)
+			return
+		}
+		idxBuf := make([]byte, 4)
+		if _, err := io.ReadFull(stream, idxBuf); err != nil {
+			log.Printf("❌ Failed to read shard index for store: %v", err)
+			return
+		}
+		shardIdx := uint32(idxBuf[0])<<24 | uint32(idxBuf[1])<<16 | uint32(idxBuf[2])<<8 | uint32(idxBuf[3])
+
+		// Read remaining as shard data
+		dataBuf := make([]byte, 1024*1024)
+		nread, _ := stream.Read(dataBuf)
+		shardData := dataBuf[:nread]
+
+		n.StoreShard(string(fh), shardIdx, shardData)
+		if _, err := stream.Write([]byte("OK")); err != nil {
+			log.Printf("❌ Failed to write store ack: %v", err)
+		}
+
+	case 4:
+		// Store a DKG share sent by a dealer
+		lenBuf := make([]byte, 2)
+		if _, err := io.ReadFull(stream, lenBuf); err != nil {
+			log.Printf("❌ Failed to read fileID len for share store: %v", err)
+			return
+		}
+		idLen := int(lenBuf[0])<<8 | int(lenBuf[1])
+		fid := make([]byte, idLen)
+		if _, err := io.ReadFull(stream, fid); err != nil {
+			log.Printf("❌ Failed to read fileID for share store: %v", err)
+			return
+		}
+		// fromPeer
+		fromBuf := make([]byte, 4)
+		if _, err := io.ReadFull(stream, fromBuf); err != nil {
+			log.Printf("❌ Failed to read fromPeer for share store: %v", err)
+			return
+		}
+		fromPeer := uint32(fromBuf[0])<<24 | uint32(fromBuf[1])<<16 | uint32(fromBuf[2])<<8 | uint32(fromBuf[3])
+		_ = fromPeer // currently unused by recipient
+		// share len
+		slenBuf := make([]byte, 4)
+		if _, err := io.ReadFull(stream, slenBuf); err != nil {
+			log.Printf("❌ Failed to read share len for store: %v", err)
+			return
+		}
+		slen := int(slenBuf[0])<<24 | int(slenBuf[1])<<16 | int(slenBuf[2])<<8 | int(slenBuf[3])
+		shareBuf := make([]byte, slen)
+		if _, err := io.ReadFull(stream, shareBuf); err != nil {
+			log.Printf("❌ Failed to read share data: %v", err)
 			return
 		}
 
-		message := string(buffer[:read])
-		log.Printf("📨 Received: %s", message)
-
-		response := fmt.Sprintf("PONG from %s: %s", stream.Conn().LocalPeer().String()[:8], message)
-		if _, err := stream.Write([]byte(response)); err != nil {
-			log.Printf("❌ Stream write error: %v", err)
-			return
+		// Store share under this node's own id (the recipient) so it can be fetched by others
+		n.StoreDKGShare(string(fid), n.nodeID, shareBuf)
+		if _, err := stream.Write([]byte("OK")); err != nil {
+			log.Printf("❌ Failed to write share store ack: %v", err)
 		}
 	}
 }

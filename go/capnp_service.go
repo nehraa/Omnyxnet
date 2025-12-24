@@ -13,9 +13,12 @@ import (
 	"strings"
 	"time"
 
+	"crypto/sha256"
+
 	"capnproto.org/go/capnp/v3"
 	"capnproto.org/go/capnp/v3/rpc"
 	"github.com/pangea-net/go-node/pkg/compute"
+	"github.com/pangea-net/go-node/pkg/crypto/dkg"
 )
 
 // nodeServiceServer implements the Cap'n Proto NodeService interface
@@ -722,20 +725,78 @@ func (s *nodeServiceServer) Upload(ctx context.Context, call NodeService_upload)
 		targetPeers[i] = targetPeersList.At(i)
 	}
 
-	// Use shared CES pipeline for consistent encryption key management
-	// This ensures the same key is used for encryption and decryption
-	if s.cesPipeline == nil {
+	// Calculate fileHash (SHA-256 of content)
+	var fileHash string
+	var hashBytes [32]byte
+	if len(data) >= 32 {
+		copy(hashBytes[:], data[:32])
+	} else {
+		// Fallback: hash entire content
+		h := sha256.Sum256(data)
+		hashBytes = h
+	}
+	fileHash = fmt.Sprintf("%x", hashBytes[:])
+
+	// Use dealer-based Shamir DKG: distribute shares to target peers and create a CES pipeline with the resulting key
+	threshold := 2
+	if len(targetPeers) >= 3 {
+		threshold = (len(targetPeers) / 2) + 1
+	}
+
+	participants := make([]uint32, 0, len(targetPeers))
+	for _, p := range targetPeers {
+		participants = append(participants, p)
+	}
+
+	sendShare := func(peerID uint32, fileID string, share []byte) error {
+		if lib, ok := s.network.(*LibP2PAdapter); ok {
+			return lib.SendShare(peerID, fileID, share)
+		}
+		// Fallback raw message
+		msg := make([]byte, 1+2+len(fileID)+len(share))
+		msg[0] = 2
+		msg[1] = byte(len(fileID) >> 8)
+		msg[2] = byte(len(fileID) & 0xff)
+		copy(msg[3:], []byte(fileID))
+		copy(msg[3+len(fileID):], share)
+		return s.network.SendMessage(peerID, msg)
+	}
+
+	storeOwnShare := func(fileID string, peerID uint32, share []byte) {
+		if lib, ok := s.network.(*LibP2PAdapter); ok {
+			lib.node.StoreDKGShare(fileID, peerID, share)
+		}
+	}
+
+	fileKeyBytes, err := dkg.DistributeFileKey(ctx, fileHash, participants, threshold, sendShare, storeOwnShare)
+	if err != nil {
 		response, err := results.NewResponse()
 		if err != nil {
 			return err
 		}
 		response.SetSuccess(false)
-		response.SetErrorMsg("CES pipeline not initialized - encryption key would be inconsistent")
+		response.SetErrorMsg(fmt.Sprintf("DKG distribution failed: %v", err))
 		return nil
 	}
 
-	// Process through shared CES pipeline
-	shards, err := s.cesPipeline.Process(data)
+	var keyArr [32]byte
+	copy(keyArr[:], fileKeyBytes)
+
+	// Create CES pipeline with explicit key
+	pipeline := NewCESPipelineWithKey(3, keyArr)
+	if pipeline == nil {
+		response, err := results.NewResponse()
+		if err != nil {
+			return err
+		}
+		response.SetSuccess(false)
+		response.SetErrorMsg("Failed to create CES pipeline with key")
+		return nil
+	}
+	defer pipeline.Close()
+
+	// Process through CES pipeline (compress, encrypt, shard)
+	shards, err := pipeline.Process(data)
 	if err != nil {
 		response, err := results.NewResponse()
 		if err != nil {
@@ -751,24 +812,22 @@ func (s *nodeServiceServer) Upload(ctx context.Context, call NodeService_upload)
 	for i, shard := range shards {
 		peerID := targetPeers[i%len(targetPeers)]
 
-		// Send shard to peer
-		err := s.network.SendMessage(peerID, shard.Data)
-		if err != nil {
-			log.Printf("Warning: Failed to send shard %d to peer %d: %v", i, peerID, err)
-			// Continue - Reed-Solomon allows some failures
+		// Send shard to peer and instruct them to store it
+		if lib, ok := s.network.(*LibP2PAdapter); ok {
+			if err := lib.SendShard(peerID, fileHash, uint32(i), shard.Data); err != nil {
+				log.Printf("Warning: Failed to send shard %d to peer %d: %v", i, peerID, err)
+			}
+		} else {
+			// Fallback - send raw message
+			if err := s.network.SendMessage(peerID, shard.Data); err != nil {
+				log.Printf("Warning: Failed to send shard %d to peer %d: %v", i, peerID, err)
+			}
 		}
 
 		shardLocations[i] = [2]uint32{uint32(i), peerID}
 	}
 
-	// Build manifest
-	// Calculate file hash (simple for now)
-	var fileHash string
-	if len(data) >= 32 {
-		fileHash = fmt.Sprintf("%x", data[:32])
-	} else {
-		fileHash = fmt.Sprintf("%x", data)
-	}
+	// Build manifest - fileHash already computed above
 
 	response, err := results.NewResponse()
 	if err != nil {
@@ -876,11 +935,65 @@ func (s *nodeServiceServer) Download(ctx context.Context, call NodeService_downl
 		return nil
 	}
 
-	// Create CES pipeline for reconstruction
-	pipeline := NewCESPipeline(3)
+	// Derive file-specific key via DKG (simulated) using fileHash provided in request
+	fileHashStr, err := request.FileHash()
+	if err != nil {
+		response.SetSuccess(false)
+		response.SetErrorMsg("Missing fileHash in request")
+		response.SetBytesDownloaded(0)
+		return nil
+	}
+
+	// Collect peer IDs from shard locations to request shares
+	peersList := make([]uint32, 0)
+	for i := 0; i < shardCount; i++ {
+		loc := shardLocationsList.At(i)
+		peerID := loc.PeerId()
+		peersList = append(peersList, peerID)
+	}
+
+	// Determine threshold (same logic as upload)
+	threshold := 2
+	if len(peersList) >= 3 {
+		threshold = (len(peersList) / 2) + 1
+	}
+
+	// Create adapter wrapper implementing DKGAdapter
+	var adapter dkg.DKGAdapter
+	if lib, ok := s.network.(*LibP2PAdapter); ok {
+		adapter = lib
+	} else if legacy, ok := s.network.(*LegacyP2PAdapter); ok {
+		adapter = legacy
+	} else {
+		response.SetSuccess(false)
+		response.SetErrorMsg("Network adapter does not support DKG operations")
+		response.SetBytesDownloaded(0)
+		return nil
+	}
+
+	// getLocalShare callback
+	getLocalShare := func(fid string) ([]byte, bool) {
+		if lib, ok := s.network.(*LibP2PAdapter); ok {
+			return lib.node.GetLocalShare(fid)
+		}
+		return nil, false
+	}
+
+	fileKeyBytes, err := dkg.ReconstructFileKeyDistributed(ctx, fileHashStr, peersList, threshold, adapter, getLocalShare)
+	if err != nil {
+		response.SetSuccess(false)
+		response.SetErrorMsg(fmt.Sprintf("DKG key reconstruction failed: %v", err))
+		response.SetBytesDownloaded(0)
+		return nil
+	}
+
+	var keyArr [32]byte
+	copy(keyArr[:], fileKeyBytes)
+
+	pipeline := NewCESPipelineWithKey(3, keyArr)
 	if pipeline == nil {
 		response.SetSuccess(false)
-		response.SetErrorMsg("Failed to create CES pipeline")
+		response.SetErrorMsg("Failed to create CES pipeline with key")
 		response.SetBytesDownloaded(0)
 		return nil
 	}

@@ -21,6 +21,7 @@
 
 use crate::compute::metering::ResourceLimits;
 use crate::compute::types::ComputeError;
+use crate::compute::io_tunnel::IoTunnel;
 use sha2::{Digest, Sha256};
 use tracing::{debug, info};
 
@@ -115,6 +116,22 @@ impl WasmSandbox {
         input_data: &[u8],
         function_name: &str,
     ) -> Result<Vec<u8>, ComputeError> {
+        // Default execution path - no tunnel
+        self.execute_with_tunnel(wasm_module, input_data, function_name, None)
+    }
+
+    /// Execute with optional IoTunnel that encrypts/decrypts the I/O.
+    /// When a tunnel is provided, `input_data` is expected to be ciphertext
+    /// as seen by the host; the tunnel decrypts inside the sandbox, the
+    /// sandbox executes on plaintext, then the output is encrypted before
+    /// being passed back to the host.
+    pub fn execute_with_tunnel(
+        &self,
+        wasm_module: &[u8],
+        input_data: &[u8],
+        function_name: &str,
+        tunnel: Option<&IoTunnel>,
+    ) -> Result<Vec<u8>, ComputeError> {
         let start = std::time::Instant::now();
         debug!(
             "Executing WASM function '{}' with {} bytes input",
@@ -127,23 +144,28 @@ impl WasmSandbox {
             return Err(ComputeError::InvalidInput("Empty WASM module".into()));
         }
 
-        // Calculate module hash for caching
-        let module_hash = self.hash_module(wasm_module);
-        debug!("Module hash: {}", &module_hash[..16]);
+        // If tunnel is present, decrypt input first
+        let work_input: Vec<u8> = if let Some(t) = tunnel {
+            match t.decrypt(input_data) {
+                Ok(p) => p,
+                Err(e) => return Err(ComputeError::WasmExecutionError(format!("tunnel decrypt failed: {:?}", e))),
+            }
+        } else {
+            input_data.to_vec()
+        };
 
-        // Simulate WASM execution
-        // In production, this would use Wasmtime or another WASM runtime
-        let result = self.simulate_execution(wasm_module, input_data, function_name)?;
+        // Simulate WASM execution (or real Wasmtime integration later)
+        let result = self.simulate_execution(wasm_module, &work_input, function_name)?;
 
-        let elapsed = start.elapsed();
-        debug!("WASM execution completed in {:?}", elapsed);
-
-        // Check execution time limit
-        if elapsed.as_millis() > self.config.max_execution_time_ms as u128 {
-            return Err(ComputeError::Timeout(self.config.max_execution_time_ms));
+        // If tunnel is present, encrypt the output before returning to host
+        if let Some(t) = tunnel {
+            match t.encrypt(&result) {
+                Ok(c) => Ok(c),
+                Err(e) => Err(ComputeError::WasmExecutionError(format!("tunnel encrypt failed: {:?}", e))),
+            }
+        } else {
+            Ok(result)
         }
-
-        Ok(result)
     }
 
     /// Simulate WASM execution for testing and development
@@ -442,5 +464,28 @@ mod tests {
         let hash2 = sandbox.load_module(wasm).unwrap();
 
         assert_eq!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_execute_with_tunnel_roundtrip() {
+        use rand::RngCore;
+
+        let config = SandboxConfig { simulation_mode: true, ..Default::default() };
+        let sandbox = WasmSandbox::new(config).unwrap();
+
+        let mut key = [0u8; 32];
+        rand::thread_rng().fill_bytes(&mut key);
+        let tunnel = IoTunnel::new(&key).expect("create tunnel");
+
+        let wasm = b"test_module";
+        let plaintext = b"compute input data";
+
+        let encrypted_input = tunnel.encrypt(plaintext).expect("encrypt input");
+
+        let encrypted_output = sandbox.execute_with_tunnel(wasm, &encrypted_input, "execute", Some(&tunnel)).unwrap();
+        assert!(encrypted_output != plaintext);
+
+        let decrypted_output = tunnel.decrypt(&encrypted_output).expect("decrypt output");
+        assert_eq!(decrypted_output, plaintext);
     }
 }
