@@ -324,9 +324,6 @@ func (n *LibP2PPangeaNode) LocalMultiaddrs(includeLocal bool) []string {
 			addrs = append(addrs, fmt.Sprintf("%s/p2p/%s", addr, n.host.ID()))
 		}
 	}
-	if len(addrs) == 0 {
-		addrs = append(addrs, fmt.Sprintf("/p2p/%s", n.host.ID()))
-	}
 	return addrs
 }
 
