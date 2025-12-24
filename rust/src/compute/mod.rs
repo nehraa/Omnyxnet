@@ -19,6 +19,7 @@
 mod executor;
 mod metering;
 mod sandbox;
+mod io_tunnel;
 mod types;
 mod verification;
 

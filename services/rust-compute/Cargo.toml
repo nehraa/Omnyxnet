@@ -44,6 +44,10 @@ zstd = "0.13"
 # Utilities
 clap = { version = "4.4", features = ["derive"] }
 
+# Crypto for IoTunnel
+chacha20poly1305 = "0.10"
+rand = "0.8"
+
 # Metrics and Observability
 prometheus = "0.13"
 axum = { version = "0.7", features = ["tokio"] }
