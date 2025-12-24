@@ -12,6 +12,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - name: Build Rust FFI library
+        working-directory: ./rust
+        run: cargo build --release
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
@@ -19,13 +29,9 @@ jobs:
 
       - name: Run Go tests
         working-directory: ./go
+        env:
+          LD_LIBRARY_PATH: ${{ github.workspace }}/rust/target/release
         run: go test ./...
-
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
 
       - name: Run Rust tests (root crate)
         working-directory: ./rust

@@ -278,11 +278,16 @@ func (n *LibP2PPangeaNode) Start() error {
 	log.Printf("🚀 Starting libp2p Pangea node")
 	log.Printf("📍 Node ID: %s", n.host.ID().String())
 	log.Printf("🌐 Listening addresses:")
-	for _, addr := range n.host.Addrs() {
-		addrStr := addr.String()
-		// Skip localhost addresses in display
-		if !strings.Contains(addrStr, "127.0.0.1") && !strings.Contains(addrStr, "::1") {
-			log.Printf("   %s/p2p/%s", addr, n.host.ID())
+	for _, addrStr := range n.LocalMultiaddrs(true) {
+		log.Printf("   %s", addrStr)
+	}
+
+	// Start mDNS discovery (required for local peer auto-connect)
+	if n.mdns != nil {
+		if err := n.mdns.Start(); err != nil {
+			log.Printf("❌ Failed to start mDNS discovery: %v", err)
+		} else {
+			log.Printf("📡 mDNS discovery running (service: %s)", PangeaDiscoveryTopic)
 		}
 	}
 
@@ -306,6 +311,20 @@ func (n *LibP2PPangeaNode) SetComputeProtocol(cp *ComputeProtocol) {
 // GetComputeProtocol returns the compute protocol handler
 func (n *LibP2PPangeaNode) GetComputeProtocol() *ComputeProtocol {
 	return n.computeProtocol
+}
+
+// LocalMultiaddrs returns the node's listen multiaddrs with peer ID appended.
+// includeLocal controls whether localhost addresses are returned (useful for
+// local testing / CLI display).
+func (n *LibP2PPangeaNode) LocalMultiaddrs(includeLocal bool) []string {
+	addrs := make([]string, 0, len(n.host.Addrs()))
+	for _, addr := range n.host.Addrs() {
+		addrStr := addr.String()
+		if includeLocal || (!strings.Contains(addrStr, "127.0.0.1") && !strings.Contains(addrStr, "::1")) {
+			addrs = append(addrs, fmt.Sprintf("%s/p2p/%s", addr, n.host.ID()))
+		}
+	}
+	return addrs
 }
 
 // discoverPeers handles both local and global peer discovery

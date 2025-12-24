@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::net::IpAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::info;
+use tracing::{info, warn};
 
 /// Firewall that filters connections based on IP allowlist
 pub struct Firewall {
