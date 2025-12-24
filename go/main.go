@@ -101,6 +101,10 @@ func main() {
 			log.Fatalf("❌ Failed to start libp2p node: %v", err)
 		}
 
+		for _, addr := range libp2pNode.LocalMultiaddrs(true) {
+			log.Printf("🛰️  Share this multiaddr (manual fallback): %s", addr)
+		}
+
 		// Create and register compute protocol
 		computeProtocol := NewComputeProtocol(libp2pNode.GetHost(), computeManager, uint32(*nodeID))
 		libp2pNode.SetComputeProtocol(computeProtocol)

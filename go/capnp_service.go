@@ -1779,7 +1779,15 @@ func (s *nodeServiceServer) GetLocalMultiaddr(ctx context.Context, call NodeServ
 		return err
 	}
 
-	results.SetMultiaddr("")
+	multiaddr := ""
+	if lib, ok := s.network.(*LibP2PAdapter); ok && lib.node != nil {
+		addrs := lib.node.LocalMultiaddrs(true)
+		if len(addrs) > 0 {
+			multiaddr = addrs[0]
+		}
+	}
+
+	results.SetMultiaddr(multiaddr)
 	return nil
 }
 
