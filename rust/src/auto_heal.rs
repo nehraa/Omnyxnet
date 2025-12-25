@@ -39,6 +39,7 @@ impl Default for AutoHealConfig {
 
 /// Tracks healing status for a file
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct HealingStatus {
     file_hash: String,
     current_copies: usize,
@@ -52,6 +53,7 @@ pub struct AutoHealer {
     config: AutoHealConfig,
     cache: Arc<Cache>,
     ces: Arc<CesPipeline>,
+    #[allow(dead_code)]
     go_client: Arc<GoClient>,
     store: Arc<NodeStore>,
 
@@ -326,7 +328,8 @@ impl AutoHealer {
     }
 
     /// Get healing status for all files
-    pub async fn get_healing_status(&self) -> Vec<HealingStatus> {
+    #[allow(dead_code)]
+    async fn get_healing_status(&self) -> Vec<HealingStatus> {
         self.healing_status.read().await.values().cloned().collect()
     }
 }

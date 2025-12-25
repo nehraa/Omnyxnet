@@ -1,7 +1,6 @@
 // Build script to compile Cap'n Proto schemas
 use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
 
 fn main() {
     let out_dir = std::env::var("OUT_DIR").expect("OUT_DIR not set by Cargo");

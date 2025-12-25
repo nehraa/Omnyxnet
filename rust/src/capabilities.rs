@@ -16,18 +16,9 @@ impl HardwareCaps {
 
         let kernel_supports_uring = check_kernel_version_supports_io_uring();
 
-        let avx2 = if cfg!(target_arch = "x86_64") {
-            // runtime detection would use is_x86_feature_detected!, keep conservative false for portability
-            false
-        } else {
-            false
-        };
-
-        let neon = if cfg!(target_arch = "aarch64") {
-            false
-        } else {
-            false
-        };
+        // Conservative: no AVX2/NEON for portability. Could use runtime detection
+        let avx2 = false;
+        let neon = false;
 
         Self {
             has_avx2: avx2,

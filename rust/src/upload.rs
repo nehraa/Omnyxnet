@@ -135,6 +135,7 @@ mod tests {
     use std::net::SocketAddr;
 
     #[tokio::test]
+    #[allow(clippy::arc_with_non_send_sync)]
     async fn test_upload_protocol_creation() {
         let caps = crate::capabilities::HardwareCaps::probe();
         let config = CesConfig::adaptive(&caps, 8 * 1024 * 1024, 1.0);
@@ -145,6 +146,7 @@ mod tests {
         let go_client = Arc::new(GoClient::new(go_addr));
 
         let upload = UploadProtocol::new(ces, go_client);
-        assert!(true); // Protocol created successfully
+        // Protocol created successfully - just checking it doesn't panic
+        drop(upload);
     }
 }

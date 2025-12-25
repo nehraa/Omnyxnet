@@ -1,6 +1,6 @@
 //! Cryptographic signature verification for chunk authenticity
 
-use crate::dcdn::types::{ChunkData, PeerId, PublicKey, Signature};
+use crate::dcdn::types::{ChunkData, PeerId, PublicKey};
 use anyhow::{Context, Result};
 use dashmap::DashMap;
 use parking_lot::RwLock;
@@ -139,10 +139,8 @@ impl SignatureVerifier {
         // During unit tests the fixtures use zeroed keys/signatures as placeholders.
         // Allow a short-circuit for all-zero key+signature so tests don't require
         // generating real keypairs here (keeps test dependencies minimal).
-        if cfg!(test) {
-            if public_key.iter().all(|&b| b == 0) && signature.iter().all(|&b| b == 0) {
-                return Ok(true);
-            }
+        if cfg!(test) && public_key.iter().all(|&b| b == 0) && signature.iter().all(|&b| b == 0) {
+            return Ok(true);
         }
         use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
@@ -324,7 +322,7 @@ mod tests {
         chunk.data = Bytes::from(vec![1, 2, 3, 4, 5]);
         verifier.verify(&chunk).unwrap();
 
-        let (total, success, failed, batch) = verifier.get_metrics();
+        let (total, success, failed, _batch) = verifier.get_metrics();
         assert_eq!(total, 1);
         assert_eq!(success, 1);
         assert_eq!(failed, 0);

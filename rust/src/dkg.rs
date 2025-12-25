@@ -32,8 +32,12 @@ pub struct Share {
 /// The secret may be any byte string. Shares are independent and can be
 /// distributed to shard holders; any `threshold` distinct shares are sufficient
 /// to reconstruct the secret.
-pub fn generate_shares(secret: &[u8], threshold: u8, share_count: u8) -> Result<Vec<Share>, DkgError> {
-    if threshold == 0 || threshold > share_count || threshold > 255 {
+pub fn generate_shares(
+    secret: &[u8],
+    threshold: u8,
+    share_count: u8,
+) -> Result<Vec<Share>, DkgError> {
+    if threshold == 0 || threshold > share_count {
         return Err(DkgError::InvalidThreshold);
     }
 
@@ -86,14 +90,11 @@ pub fn reconstruct_secret(shares: &[Share], threshold: u8) -> Result<Vec<u8>, Dk
         }
     }
 
-    let secret_len = shares
-        .get(0)
-        .map(|s| s.data.len())
-        .unwrap_or(0);
+    let secret_len = shares.first().map(|s| s.data.len()).unwrap_or(0);
 
     let mut result = vec![0u8; secret_len];
 
-    for byte_idx in 0..secret_len {
+    for (byte_idx, result_byte) in result.iter_mut().enumerate().take(secret_len) {
         let mut acc = 0u8;
 
         for (j, share_j) in shares.iter().take(threshold as usize).enumerate() {
@@ -113,7 +114,7 @@ pub fn reconstruct_secret(shares: &[Share], threshold: u8) -> Result<Vec<u8>, Dk
             acc = gf_add(acc, gf_mul(lagrange_at_zero, share_j.data[byte_idx]));
         }
 
-        result[byte_idx] = acc;
+        *result_byte = acc;
     }
 
     Ok(result)

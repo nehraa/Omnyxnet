@@ -15,6 +15,12 @@ impl ThreadedEngine {
     }
 }
 
+impl Default for ThreadedEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[async_trait]
 impl StorageEngine for ThreadedEngine {
     async fn write_block(&mut self, _index: u64, _data: &[u8]) -> io::Result<()> {
@@ -42,6 +48,12 @@ pub mod uring {
     impl UringEngine {
         pub fn new() -> Self {
             UringEngine {}
+        }
+    }
+
+    impl Default for UringEngine {
+        fn default() -> Self {
+            Self::new()
         }
     }
 

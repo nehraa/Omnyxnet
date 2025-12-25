@@ -175,6 +175,7 @@ impl StreamPacket {
 pub struct AudioStreamSender {
     encoder: AudioEncoder,
     sequence: u64,
+    #[allow(dead_code)]
     config: StreamConfig,
     peer_id: u32,
 }
@@ -253,6 +254,7 @@ impl AudioStreamSender {
 pub struct AudioStreamReceiver {
     decoder: AudioDecoder,
     last_sequence: u64,
+    #[allow(dead_code)]
     config: StreamConfig,
     packet_rx: mpsc::Receiver<StreamPacket>,
 }

@@ -2,7 +2,7 @@
 
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
-use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 
 /// Unique identifier for a chunk
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
