@@ -235,6 +235,40 @@ run_integration_tests() {
     fi
 }
 
+run_feature_tests() {
+    print_section "Comprehensive Feature Tests"
+    
+    if [ "$QUICK_MODE" = true ]; then
+        echo "Running quick feature tests..."
+        bash "$PROJECT_ROOT/scripts/container_tests/comprehensive_feature_tests.sh" --quick --no-build
+    else
+        echo "Running full feature test suite..."
+        bash "$PROJECT_ROOT/scripts/container_tests/comprehensive_feature_tests.sh" --no-build
+    fi
+    check_success "Feature tests"
+}
+
+run_advanced_feature_tests() {
+    print_section "Advanced Feature Tests"
+    
+    cd "$PROJECT_ROOT/scripts/container_tests"
+    
+    # WASM I/O Encryption
+    echo "Testing WASM I/O encrypted tunneling..."
+    bash test_wasm_io_encryption.sh
+    check_success "WASM I/O encryption"
+    
+    # DHT
+    echo "Testing Distributed Hash Table..."
+    bash test_dht.sh
+    check_success "DHT"
+    
+    # DKG
+    echo "Testing Distributed Key Generation..."
+    bash test_dkg.sh
+    check_success "DKG"
+}
+
 # =============================================================================
 # Main Execution
 # =============================================================================
@@ -270,6 +304,8 @@ main() {
         
         if [ "$FULL_MODE" = true ]; then
             run_integration_tests || FAILED=$((FAILED+1))
+            run_feature_tests || FAILED=$((FAILED+1))
+            run_advanced_feature_tests || FAILED=$((FAILED+1))
         fi
     fi
     
