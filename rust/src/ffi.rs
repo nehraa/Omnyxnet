@@ -123,7 +123,7 @@ pub extern "C" fn ces_new_with_key(
 }
 
 /// Free a CES pipeline instance
-/// 
+///
 /// # Safety
 /// This function dereferences raw pointers and must only be called with valid pointers
 #[no_mangle]
@@ -138,7 +138,7 @@ pub extern "C" fn ces_free(pipeline: *mut CesPipeline) {
 
 /// Process data through CES pipeline (Compress, Encrypt, Shard)
 /// Returns FFIShards structure that must be freed with ces_free_shards()
-/// 
+///
 /// # Safety
 /// This function dereferences raw pointers and must only be called with valid pointers
 #[no_mangle]
@@ -188,7 +188,7 @@ pub extern "C" fn ces_process(
 
 /// Reconstruct data from shards (reverse CES pipeline)
 /// shard_present array indicates which shards are available (1) or missing (0)
-/// 
+///
 /// # Safety
 /// This function dereferences raw pointers and must only be called with valid pointers
 #[no_mangle]
@@ -253,7 +253,10 @@ pub extern "C" fn ces_free_result(result: FFIResult) {
     unsafe {
         if !result.data.is_null() {
             // Reconstruct the boxed slice that was created with Box::into_raw
-            let _ = Box::from_raw(std::ptr::slice_from_raw_parts_mut(result.data, result.data_len));
+            let _ = Box::from_raw(std::ptr::slice_from_raw_parts_mut(
+                result.data,
+                result.data_len,
+            ));
         }
         if !result.error_msg.is_null() {
             drop(CString::from_raw(result.error_msg));
@@ -398,7 +401,8 @@ mod tests {
         for shard in ffi_shards {
             unsafe {
                 if !shard.data.is_null() {
-                    let _ = Box::from_raw(std::ptr::slice_from_raw_parts_mut(shard.data, shard.len));
+                    let _ =
+                        Box::from_raw(std::ptr::slice_from_raw_parts_mut(shard.data, shard.len));
                 }
             }
         }

@@ -130,7 +130,11 @@ impl MerkleTree {
         // Use recorded level sizes for accurate proof generation
         for &level_size in &self.level_sizes[..self.level_sizes.len().saturating_sub(1)] {
             // Get sibling index
-            let sibling_index = if index.is_multiple_of(2) { index + 1 } else { index - 1 };
+            let sibling_index = if index.is_multiple_of(2) {
+                index + 1
+            } else {
+                index - 1
+            };
 
             // Add sibling hash to proof if it exists
             let node_index = level_start + sibling_index;

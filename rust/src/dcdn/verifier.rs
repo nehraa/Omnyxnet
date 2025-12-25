@@ -139,10 +139,9 @@ impl SignatureVerifier {
         // During unit tests the fixtures use zeroed keys/signatures as placeholders.
         // Allow a short-circuit for all-zero key+signature so tests don't require
         // generating real keypairs here (keeps test dependencies minimal).
-        if cfg!(test)
-            && public_key.iter().all(|&b| b == 0) && signature.iter().all(|&b| b == 0) {
-                return Ok(true);
-            }
+        if cfg!(test) && public_key.iter().all(|&b| b == 0) && signature.iter().all(|&b| b == 0) {
+            return Ok(true);
+        }
         use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
         let pk = VerifyingKey::from_bytes(public_key)

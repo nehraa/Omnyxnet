@@ -42,8 +42,7 @@ impl Default for ComputeConfig {
 }
 
 /// Verification mode for compute results
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum VerificationMode {
     /// No verification (fastest, least secure)
     None,
@@ -56,10 +55,8 @@ pub enum VerificationMode {
     Redundancy,
 }
 
-
 /// Split strategy for data chunking
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum SplitStrategy {
     /// Split by fixed size chunks
     #[default]
@@ -71,7 +68,6 @@ pub enum SplitStrategy {
     /// Use WASM split function
     Custom,
 }
-
 
 /// Status of a compute task
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

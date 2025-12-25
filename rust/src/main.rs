@@ -423,6 +423,7 @@ async fn create_cache_downloader(_args: &Args) -> anyhow::Result<AutomatedDownlo
     // For cache-only operations, we still need minimal setup
     // but we don't need to connect to the Go node
     let go_addr: std::net::SocketAddr = _args.go_addr.parse()?;
+    #[allow(clippy::arc_with_non_send_sync)]
     let go_client = Arc::new(go_client::GoClient::new(go_addr));
 
     let caps = capabilities::HardwareCaps::probe();
@@ -474,6 +475,7 @@ async fn handle_automated_upload(file: &str, args: &Args) -> anyhow::Result<()> 
 
     // Create Go client
     let go_addr: std::net::SocketAddr = args.go_addr.parse()?;
+    #[allow(clippy::arc_with_non_send_sync)]
     let go_client = Arc::new(go_client::GoClient::new(go_addr));
 
     // Connect to Go node
@@ -527,6 +529,7 @@ async fn handle_automated_download(
 
     // Create Go client
     let go_addr: std::net::SocketAddr = args.go_addr.parse()?;
+    #[allow(clippy::arc_with_non_send_sync)]
     let go_client = Arc::new(go_client::GoClient::new(go_addr));
 
     // Connect to Go node
