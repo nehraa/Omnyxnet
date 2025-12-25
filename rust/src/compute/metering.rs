@@ -237,12 +237,14 @@ pub enum MeteringError {
 ///
 /// This is designed to be called periodically during WASM execution
 /// to check resource limits.
+#[allow(dead_code)]
 pub struct MeteringCallback {
     metering: Arc<Metering>,
     check_interval: u64,
     cycles_since_check: AtomicU64,
 }
 
+#[allow(dead_code)]
 impl MeteringCallback {
     /// Create a new metering callback
     pub fn new(metering: Arc<Metering>, check_interval: u64) -> Self {
@@ -278,6 +280,7 @@ impl MeteringCallback {
 }
 
 /// Estimate CPU cycles for common operations
+#[allow(dead_code)]
 pub mod cycle_estimates {
     /// Cycles for a simple arithmetic operation
     pub const ARITHMETIC: u64 = 1;

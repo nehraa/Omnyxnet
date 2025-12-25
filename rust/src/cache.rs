@@ -32,6 +32,7 @@ pub struct FileManifest {
 
 /// Cached shard entry
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct CachedShard {
     data: Vec<u8>,
     timestamp: i64,
@@ -239,7 +240,7 @@ impl Cache {
         let mut freed_space = 0;
         let target_space = required_space + (self.max_cache_size / 10); // Free 10% extra
 
-        while freed_space < target_space && cache.len() > 0 {
+        while freed_space < target_space && !cache.is_empty() {
             if let Some((_, evicted)) = cache.pop_lru() {
                 let evicted_size = evicted.data.len();
                 freed_space += evicted_size;

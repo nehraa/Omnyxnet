@@ -80,7 +80,7 @@ impl MerkleTree {
             }
 
             level_start = level_end + (level_size - original_size); // Account for padding node
-            level_size = level_size / 2;
+            level_size /= 2;
         }
 
         // Add final level (root)
@@ -130,7 +130,7 @@ impl MerkleTree {
         // Use recorded level sizes for accurate proof generation
         for &level_size in &self.level_sizes[..self.level_sizes.len().saturating_sub(1)] {
             // Get sibling index
-            let sibling_index = if index % 2 == 0 { index + 1 } else { index - 1 };
+            let sibling_index = if index.is_multiple_of(2) { index + 1 } else { index - 1 };
 
             // Add sibling hash to proof if it exists
             let node_index = level_start + sibling_index;
@@ -152,7 +152,7 @@ impl MerkleTree {
         let mut index = leaf_index;
 
         for sibling in proof {
-            hash = if index % 2 == 0 {
+            hash = if index.is_multiple_of(2) {
                 Self::hash_string(&format!("{}{}", hash, sibling))
             } else {
                 Self::hash_string(&format!("{}{}", sibling, hash))

@@ -43,10 +43,12 @@ impl Default for ComputeConfig {
 
 /// Verification mode for compute results
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum VerificationMode {
     /// No verification (fastest, least secure)
     None,
     /// Simple SHA256 hash verification
+    #[default]
     Hash,
     /// Full Merkle tree proof (most secure)
     Merkle,
@@ -54,16 +56,13 @@ pub enum VerificationMode {
     Redundancy,
 }
 
-impl Default for VerificationMode {
-    fn default() -> Self {
-        Self::Hash
-    }
-}
 
 /// Split strategy for data chunking
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum SplitStrategy {
     /// Split by fixed size chunks
+    #[default]
     FixedSize,
     /// Split by row/line boundaries
     RowBased,
@@ -73,11 +72,6 @@ pub enum SplitStrategy {
     Custom,
 }
 
-impl Default for SplitStrategy {
-    fn default() -> Self {
-        Self::FixedSize
-    }
-}
 
 /// Status of a compute task
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

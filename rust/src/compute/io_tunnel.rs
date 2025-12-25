@@ -1,7 +1,7 @@
+use anyhow::{bail, Result};
 use chacha20poly1305::aead::{Aead, KeyInit, OsRng};
-use chacha20poly1305::{XChaCha20Poly1305, XNonce, Key};
+use chacha20poly1305::{Key, XChaCha20Poly1305, XNonce};
 use rand::RngCore;
-use anyhow::{Result, bail};
 
 const BLOCK_SIZE: usize = 1024;
 
@@ -29,7 +29,7 @@ impl IoTunnel {
         buf.extend_from_slice(plaintext);
         // Add zero padding to next block
         let pad_len = (BLOCK_SIZE - (buf.len() % BLOCK_SIZE)) % BLOCK_SIZE;
-        buf.extend(std::iter::repeat(0u8).take(pad_len));
+        buf.extend(std::iter::repeat_n(0u8, pad_len));
 
         // Generate nonce
         let mut nonce_bytes = [0u8; 24];
@@ -52,7 +52,7 @@ impl IoTunnel {
         }
         let (nonce_bytes, ciphertext) = ciphertext_with_nonce.split_at(24);
         let nonce = XNonce::from_slice(nonce_bytes);
-        let mut plaintext = self.aead.decrypt(nonce, ciphertext.as_ref())?;
+        let plaintext = self.aead.decrypt(nonce, ciphertext.as_ref())?;
         // Remove padding and read length prefix
         if plaintext.len() < 8 {
             bail!("plaintext too small for length prefix")
@@ -60,10 +60,10 @@ impl IoTunnel {
         let mut len_bytes = [0u8; 8];
         len_bytes.copy_from_slice(&plaintext[..8]);
         let len = u64::from_le_bytes(len_bytes) as usize;
-        if plaintext.len() < 8+len {
+        if plaintext.len() < 8 + len {
             bail!("invalid length in plaintext")
         }
-        let result = plaintext[8..8+len].to_vec();
+        let result = plaintext[8..8 + len].to_vec();
         Ok(result)
     }
 }

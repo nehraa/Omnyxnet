@@ -38,6 +38,7 @@ pub struct AutomatedUploader {
 
 impl AutomatedUploader {
     /// Create a new automated uploader
+    #[allow(clippy::arc_with_non_send_sync)]
     pub fn new(
         ces: Arc<CesPipeline>,
         go_client: Arc<GoClient>,
@@ -176,6 +177,7 @@ pub struct AutomatedDownloader {
 
 impl AutomatedDownloader {
     /// Create a new automated downloader
+    #[allow(clippy::arc_with_non_send_sync)]
     pub fn new(
         ces: Arc<CesPipeline>,
         go_client: Arc<GoClient>,

@@ -132,20 +132,15 @@ pub fn current_timestamp() -> u64 {
 }
 
 /// Compression algorithm selection (Phase 1 requirement)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum CompressionAlgorithm {
     /// Zstandard - fast, good compression ratio (default)
+    #[default]
     Zstd,
     /// Brotli - better compression for text, slower
     Brotli,
     /// No compression
     None,
-}
-
-impl Default for CompressionAlgorithm {
-    fn default() -> Self {
-        CompressionAlgorithm::Zstd
-    }
 }
 
 /// Configuration for CES pipeline
@@ -176,7 +171,7 @@ impl CesConfig {
         let compression_level = if caps.cpu_cores > 8 { 9 } else { 3 };
 
         // Dynamic sharding based on file size
-        let shard_count = ((file_size / chunk_size as u64).max(4).min(32)) as usize;
+        let shard_count = ((file_size / chunk_size as u64).clamp(4, 32)) as usize;
         let parity_count = shard_count / 2; // 50% redundancy
 
         Self {
@@ -187,8 +182,10 @@ impl CesConfig {
             chunk_size,
         }
     }
+}
 
-    pub fn default() -> Self {
+impl Default for CesConfig {
+    fn default() -> Self {
         Self {
             compression_level: 3,
             compression_algorithm: CompressionAlgorithm::default(),

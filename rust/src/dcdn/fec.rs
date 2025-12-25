@@ -247,7 +247,7 @@ impl FecEngine {
     pub fn get_group(
         &self,
         group_id: &FecGroupId,
-    ) -> Option<dashmap::mapref::one::Ref<FecGroupId, FecGroup>> {
+    ) -> Option<dashmap::mapref::one::Ref<'_, FecGroupId, FecGroup>> {
         self.active_groups.get(group_id)
     }
 

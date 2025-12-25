@@ -128,6 +128,7 @@ impl CesPipeline {
     }
 
     /// Compress data using zstd
+    #[allow(dead_code)]
     fn compress(&self, data: &[u8]) -> Result<Vec<u8>> {
         self.compress_with_level(data, self.config.compression_level)
     }
@@ -149,7 +150,7 @@ impl CesPipeline {
             }
             CompressionAlgorithm::Brotli => {
                 // Brotli quality range: 0-11, map from our 1-22 range
-                let quality = (level.max(0).min(11)) as u32;
+                let quality = level.clamp(0, 11) as u32;
                 let mut compressed = Vec::new();
                 let mut compressor = brotli::CompressorReader::new(
                     data,
@@ -231,7 +232,7 @@ impl CesPipeline {
         let total_shards = data_shards + parity_shards;
 
         // Calculate shard size (round up)
-        let shard_size = (data.len() + data_shards - 1) / data_shards;
+        let shard_size = data.len().div_ceil(data_shards);
 
         // Create data shards in parallel using rayon
         let data_shards_vec: Vec<Vec<u8>> = (0..data_shards)
@@ -282,10 +283,8 @@ impl CesPipeline {
 
         // Concatenate data shards
         let mut result = Vec::new();
-        for i in 0..data_shards {
-            if let Some(ref shard) = shards[i] {
-                result.extend_from_slice(shard);
-            }
+        for shard_data in shards.iter().take(data_shards).flatten() {
+            result.extend_from_slice(shard_data);
         }
 
         Ok(result)

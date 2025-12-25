@@ -2,7 +2,10 @@ use std::collections::HashSet;
 use std::net::IpAddr;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{info, warn};
+use tracing::info;
+
+#[cfg(feature = "ebpf")]
+use tracing::warn;
 
 /// Firewall that filters connections based on IP allowlist
 pub struct Firewall {
@@ -77,7 +80,9 @@ impl Firewall {
 
     /// Initialize eBPF firewall (Linux only)
     #[cfg(feature = "ebpf")]
+    #[allow(unused_variables)]
     pub async fn init_ebpf(&self, interface: &str) -> anyhow::Result<()> {
+        #[allow(unused_imports)]
         use aya::{
             programs::{Xdp, XdpFlags},
             Bpf,

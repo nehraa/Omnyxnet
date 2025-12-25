@@ -337,7 +337,7 @@ mod tests {
         }
 
         let avg = tracker.average_latency("sleep_test").unwrap();
-        assert!(avg >= 50.0 && avg < 100.0);
+        assert!((50.0..100.0).contains(&avg));
     }
 
     #[test]

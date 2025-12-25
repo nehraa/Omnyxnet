@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use futures::future::{select, Either};
 use libp2p::{
     identify,
     kad::{self, store::MemoryStore, Mode, Record, RecordKey},
@@ -6,12 +7,7 @@ use libp2p::{
     swarm::{NetworkBehaviour, Swarm, SwarmEvent},
     tcp, Multiaddr, PeerId,
 };
-use std::{
-    collections::HashMap,
-    sync::Arc,
-    time::Duration,
-};
-use futures::future::{select, Either};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 use tokio::{sync::RwLock, time::sleep};
 use tracing::{debug, info, warn};
 

@@ -19,9 +19,9 @@
 //! - No network access
 //! - No filesystem access (unless WASI is explicitly enabled)
 
+use crate::compute::io_tunnel::IoTunnel;
 use crate::compute::metering::ResourceLimits;
 use crate::compute::types::ComputeError;
-use crate::compute::io_tunnel::IoTunnel;
 use sha2::{Digest, Sha256};
 use tracing::{debug, info};
 
@@ -68,6 +68,7 @@ pub struct WasmSandbox {
 }
 
 /// A cached compiled module
+#[allow(dead_code)]
 struct CachedModule {
     /// Hash of the original WASM bytes
     hash: String,
@@ -132,7 +133,6 @@ impl WasmSandbox {
         function_name: &str,
         tunnel: Option<&IoTunnel>,
     ) -> Result<Vec<u8>, ComputeError> {
-        let start = std::time::Instant::now();
         debug!(
             "Executing WASM function '{}' with {} bytes input",
             function_name,
@@ -148,7 +148,12 @@ impl WasmSandbox {
         let work_input: Vec<u8> = if let Some(t) = tunnel {
             match t.decrypt(input_data) {
                 Ok(p) => p,
-                Err(e) => return Err(ComputeError::WasmExecutionError(format!("tunnel decrypt failed: {:?}", e))),
+                Err(e) => {
+                    return Err(ComputeError::WasmExecutionError(format!(
+                        "tunnel decrypt failed: {:?}",
+                        e
+                    )))
+                }
             }
         } else {
             input_data.to_vec()
@@ -161,7 +166,10 @@ impl WasmSandbox {
         if let Some(t) = tunnel {
             match t.encrypt(&result) {
                 Ok(c) => Ok(c),
-                Err(e) => Err(ComputeError::WasmExecutionError(format!("tunnel encrypt failed: {:?}", e))),
+                Err(e) => Err(ComputeError::WasmExecutionError(format!(
+                    "tunnel encrypt failed: {:?}",
+                    e
+                ))),
             }
         } else {
             Ok(result)
@@ -385,14 +393,21 @@ mod tests {
 
     #[test]
     fn test_sandbox_creation() {
-        let config = SandboxConfig { simulation_mode: true, ..Default::default() };
+        let config = SandboxConfig {
+            simulation_mode: true,
+            ..Default::default()
+        };
         let sandbox = WasmSandbox::new(config);
         assert!(sandbox.is_ok());
     }
 
     #[test]
     fn test_split_execute() {
-        let sandbox = WasmSandbox::new(SandboxConfig { simulation_mode: true, ..Default::default() }).unwrap();
+        let sandbox = WasmSandbox::new(SandboxConfig {
+            simulation_mode: true,
+            ..Default::default()
+        })
+        .unwrap();
 
         // Create test data
         let data = vec![1u8; 256 * 1024]; // 256KB
@@ -414,7 +429,11 @@ mod tests {
 
     #[test]
     fn test_split_and_merge_roundtrip() {
-        let sandbox = WasmSandbox::new(SandboxConfig { simulation_mode: true, ..Default::default() }).unwrap();
+        let sandbox = WasmSandbox::new(SandboxConfig {
+            simulation_mode: true,
+            ..Default::default()
+        })
+        .unwrap();
 
         let original_data = b"Hello, World! This is test data for split and merge.";
         let fake_wasm = b"test_module";
@@ -430,7 +449,11 @@ mod tests {
 
     #[test]
     fn test_execute_identity() {
-        let sandbox = WasmSandbox::new(SandboxConfig { simulation_mode: true, ..Default::default() }).unwrap();
+        let sandbox = WasmSandbox::new(SandboxConfig {
+            simulation_mode: true,
+            ..Default::default()
+        })
+        .unwrap();
 
         let data = b"test data";
         let fake_wasm = b"test_module";
@@ -456,7 +479,11 @@ mod tests {
 
     #[test]
     fn test_module_caching() {
-        let mut sandbox = WasmSandbox::new(SandboxConfig { simulation_mode: true, ..Default::default() }).unwrap();
+        let mut sandbox = WasmSandbox::new(SandboxConfig {
+            simulation_mode: true,
+            ..Default::default()
+        })
+        .unwrap();
 
         // Use a minimal valid WASM header so validate_module accepts it in tests
         let wasm = b"\x00asm\x01\x00\x00\x00fake_wasm_module_data";
@@ -470,7 +497,10 @@ mod tests {
     fn test_execute_with_tunnel_roundtrip() {
         use rand::RngCore;
 
-        let config = SandboxConfig { simulation_mode: true, ..Default::default() };
+        let config = SandboxConfig {
+            simulation_mode: true,
+            ..Default::default()
+        };
         let sandbox = WasmSandbox::new(config).unwrap();
 
         let mut key = [0u8; 32];
@@ -482,7 +512,9 @@ mod tests {
 
         let encrypted_input = tunnel.encrypt(plaintext).expect("encrypt input");
 
-        let encrypted_output = sandbox.execute_with_tunnel(wasm, &encrypted_input, "execute", Some(&tunnel)).unwrap();
+        let encrypted_output = sandbox
+            .execute_with_tunnel(wasm, &encrypted_input, "execute", Some(&tunnel))
+            .unwrap();
         assert!(encrypted_output != plaintext);
 
         let decrypted_output = tunnel.decrypt(&encrypted_output).expect("decrypt output");
